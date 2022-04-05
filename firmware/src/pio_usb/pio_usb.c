@@ -24,7 +24,7 @@
 #include "usb_tx.pio.h"
 #include "usb_rx.pio.h"
 
-#include "descriptor.h"
+#include "descriptor_parser.h"
 
 #define UNUSED_PARAMETER(x) (void)x
 
@@ -1214,6 +1214,7 @@ static int enumerate_device(usb_device_t *device, uint8_t address) {
             ep->size = d->max_size[0] | (d->max_size[1] << 8);
             ep->attr = d->attr | EP_ATTR_ENUMERATING;
             ep->ep_num = d->epaddr;
+            ep->interface = interface;
           } else {
             printf("No empty EP\n");
           }
@@ -1251,7 +1252,7 @@ static int enumerate_device(usb_device_t *device, uint8_t address) {
         }
         printf("\n");
         stdio_flush();
-        parse_descriptor(device->control_pipe.rx_buffer, desc_len);
+        parse_descriptor(device->control_pipe.rx_buffer, desc_len, interface);
 
       } break;
       default:

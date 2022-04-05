@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
     <title>HID Remapper Configuration</title>
-    <script src="code.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
+    <script src="code.js" type="module"></script>
     </script>
 </head>
 
@@ -14,9 +15,9 @@
 
     <div class="container" style="max-width: 720px;">
 
-        <h1 class="mt-sm-5">HID Remapper Configuration</h1>
+        <h1 class="mt-sm-5 mt-3">HID Remapper Configuration</h1>
 
-        <div class="row my-sm-4">
+        <div class="row my-4">
             <div class="col">
                 <button id="open_device" type="button" class="btn btn-primary w-100">Open device</button>
             </div>
@@ -30,77 +31,109 @@
 
         <div id="error" class="alert alert-danger d-none"></div>
 
-        <div class="row my-1">
-            <div class="col"></div>
-            <div class="col text-center">Normal</div>
-            <div class="col text-center">Shifted</div>
+        <div class="row pb-2" style="overflow-x: auto;">
+            <div style="min-width: 600px; width: 100%;">
+                <div class="row my-2">
+                    <div class="col-1 text-center"></div>
+                    <div class="col-3 text-center">Input</div>
+                    <div class="col-3 text-center">Output</div>
+                    <div class="col-2 text-center">Layer</div>
+                    <div class="col-2 text-center">Scaling</div>
+                    <div class="col-1 text-center">Sticky</div>
+                </div>
+
+                <div id="mappings">
+                </div>
+            </div>
         </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">X axis</div>
-            <div class="col"><select class="form-select" id="axis_0"></select></div>
-            <div class="col"><select class="form-select" id="axis_shifted_0"></select></div>
+
+        <div class="text-center mt-2 mb-3">
+            <button id="add_mapping" type="button" class="btn btn-primary">Add mapping</button>
         </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Y axis</div>
-            <div class="col"><select class="form-select" id="axis_1"></select></div>
-            <div class="col"><select class="form-select" id="axis_shifted_1"></select></div>
+
+        <div class="form-check mb-2 mt-4">
+            <input type="checkbox" id="unmapped_passthrough_checkbox" class="form-check-input">
+            <label for="unmapped_passthrough_checkbox" class="form-check-label">Unmapped inputs passthrough</label>
         </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">V scroll</div>
-            <div class="col"><select class="form-select" id="axis_2"></select></div>
-            <div class="col"><select class="form-select" id="axis_shifted_2"></select></div>
+        <div class="row mb-2">
+            <div class="col-auto">
+                <label for="partial_scroll_timeout_input" class="col-form-label">Partial scroll timeout</label>
+            </div>
+            <div class="col-auto">
+                <div class="input-group">
+                    <input type="number" id="partial_scroll_timeout_input" class="form-control" style="max-width: 100px;">
+                    <span class="input-group-text">ms</span>
+                </div>
+            </div>
         </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">H scroll</div>
-            <div class="col"><select class="form-select" id="axis_3"></select></div>
-            <div class="col"><select class="form-select" id="axis_shifted_3"></select></div>
+
+        <div class="row mt-4">
+            <div class="col-auto">
+                <button id="download_json" type="button" class="btn btn-primary">Export JSON</button>
+            </div>
+            <div class="col-auto">
+                <button id="upload_json" type="button" class="btn btn-primary">Import JSON</button>
+            </div>
         </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 1</div>
-            <div class="col"><select class="form-select" id="button_0"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_0"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 2</div>
-            <div class="col"><select class="form-select" id="button_1"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_1"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 3</div>
-            <div class="col"><select class="form-select" id="button_2"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_2"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 4</div>
-            <div class="col"><select class="form-select" id="button_3"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_3"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 5</div>
-            <div class="col"><select class="form-select" id="button_4"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_4"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 6</div>
-            <div class="col"><select class="form-select" id="button_5"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_5"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 7</div>
-            <div class="col"><select class="form-select" id="button_6"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_6"></select></div>
-        </div>
-        <div class="row my-1">
-            <div class="col text-end align-self-center">Button 8</div>
-            <div class="col"><select class="form-select" id="button_7"></select></div>
-            <div class="col"><select class="form-select" id="button_shifted_7"></select></div>
-        </div>
+
+        <p class="text-muted mt-5" id="examples">
+            Examples:
+        </p>
 
         <p class="text-muted mt-5">
             For more information, see <a class="text-reset" href="https://github.com/jfedor2/hid-remapper">github.com/jfedor2/hid-remapper</a>.
         </p>
 
     </div>
+
+    <template id="mapping_template">
+        <div class="row mb-1">
+            <div class="col-1"><button type="button" class="btn btn-primary delete_button">×</button></div>
+            <div class="col-3"><button type="button" class="btn btn-primary w-100 source_button">source</button></div>
+            <div class="col-3"><button type="button" class="btn btn-primary w-100 target_button">target</button></div>
+            <div class="col-2"><select class="form-select layer_dropdown">
+                    <option value="0" selected>0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select></div>
+            <div class="col-2"><input class="form-control scaling_input" type="number"></div>
+            <div class="col-1 form-check d-flex align-items-center justify-content-center"><input class="form-check-input sticky_checkbox" type="checkbox" value=""></div>
+        </div>
+    </template>
+
+    <template id="usage_button_template">
+        <button type="button" class="btn btn-primary usage_button m-1"></button>
+    </template>
+
+    <template id="example_template">
+        <a class="text-reset" href="javascript:void(0);"></a>
+    </template>
+
+    <div id="usage_modal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title usage_modal_title"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="col mouse_usages">
+                    </div>
+                    <div class="col keyboard_usages mt-3">
+                    </div>
+                    <div class="col media_usages mt-3">
+                    </div>
+                    <div class="col other_usages mt-3">
+                    </div>
+                    <div class="col extra_usages mt-3">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" class="d-none" id="file_input">
 
 </body>
 

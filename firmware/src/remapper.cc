@@ -1,422 +1,87 @@
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2022 Jacek Fedorynski
- * Copyright (c) 2021 sekigon-gonnoc
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include <bsp/board.h>
 #include <tusb.h>
 
-#include <pico/bootrom.h>
-#include <pico/multicore.h>
-#include <pico/stdlib.h>
-
-#include <hardware/flash.h>
-
-extern "C" {
-#include "pio_usb.h"
-}
+#include "config.h"
 #include "crc.h"
-#include "descriptor.h"
+#include "descriptor_parser.h"
+#include "globals.h"
+#include "our_descriptor.h"
+#include "pio_usb_stuff.h"
+#include "remapper.h"
 
-static usb_device_t* usb_device = NULL;
+const uint8_t MAPPING_FLAG_STICKY = 0x01;
 
-void core1_main() {
-    sleep_ms(10);
+const uint8_t V_RESOLUTION_BITMASK = (1 << 0);
+const uint8_t H_RESOLUTION_BITMASK = (1 << 2);
+const uint32_t V_SCROLL_USAGE = 0x00010038;
+const uint32_t H_SCROLL_USAGE = 0x000C0238;
 
-    // To run USB SOF interrupt in core1, create alarm pool in core1.
-    static pio_usb_configuration_t config = PIO_USB_DEFAULT_CONFIG;
-    config.alarm_pool = (void*) alarm_pool_create(2, 1);
-    usb_device = pio_usb_host_init(&config);
+const uint8_t NLAYERS = 4;
+const uint32_t LAYERS_USAGE_PAGE = 0xFFF10000;
 
-    //// Call pio_usb_host_add_port to use multi port
-    // const uint8_t pin_dp2 = 8;
-    // pio_usb_host_add_port(pin_dp2);
-
-    while (true) {
-        pio_usb_host_task();
-    }
-}
-
-// These IDs are bogus. If you want to distribute any hardware using this,
-// you will have to get real ones.
-#define USB_VID 0xCAFE
-#define USB_PID 0xBAF1
-
-#define CONFIG_VERSION 1
-#define CONFIG_SIZE 30
-
-#define NBUTTONS 8
-#define RESOLUTION_MULTIPLIER 120
-
-#define PRESUMED_FLASH_SIZE 2097152
-#define CONFIG_OFFSET_IN_FLASH (PRESUMED_FLASH_SIZE - FLASH_SECTOR_SIZE)
-#define FLASH_CONFIG_IN_MEMORY (((uint8_t*) XIP_BASE) + CONFIG_OFFSET_IN_FLASH)
-
-bool button_state[NBUTTONS] = { false };
-bool prev_button_state[NBUTTONS] = { false };
-
-int16_t axis_movement[4] = { 0 };
-
-#define V_RESOLUTION_BITMASK (1 << 0)
-#define H_RESOLUTION_BITMASK (1 << 2)
-
-tusb_desc_device_t const desc_device = {
-    .bLength = sizeof(tusb_desc_device_t),
-    .bDescriptorType = TUSB_DESC_DEVICE,
-    .bcdUSB = 0x0200,
-    .bDeviceClass = 0x00,
-    .bDeviceSubClass = 0x00,
-    .bDeviceProtocol = 0x00,
-    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-
-    .idVendor = USB_VID,
-    .idProduct = USB_PID,
-    .bcdDevice = 0x0100,
-
-    .iManufacturer = 0x01,
-    .iProduct = 0x02,
-    .iSerialNumber = 0x00,
-
-    .bNumConfigurations = 0x01,
+const std::unordered_map<uint32_t, uint8_t> resolution_multiplier_masks = {
+    { V_SCROLL_USAGE, V_RESOLUTION_BITMASK },
+    { H_SCROLL_USAGE, H_RESOLUTION_BITMASK },
 };
 
-uint8_t const desc_hid_report[] = {
-    0x05, 0x01,                   // Usage Page (Generic Desktop Ctrls)
-    0x09, 0x02,                   // Usage (Mouse)
-    0xA1, 0x01,                   // Collection (Application)
-    0x05, 0x01,                   //   Usage Page (Generic Desktop Ctrls)
-    0x09, 0x02,                   //   Usage (Mouse)
-    0xA1, 0x02,                   //   Collection (Logical)
-    0x85, 0x01,                   //     Report ID (1)
-    0x09, 0x01,                   //     Usage (Pointer)
-    0xA1, 0x00,                   //     Collection (Physical)
-    0x05, 0x09,                   //       Usage Page (Button)
-    0x19, 0x01,                   //       Usage Minimum (0x01)
-    0x29, 0x08,                   //       Usage Maximum (0x08)
-    0x95, 0x08,                   //       Report Count (8)
-    0x75, 0x01,                   //       Report Size (1)
-    0x25, 0x01,                   //       Logical Maximum (1)
-    0x81, 0x02,                   //       Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x05, 0x01,                   //       Usage Page (Generic Desktop Ctrls)
-    0x09, 0x30,                   //       Usage (X)
-    0x09, 0x31,                   //       Usage (Y)
-    0x95, 0x02,                   //       Report Count (2)
-    0x75, 0x10,                   //       Report Size (16)
-    0x16, 0x00, 0x80,             //       Logical Minimum (-32768)
-    0x26, 0xFF, 0x7F,             //       Logical Maximum (32767)
-    0x81, 0x06,                   //       Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
-    0xA1, 0x02,                   //       Collection (Logical)
-    0x85, 0x02,                   //         Report ID (2)
-    0x09, 0x48,                   //         Usage (Resolution Multiplier)
-    0x95, 0x01,                   //         Report Count (1)
-    0x75, 0x02,                   //         Report Size (2)
-    0x15, 0x00,                   //         Logical Minimum (0)
-    0x25, 0x01,                   //         Logical Maximum (1)
-    0x35, 0x01,                   //         Physical Minimum (1)
-    0x45, RESOLUTION_MULTIPLIER,  //         Physical Maximum (RESOLUTION_MULTIPLIER)
-    0xB1, 0x02,                   //         Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0x85, 0x01,                   //         Report ID (1)
-    0x09, 0x38,                   //         Usage (Wheel)
-    0x35, 0x00,                   //         Physical Minimum (0)
-    0x45, 0x00,                   //         Physical Maximum (0)
-    0x16, 0x00, 0x80,             //         Logical Minimum (-32768)
-    0x26, 0xFF, 0x7F,             //         Logical Maximum (32767)
-    0x75, 0x10,                   //         Report Size (16)
-    0x81, 0x06,                   //         Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,                         //       End Collection
-    0xA1, 0x02,                   //       Collection (Logical)
-    0x85, 0x02,                   //         Report ID (2)
-    0x09, 0x48,                   //         Usage (Resolution Multiplier)
-    0x75, 0x02,                   //         Report Size (2)
-    0x15, 0x00,                   //         Logical Minimum (0)
-    0x25, 0x01,                   //         Logical Maximum (1)
-    0x35, 0x01,                   //         Physical Minimum (1)
-    0x45, RESOLUTION_MULTIPLIER,  //         Physical Maximum (RESOLUTION_MULTIPLIER)
-    0xB1, 0x02,                   //         Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0x35, 0x00,                   //         Physical Minimum (0)
-    0x45, 0x00,                   //         Physical Maximum (0)
-    0x75, 0x04,                   //         Report Size (4)
-    0xB1, 0x03,                   //         Feature (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0x85, 0x01,                   //         Report ID (1)
-    0x05, 0x0C,                   //         Usage Page (Consumer)
-    0x16, 0x00, 0x80,             //         Logical Minimum (-32768)
-    0x26, 0xFF, 0x7F,             //         Logical Maximum (32767)
-    0x75, 0x10,                   //         Report Size (16)
-    0x0A, 0x38, 0x02,             //         Usage (AC Pan)
-    0x81, 0x06,                   //         Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,                         //       End Collection
-    0xC0,                         //     End Collection
-    0xC0,                         //   End Collection
-    0xC0,                         // End Collection
+std::unordered_map<uint32_t, std::vector<map_source_t>> reverse_mapping;  // target -> sources list
 
-    0x06, 0x00, 0xFF,   // Usage Page (Vendor Defined 0xFF00)
-    0x09, 0x20,         // Usage (0x20)
-    0xA1, 0x01,         // Collection (Application)
-    0x09, 0x20,         //   Usage (0x20)
-    0x85, 0x03,         //   Report ID (3)
-    0x75, 0x08,         //   Report Size (8)
-    0x95, CONFIG_SIZE,  //   Report Count (CONFIG_SIZE)
-    0xB1, 0x02,         //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-    0xC0,               // End Collection
-};
+std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
+std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
-#define EPNUM_HID 0x81
+std::vector<uint32_t> layer_triggering_stickies;
+std::vector<uint64_t> sticky_usages;  // non-layer triggering, layer << 32 | usage
 
-uint8_t const desc_configuration[] = {
-    // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, 1, 0, CONFIG_TOTAL_LEN, 0, 100),
+// report_id -> ...
+std::unordered_map<uint8_t, uint8_t*> reports;
+std::unordered_map<uint8_t, uint8_t*> prev_reports;
+std::unordered_map<uint8_t, uint8_t*> report_masks_relative;
+std::unordered_map<uint8_t, uint8_t*> report_masks_absolute;
+std::unordered_map<uint8_t, uint16_t> report_sizes;
 
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1)
-};
+std::vector<uint8_t> report_ids;
+int report_id_idx = 0;  // we go through the report IDs in a round-robin manner
 
-char const* string_desc_arr[] = {
-    (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
-    "RP2040",                      // 1: Manufacturer
-    "HID Remapper",                // 2: Product
-};
+// usage -> ...
+std::unordered_map<uint32_t, int32_t> input_state;
+std::unordered_map<uint32_t, int32_t> prev_input_state;
+std::unordered_map<uint64_t, int32_t> sticky_state;  // layer << 32 | usage -> state
+std::unordered_map<uint32_t, int32_t> accumulated;   // * 1000
 
-struct __attribute__((packed)) hid_report_t {
-    uint8_t buttons;
-    int16_t dx;
-    int16_t dy;
-    int16_t vwheel;
-    int16_t hwheel;
-};
+std::vector<uint32_t> relative_usages;
 
-hid_report_t report;
+std::unordered_map<uint32_t, int32_t> accumulated_scroll;
+std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
 
-uint8_t prev_buttons = 0;
+uint64_t next_timestamp;
 
-enum class ButtonFunction : int8_t {
-    NO_FUNCTION = 0,
-    BUTTON1 = 1,
-    BUTTON2 = 2,
-    BUTTON3 = 3,
-    BUTTON4 = 4,
-    BUTTON5 = 5,
-    BUTTON6 = 6,
-    BUTTON7 = 7,
-    BUTTON8 = 8,
-    CLICK_DRAG = 9,
-    SHIFT = 10,
-};
-
-enum class AxisFunction : int8_t {
-    NO_FUNCTION = 0,
-    CURSOR_X = 1,
-    CURSOR_Y = 2,
-    VERTICAL_SCROLL = 3,
-    HORIZONTAL_SCROLL = 4,
-    CURSOR_X_INVERTED = -1,
-    CURSOR_Y_INVERTED = -2,
-    VERTICAL_SCROLL_INVERTED = -3,
-    HORIZONTAL_SCROLL_INVERTED = -4,
-};
-
-enum class ConfigCommand : int8_t {
-    NO_COMMAND = 0,
-    RESET_INTO_BOOTSEL = 1,
-};
-
-struct __attribute__((packed)) config_t {
-    uint8_t version;
-    ConfigCommand command;
-    AxisFunction axis_function[4];
-    AxisFunction axis_shifted_function[4];
-    ButtonFunction button_function[NBUTTONS];
-    ButtonFunction button_shifted_function[NBUTTONS];
-    uint32_t crc32;
-};
-
-config_t config = {
-    .version = CONFIG_VERSION,
-    .command = ConfigCommand::NO_COMMAND,
-    .axis_function = {
-        AxisFunction::CURSOR_X,
-        AxisFunction::CURSOR_Y,
-        AxisFunction::VERTICAL_SCROLL,
-        AxisFunction::HORIZONTAL_SCROLL,
-    },
-    .axis_shifted_function = {
-        AxisFunction::CURSOR_X,
-        AxisFunction::CURSOR_Y,
-        AxisFunction::VERTICAL_SCROLL,
-        AxisFunction::HORIZONTAL_SCROLL,
-    },
-    .button_function = {
-        ButtonFunction::BUTTON1,
-        ButtonFunction::BUTTON2,
-        ButtonFunction::BUTTON3,
-        ButtonFunction::BUTTON4,
-        ButtonFunction::BUTTON5,
-        ButtonFunction::BUTTON6,
-        ButtonFunction::BUTTON7,
-        ButtonFunction::BUTTON8,
-    },
-    .button_shifted_function = {
-        ButtonFunction::BUTTON1,
-        ButtonFunction::BUTTON2,
-        ButtonFunction::BUTTON3,
-        ButtonFunction::BUTTON4,
-        ButtonFunction::BUTTON5,
-        ButtonFunction::BUTTON6,
-        ButtonFunction::BUTTON7,
-        ButtonFunction::BUTTON8,
-    },
-    .crc32 = 0,
-};
-
-uint8_t resolution_multiplier = 0;
-
-// sensor X, sensor Y, V scroll, H scroll
-int accumulated_scroll[4] = { 0 };
-uint64_t last_scroll_timestamp[4] = { 0 };
-
-bool click_drag = false;
-uint8_t current_cpi = 0;
-
-int16_t handle_scroll(int axis, int16_t movement, uint8_t multiplier_mask) {
-    int16_t ret = 0;
-    if (resolution_multiplier & multiplier_mask) {
+int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
+    int32_t ret = 0;
+    if (resolution_multiplier & resolution_multiplier_masks.at(target_usage)) {  // hi-res
         ret = movement;
-    } else {
+    } else {  // lo-res
         if (movement != 0) {
-            last_scroll_timestamp[axis] = time_us_64();
-            accumulated_scroll[axis] += movement;
-            int ticks = accumulated_scroll[axis] / RESOLUTION_MULTIPLIER;
-            accumulated_scroll[axis] -= ticks * RESOLUTION_MULTIPLIER;
-            ret = ticks;
+            last_scroll_timestamp[source_usage] = time_us_64();
+            accumulated_scroll[source_usage] += movement;
+            int ticks = accumulated_scroll[source_usage] / (1000 * RESOLUTION_MULTIPLIER);
+            accumulated_scroll[source_usage] -= ticks * (1000 * RESOLUTION_MULTIPLIER);
+            ret = ticks * 1000;
         } else {
-            if ((accumulated_scroll[axis] != 0) &&
-                (time_us_64() - last_scroll_timestamp[axis] > 1000000)) {
-                accumulated_scroll[axis] = 0;
+            if ((accumulated_scroll[source_usage] != 0) &&
+                (time_us_64() - last_scroll_timestamp[source_usage] > partial_scroll_timeout)) {
+                accumulated_scroll[source_usage] = 0;
             }
         }
     }
     return ret;
 }
 
-void hid_task() {
-    if (!tud_hid_ready()) {
-        return;
-    }
-
-    memset(&report, 0, sizeof(report));
-
-    bool shifted = false;
-
-    // first pass to determine if we're in shifted state
-    for (int i = 0; i < NBUTTONS; i++) {
-        if (config.button_function[i] == ButtonFunction::SHIFT && button_state[i]) {
-            shifted = true;
-        }
-    }
-
-    for (int i = 0; i < NBUTTONS; i++) {
-        ButtonFunction button_function =
-            shifted ? config.button_shifted_function[i] : config.button_function[i];
-        if (config.button_function[i] == ButtonFunction::SHIFT) {
-            button_function = ButtonFunction::NO_FUNCTION;
-        }
-        switch (button_function) {
-            case ButtonFunction::NO_FUNCTION:
-            case ButtonFunction::SHIFT:
-                break;
-            case ButtonFunction::BUTTON1:
-            case ButtonFunction::BUTTON2:
-            case ButtonFunction::BUTTON3:
-            case ButtonFunction::BUTTON4:
-            case ButtonFunction::BUTTON5:
-            case ButtonFunction::BUTTON6:
-            case ButtonFunction::BUTTON7:
-            case ButtonFunction::BUTTON8: {
-                int button = static_cast<int>(button_function) - 1;
-                if (button_state[i]) {
-                    report.buttons |= 1 << button;
-                }
-                break;
-            }
-            case ButtonFunction::CLICK_DRAG:
-                if (!prev_button_state[i] && button_state[i]) {
-                    click_drag = !click_drag;
-                }
-                break;
-        }
-    }
-
-    if (click_drag) {
-        report.buttons |= 1 << 0;
-    }
-
-    for (int i = 0; i < NBUTTONS; i++) {
-        prev_button_state[i] = button_state[i];
-    }
-
-    for (int axis = 0; axis < 4; axis++) {
-        int16_t movement = axis_movement[axis];
-        axis_movement[axis] = 0;
-        AxisFunction axis_function =
-            shifted ? config.axis_shifted_function[axis] : config.axis_function[axis];
-        if (static_cast<int>(axis_function) < 0) {
-            movement *= -1;
-        }
-        switch (axis_function) {
-            case AxisFunction::NO_FUNCTION:
-                break;
-            case AxisFunction::CURSOR_X:
-            case AxisFunction::CURSOR_X_INVERTED:
-                report.dx += movement;
-                break;
-            case AxisFunction::CURSOR_Y:
-            case AxisFunction::CURSOR_Y_INVERTED:
-                report.dy += movement;
-                break;
-            case AxisFunction::VERTICAL_SCROLL:
-            case AxisFunction::VERTICAL_SCROLL_INVERTED:
-                report.vwheel += handle_scroll(axis, movement, V_RESOLUTION_BITMASK);
-                break;
-            case AxisFunction::HORIZONTAL_SCROLL:
-            case AxisFunction::HORIZONTAL_SCROLL_INVERTED:
-                report.hwheel += handle_scroll(axis, movement, H_RESOLUTION_BITMASK);
-                break;
-        }
-    }
-
-    if (report.buttons != prev_buttons || report.dx || report.dy || report.vwheel || report.hwheel) {
-        tud_hid_report(1, &report, sizeof(report));
-        prev_buttons = report.buttons;
-    }
-}
-
-int8_t get_bit(uint8_t* data, int len, uint16_t bitpos) {
+inline int8_t get_bit(const uint8_t* data, int len, uint16_t bitpos) {
     int byte_no = bitpos / 8;
     int bit_no = bitpos % 8;
     if (byte_no < len) {
@@ -425,202 +90,354 @@ int8_t get_bit(uint8_t* data, int len, uint16_t bitpos) {
     return 0;
 }
 
-void handle_report(uint8_t* report, int len) {
+inline uint32_t get_bits(const uint8_t* data, int len, uint16_t bitpos, uint8_t size) {
+    uint32_t value = 0;
+    for (int i = 0; i < size; i++) {
+        value |= get_bit(data, len, bitpos + i) << i;
+    }
+    return value;
+}
+
+inline void put_bit(uint8_t* data, int len, uint16_t bitpos, uint8_t value) {
+    int byte_no = bitpos / 8;
+    int bit_no = bitpos % 8;
+    if (byte_no < len) {
+        data[byte_no] &= ~(1 << bit_no);
+        data[byte_no] |= (value & 1) << bit_no;
+    }
+}
+
+inline void put_bits(uint8_t* data, int len, uint16_t bitpos, uint8_t size, uint32_t value) {
+    for (int i = 0; i < size; i++) {
+        put_bit(data, len, bitpos + i, (value >> i) & 1);
+    }
+}
+
+bool needs_to_be_sent(uint8_t report_id) {
+    uint8_t* report = reports[report_id];
+    uint8_t* prev_report = prev_reports[report_id];
+    uint8_t* relative = report_masks_relative[report_id];
+    uint8_t* absolute = report_masks_absolute[report_id];
+
+    for (int i = 0; i < report_sizes[report_id]; i++) {
+        if ((report[i] & relative[i]) || ((report[i] & absolute[i]) != (prev_report[i] & absolute[i]))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void set_mapping_from_config() {
+    std::unordered_set<uint32_t> layer_triggering_sticky_set;
+    std::unordered_set<uint64_t> sticky_usage_set;
+    std::unordered_set<uint32_t> mapped;
+
+    reverse_mapping.clear();
+
+    for (auto const& mapping : config_mappings) {
+        reverse_mapping[mapping.target_usage].push_back((map_source_t){
+            .usage = mapping.source_usage,
+            .scaling = mapping.scaling,
+            .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
+            .layer = mapping.layer,
+        });
+        if (mapping.layer == 0) {
+            mapped.insert(mapping.source_usage);
+        }
+        if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
+            if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
+                layer_triggering_sticky_set.insert(mapping.source_usage);
+            } else {
+                sticky_usage_set.insert(((uint64_t) mapping.layer << 32) | mapping.source_usage);
+            }
+        }
+    }
+
+    layer_triggering_stickies.assign(layer_triggering_sticky_set.begin(), layer_triggering_sticky_set.end());
+    sticky_usages.assign(sticky_usage_set.begin(), sticky_usage_set.end());
+
+    if (unmapped_passthrough) {
+        for (auto const& [usage, usage_def] : our_usages_flat) {
+            if (!mapped.count(usage)) {
+                reverse_mapping[usage].push_back((map_source_t){ .usage = usage });
+            }
+        }
+    }
+}
+
+void process_mapping() {
+    if (suspended) {
+        return;
+    }
+
+    for (auto const& usage : layer_triggering_stickies) {
+        if ((prev_input_state[usage] == 0) && (input_state[usage] != 0)) {
+            sticky_state[usage] = !sticky_state[usage];
+        }
+        prev_input_state[usage] = input_state[usage];
+    }
+
+    static std::unordered_map<uint8_t, bool> layer_state;
+    // layer triggers work on all layers (no matter what layer they are defined on)
+    // they can be sticky
+    layer_state[0] = true;
+    for (int i = 1; i < NLAYERS; i++) {
+        layer_state[i] = false;
+        for (auto const& map_source : reverse_mapping[LAYERS_USAGE_PAGE | i]) {
+            if (map_source.sticky ? sticky_state[map_source.usage] : input_state[map_source.usage]) {
+                layer_state[i] = true;
+                layer_state[0] = false;
+                break;
+            }
+        }
+    }
+
+    for (auto const& layer_usage : sticky_usages) {
+        uint32_t usage = layer_usage & 0xFFFFFFFF;
+        uint32_t layer = layer_usage >> 32;
+        if (layer_state[layer]) {
+            if ((prev_input_state[usage] == 0) && (input_state[usage] != 0)) {
+                sticky_state[layer_usage] = !sticky_state[layer_usage];
+            }
+        }
+        prev_input_state[usage] = input_state[usage];
+    }
+
+    for (auto const& [target, sources] : reverse_mapping) {
+        auto search = our_usages_flat.find(target);
+        if (search == our_usages_flat.end()) {
+            continue;
+        }
+        const usage_def_t& our_usage = search->second;
+        if (our_usage.is_relative) {
+            for (auto const& map_source : sources) {
+                int32_t value = 0;
+                if (map_source.sticky) {
+                    value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] * map_source.scaling;
+                } else {
+                    if (layer_state[map_source.layer]) {
+                        value = input_state[map_source.usage] * map_source.scaling;
+                    }
+                }
+                if (value != 0) {
+                    if (target == V_SCROLL_USAGE || target == H_SCROLL_USAGE) {
+                        accumulated[target] += handle_scroll(map_source.usage, target, value * RESOLUTION_MULTIPLIER);
+                    } else {
+                        accumulated[target] += value;
+                    }
+                }
+            }
+        } else {
+            int32_t value = 0;
+            for (auto const& map_source : sources) {
+                if (map_source.sticky && (sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] != 0)) {
+                    value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage];
+                } else {
+                    if ((layer_state[map_source.layer]) &&
+                        (input_state[map_source.usage] != 0)) {
+                        value = input_state[map_source.usage];
+                    }
+                }
+            }
+            put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, value);
+        }
+    }
+
+    for (auto usage : relative_usages) {
+        input_state[usage] = 0;
+    }
+
+    for (auto& [usage, accumulated_val] : accumulated) {
+        if (accumulated_val == 0) {
+            continue;
+        }
+        usage_def_t& our_usage = our_usages_flat[usage];
+        int32_t existing_val = get_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size);
+        if (our_usage.logical_minimum < 0) {
+            if (existing_val & (1 << (our_usage.size - 1))) {
+                existing_val |= 0xFFFFFFFF << our_usage.size;
+            }
+        }
+        int32_t truncated = accumulated_val / 1000;
+        accumulated_val -= truncated * 1000;
+        if (truncated != 0) {
+            put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, existing_val + truncated);
+        }
+    }
+}
+
+void send_report() {
+    if (suspended || !tud_hid_ready()) {
+        return;
+    }
+
+    for (uint i = 0; i < report_ids.size(); i++) {
+        uint8_t report_id = report_ids[(report_id_idx + i) % report_ids.size()];
+        if (needs_to_be_sent(report_id)) {
+            tud_hid_report(report_id, reports[report_id], report_sizes[report_id]);
+            memcpy(prev_reports[report_id], reports[report_id], report_sizes[report_id]);
+            memset(reports[report_id], 0, report_sizes[report_id]);
+            report_id_idx = (report_id_idx + 1) % report_ids.size();
+            break;
+        }
+    }
+}
+
+inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage) {
+    int32_t value = 0;
+    if (their_usage.is_array) {
+        for (uint i = 0; i < their_usage.count; i++) {
+            if (get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size) == their_usage.index) {
+                value = 1;
+                break;
+            }
+        }
+    } else {
+        value = get_bits(report, len, their_usage.bitpos, their_usage.size);
+        if (their_usage.logical_minimum < 0) {
+            if (value & (1 << (their_usage.size - 1))) {
+                value |= 0xFFFFFFFF << their_usage.size;
+            }
+        }
+    }
+
+    input_state[source_usage] = value;
+}
+
+void handle_received_report(uint8_t* report, int len, uint8_t interface) {
     uint8_t report_id = 0;
-    if (has_report_id) {
+    if (has_report_id_theirs[interface]) {
         report_id = report[0];
         report++;
         len--;
     }
-    for (int i = 0; i < NBUTTONS; i++) {
-        if (buttons[i].active && buttons[i].report_id == report_id) {
-            button_state[i] = get_bit(report, len, buttons[i].bitpos);
-        }
-    }
 
-    for (int i = 0; i < 4; i++) {
-        if (axes[i].active && axes[i].report_id == report_id) {
-            int16_t value = 0;
-            for (int j = 0; j < axes[i].size; j++) {
-                value |= get_bit(report, len, axes[i].bitpos + j) << j;
-            }
-            if (value & 1 << (axes[i].size - 1)) {
-                value |= 0xffff << axes[i].size;
-            }
-            axis_movement[i] += value * (i < 2 ? 1 : RESOLUTION_MULTIPLIER);
-        }
+    for (auto const& [their_usage, their_usage_def] : their_usages[interface][report_id]) {
+        read_input(report, len, their_usage, their_usage_def);
     }
 }
 
-void pio_usb_task(void) {
-    if (usb_device != NULL) {
-        for (int dev_idx = 0; dev_idx < PIO_USB_DEVICE_CNT; dev_idx++) {
-            usb_device_t* device = &usb_device[dev_idx];
-            if (!device->connected) {
-                continue;
-            }
+void clear_their_descriptor_derivates() {
+    their_usages.clear();
+    their_usages_rle.clear();
+    has_report_id_theirs.clear();
+    accumulated.clear();
+    input_state.clear();
+    prev_input_state.clear();
+    sticky_state.clear();
+    relative_usages.clear();
+}
 
-            for (int ep_idx = 0; ep_idx < PIO_USB_DEV_EP_CNT; ep_idx++) {
-                endpoint_t* ep = pio_usb_get_endpoint(device, ep_idx);
+void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output) {
+    uint32_t start_usage = 0;
+    uint32_t count = 0;
+    for (auto const& usage : usages) {
+        if (start_usage == 0) {
+            start_usage = usage;
+            count = 1;
+            continue;
+        }
+        if (usage == start_usage + count) {
+            count++;
+        } else {
+            output.push_back({ .usage = start_usage, .count = count });
+            start_usage = usage;
+            count = 1;
+        }
+    }
+    if (start_usage != 0) {
+        output.push_back({ .usage = start_usage, .count = count });
+    }
+}
 
-                if (ep == NULL) {
-                    break;
+void update_their_descriptor_derivates() {
+    std::set<uint32_t> their_usages_set;
+    for (auto const& [interface, report_id_usage_map] : their_usages) {
+        for (auto const& [report_id, usage_map] : report_id_usage_map) {
+            for (auto const& [usage, usage_def] : usage_map) {
+                their_usages_set.insert(usage);
+                if (usage_def.is_relative) {
+                    relative_usages.push_back(usage);
                 }
-
-                uint8_t temp[64];
-                int len = pio_usb_get_in_data(ep, temp, sizeof(temp));
-
-                if (len > 0) {
-                    handle_report(temp, len);
-                }
             }
         }
     }
+
+    rlencode(their_usages_set, their_usages_rle);
 }
 
-void run_config_command() {
-    // we probably shouldn't do this for config read from flash
-    // or let's just not write any non-null command to flash
-    if (config.command == ConfigCommand::RESET_INTO_BOOTSEL) {
-        reset_usb_boot(0, 0);
+void parse_our_descriptor() {
+    bool has_report_id_ours;
+    report_sizes = parse_descriptor(our_usages, has_report_id_ours, our_report_descriptor, our_report_descriptor_length);
+    for (auto const& [report_id, size] : report_sizes) {
+        reports[report_id] = new uint8_t[size];
+        memset(reports[report_id], 0, size);
+        prev_reports[report_id] = new uint8_t[size];
+        memset(prev_reports[report_id], 0, size);
+        report_masks_relative[report_id] = new uint8_t[size];
+        memset(report_masks_relative[report_id], 0, size);
+        report_masks_absolute[report_id] = new uint8_t[size];
+        memset(report_masks_absolute[report_id], 0, size);
+
+        report_ids.push_back(report_id);
     }
-}
 
-bool checksum_ok(const uint8_t* buffer) {
-    return crc32(buffer, CONFIG_SIZE - 4) == ((config_t*) buffer)->crc32;
-}
+    std::set<uint32_t> our_usages_set;
+    for (auto const& [report_id, usage_map] : our_usages) {
+        for (auto const& [usage, usage_def] : usage_map) {
+            our_usages_flat[usage] = usage_def;
+            our_usages_set.insert(usage);
 
-bool version_ok(const uint8_t* buffer) {
-    return ((config_t*) buffer)->version == CONFIG_VERSION;
-}
-
-void load_config() {
-    if (checksum_ok(FLASH_CONFIG_IN_MEMORY) && version_ok(FLASH_CONFIG_IN_MEMORY)) {
-        memcpy(&config, FLASH_CONFIG_IN_MEMORY, CONFIG_SIZE);
+            if (usage_def.is_relative) {
+                put_bits(report_masks_relative[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
+            } else {
+                put_bits(report_masks_absolute[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
+            }
+        }
     }
+
+    rlencode(our_usages_set, our_usages_rle);
 }
 
-void persist_config() {
-    uint8_t buffer[FLASH_PAGE_SIZE];
-    memset(buffer, 0, sizeof(buffer));
-    memcpy(buffer, &config, CONFIG_SIZE);
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(CONFIG_OFFSET_IN_FLASH, FLASH_SECTOR_SIZE);
-    flash_range_program(CONFIG_OFFSET_IN_FLASH, buffer, FLASH_PAGE_SIZE);
-    restore_interrupts(ints);
+void sync_rate() {
+    uint64_t now = time_us_64();
+    while (next_timestamp < now) {
+        next_timestamp += 1000;
+    }
+    while (time_us_64() < next_timestamp) {
+    }
+    next_timestamp += 1000;
 }
 
 int main() {
-    set_sys_clock_khz(120000, true);
-    sleep_ms(10);
-    multicore_reset_core1();
-    multicore_launch_core1(core1_main);
-
-    clear_descriptor_data();
-    stdio_init_all();
-    board_init();
+    launch_pio_usb();
+    parse_our_descriptor();
     load_config();
+    board_init();
     tusb_init();
 
+    next_timestamp = time_us_64() + 1000;
+
     while (true) {
-        tud_task();  // tinyusb device task
-        pio_usb_task();
-        hid_task();
-    }
+        pio_usb_task(handle_received_report);
+        process_mapping();
+        sync_rate();
+        tud_task();
+        send_report();
 
-    return 0;
-}
-
-// Invoked when device is mounted
-void tud_mount_cb() {
-    // reset hi-res scroll for when we reboot from Windows into Linux
-    resolution_multiplier = 0;
-}
-
-// Invoked when received GET DEVICE DESCRIPTOR
-// Application return pointer to descriptor
-uint8_t const* tud_descriptor_device_cb() {
-    return (uint8_t const*) &desc_device;
-}
-
-// Invoked when received GET HID REPORT DESCRIPTOR
-// Application return pointer to descriptor
-// Descriptor contents must exist long enough for transfer to complete
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
-    return desc_hid_report;
-}
-
-// Invoked when received GET_REPORT control request
-// Application must fill buffer report's content and return its length.
-// Return zero will cause the stack to STALL request
-uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
-    if (report_id == 2 && reqlen >= 1) {
-        memcpy(buffer, &resolution_multiplier, 1);
-        return 1;
-    }
-    if (report_id == 3 && reqlen >= CONFIG_SIZE) {
-        config.crc32 = crc32((uint8_t*) &config, CONFIG_SIZE - 4);
-        memcpy(buffer, &config, CONFIG_SIZE);
-        return CONFIG_SIZE;
-    }
-
-    return 0;
-}
-
-// Invoked when received SET_REPORT control request or
-// received data on OUT endpoint ( Report ID = 0, Type = 0 )
-void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    if (report_id == 2 && bufsize >= 1) {
-        memcpy(&resolution_multiplier, buffer, 1);
-    }
-    if (report_id == 3 && bufsize >= CONFIG_SIZE) {
-        if (checksum_ok(buffer) && version_ok(buffer)) {
-            memcpy(&config, buffer, CONFIG_SIZE);
-            run_config_command();
+        if (need_to_clear_descriptor_data) {
+            clear_their_descriptor_derivates();
+            need_to_clear_descriptor_data = false;
+        }
+        if (their_descriptor_updated) {
+            update_their_descriptor_derivates();
+            their_descriptor_updated = false;
+        }
+        if (need_to_persist_config) {
             persist_config();
-        }
-    }
-}
-
-// Invoked when received GET CONFIGURATION DESCRIPTOR
-// Application return pointer to descriptor
-// Descriptor contents must exist long enough for transfer to complete
-uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
-    return desc_configuration;
-}
-
-static uint16_t _desc_str[32];
-
-// Invoked when received GET STRING DESCRIPTOR request
-// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
-    uint8_t chr_count;
-
-    if (index == 0) {
-        memcpy(&_desc_str[1], string_desc_arr[0], 2);
-        chr_count = 1;
-    } else {
-        // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
-        // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
-
-        if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
-            return NULL;
-
-        const char* str = string_desc_arr[index];
-
-        // Cap at max char
-        chr_count = strlen(str);
-        if (chr_count > 31)
-            chr_count = 31;
-
-        // Convert ASCII string into UTF-16
-        for (uint8_t i = 0; i < chr_count; i++) {
-            _desc_str[1 + i] = str[i];
+            need_to_persist_config = false;
         }
     }
 
-    // first byte is length (including header), second byte is string type
-    _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
-
-    return _desc_str;
+    return 0;
 }

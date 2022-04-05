@@ -62,6 +62,7 @@ typedef struct {
   volatile uint8_t interval;
   volatile uint8_t interval_counter;
   volatile uint8_t data_id;  // data0 or data1
+  volatile uint8_t interface;
 } endpoint_t;
 
 typedef enum {
