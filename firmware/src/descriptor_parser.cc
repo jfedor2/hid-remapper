@@ -3,6 +3,7 @@
 
 #include "descriptor_parser.h"
 #include "globals.h"
+#include "quirks.h"
 
 const uint8_t HID_INPUT = 0x80;
 const uint8_t HID_OUTPUT = 0x90;
@@ -32,12 +33,13 @@ void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_d
         });
 }
 
-void parse_descriptor(const volatile uint8_t* report_descriptor, int len, uint8_t interface) {
+void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint8_t interface) {
     parse_descriptor(their_usages[interface], has_report_id_theirs[interface], report_descriptor, len);
+    apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len);
     their_descriptor_updated = true;
 }
 
-std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, bool& has_report_id, const volatile uint8_t* report_descriptor, int len) {
+std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, bool& has_report_id, const uint8_t* report_descriptor, int len) {
     int idx = 0;
 
     uint8_t report_id = 0;
