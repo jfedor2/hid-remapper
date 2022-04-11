@@ -19,16 +19,17 @@ const uint8_t HID_LOGICAL_MINIMUM = 0x14;
 const uint8_t HID_LOGICAL_MAXIMUM = 0x24;
 
 void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, uint32_t usage, uint8_t report_id, uint16_t bitpos, uint8_t size, bool is_relative, int32_t logical_minimum, bool is_array = false, uint32_t index = 0, uint32_t count = 0) {
-    usage_map[report_id][usage] = (usage_def_t){
-        .report_id = report_id,
-        .size = size,
-        .bitpos = bitpos,
-        .is_relative = is_relative,
-        .is_array = is_array,
-        .logical_minimum = logical_minimum,
-        .index = index,
-        .count = count,
-    };
+    usage_map[report_id].try_emplace(usage,
+        (usage_def_t){
+            .report_id = report_id,
+            .size = size,
+            .bitpos = bitpos,
+            .is_relative = is_relative,
+            .is_array = is_array,
+            .logical_minimum = logical_minimum,
+            .index = index,
+            .count = count,
+        });
 }
 
 void parse_descriptor(const volatile uint8_t* report_descriptor, int len, uint8_t interface) {
