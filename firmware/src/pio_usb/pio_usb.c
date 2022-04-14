@@ -70,6 +70,8 @@ static endpoint_t ep_pool[PIO_USB_EP_POOL_CNT];
 
 static pio_usb_configuration_t current_config;
 
+static volatile uint8_t interval_override = 0;
+
 #define SM_SET_CLKDIV(pio, sm, div) pio_sm_set_clkdiv_int_frac(pio, sm, div.div_int, div.div_frac)
 
 static void __no_inline_not_in_flash_func(send_pre)(const pio_port_t *pp) {
@@ -712,9 +714,11 @@ static void __no_inline_not_in_flash_func(process_interrupt_transfer)(
       continue;
     }
 
+    uint8_t interval_override_local = interval_override;
+
     if (ep->ep_num & EP_IN) {
       int res = usb_in_transaction(pp, device->address, ep);
-      ep->interval_counter = ep->interval - 1;
+      ep->interval_counter = (interval_override_local ? interval_override_local : ep->interval) - 1;
       if (res == 0 && device->device_class == CLASS_HUB) {
         device->event = EVENT_HUB_PORT_CHANGE;
       } else if (res <= -2) {
@@ -724,11 +728,8 @@ static void __no_inline_not_in_flash_func(process_interrupt_transfer)(
     } else {
       // EP_OUT
       if (ep->new_data_flag) {
-        int res = usb_out_transaction(pp, device->address, ep);
-        ep->interval_counter = ep->interval - 1;
-        if (res == 0) {
-          ep->interval_counter = ep->interval - 1;
-        }
+        usb_out_transaction(pp, device->address, ep);
+        ep->interval_counter = (interval_override_local ? interval_override_local : ep->interval) - 1;
       }
     }
   }
@@ -1942,6 +1943,17 @@ usb_device_t *pio_usb_device_init(const pio_usb_configuration_t *c,
   irq_set_enabled(pp->device_rx_irq_num, true);
 
   return dev;
+}
+
+void set_interval_override(uint8_t interval)
+{
+  // we don't enforce powers of two
+  interval_override = interval;
+}
+
+uint8_t get_interval_override()
+{
+  return interval_override;
 }
 
 #pragma GCC pop_options

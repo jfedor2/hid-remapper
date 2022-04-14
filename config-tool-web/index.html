@@ -66,6 +66,21 @@
                 </div>
             </div>
         </div>
+        <div class="row mb-2">
+            <div class="col-auto">
+                <label for="interval_override_dropdown" class="col-form-label">Override polling rate</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select" id="interval_override_dropdown">
+                    <option value="0">don't override</option>
+                    <option value="16">62.5 Hz</option>
+                    <option value="8">125 Hz</option>
+                    <option value="4">250 Hz</option>
+                    <option value="2">500 Hz</option>
+                    <option value="1">1000 Hz</option>
+                </select>
+            </div>
+        </div>
 
         <div class="row mt-4">
             <div class="col-auto">
@@ -91,12 +106,14 @@
             <div class="col-1"><button type="button" class="btn btn-primary delete_button">×</button></div>
             <div class="col-3"><button type="button" class="btn btn-primary w-100 source_button">source</button></div>
             <div class="col-3"><button type="button" class="btn btn-primary w-100 target_button">target</button></div>
-            <div class="col-2"><select class="form-select layer_dropdown">
+            <div class="col-2">
+                <select class="form-select layer_dropdown">
                     <option value="0" selected>0</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
-                </select></div>
+                </select>
+            </div>
             <div class="col-2"><input class="form-control scaling_input" type="number"></div>
             <div class="col-1 form-check d-flex align-items-center justify-content-center"><input class="form-check-input sticky_checkbox" type="checkbox" value=""></div>
         </div>

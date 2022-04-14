@@ -19,3 +19,6 @@ void pio_usb_device_task(void);
 endpoint_t *pio_usb_get_endpoint(usb_device_t *device, uint8_t idx);
 int pio_usb_get_in_data(endpoint_t *ep, uint8_t *buffer, uint8_t len);
 int pio_usb_set_out_data(endpoint_t *ep, const uint8_t *buffer, uint8_t len);
+
+void set_interval_override(uint8_t interval);
+uint8_t get_interval_override();

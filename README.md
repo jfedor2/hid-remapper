@@ -6,6 +6,8 @@ It can do things like reassign buttons, change keyboard layouts, map mouse butto
 
 It is configurable [through a web browser](https://www.jfedor.org/hid-remapper-config/) using WebHID (Chrome or Chrome-based browser required). Currently it only supports a single input device, but that device can be a keyboard/mouse combo or a wireless receiver with a mouse and a keyboard connected.
 
+In addition to the remapping functionality, it can do polling rate overclocking up to 1000 Hz.
+
 ![HID Remapper](images/remapper1.jpg)
 
 ## How to make the device
@@ -45,6 +47,10 @@ Layer activating mappings work on all layers, regardless of which layer they are
 The configuration tool comes with a list of standard inputs like mouse buttons and axes, keyboard keys and media keys like play/pause, mute, etc. Some devices will use inputs from outside that list. Good news is they can still be mapped. To make the device-specific inputs appear on the list, just connect your device to the remapper, and the remapper to your computer, and click the "Open device" button before you define the mappings. The configuration tool will fetch the list of inputs declared by your device and they will show up at the bottom of the input list. Unfortunately they will only appear as hex codes and will not have human friendly names. Therefore it might require some trial and error to find the input you want (and some devices will have a lot of them!).
 
 The remapper supports high-resolution mouse scrolling on the output side, which should work on Windows and modern Linux desktops. To experience it, add a mapping with "Cursor Y" as input and "V scroll" as output (perhaps on a layer). The "Partial scroll timeout" setting is related to this and you can safely ignore it if you're not mapping anything to mouse scroll. It applies when high-resolution scrolling is _not_ in use and is the time after which a "half-tick" of the scroll is forgotten.
+
+If you set the "Polling rate override" to anything else than "don't override", it will use the selected polling rate instead of the polling rate requested by the connected device. Keep in mind this doesn't work for all devices.
+
+If you're getting an "Incompatible version" error, try upgrading to the newest firmware.
 
 If this description wasn't particularly clear for you, perhaps looking at some of the examples that come with the configuration tool will help.
 

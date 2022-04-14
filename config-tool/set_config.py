@@ -9,7 +9,7 @@ import json
 VENDOR_ID = 0xCAFE
 PRODUCT_ID = 0xBAF2
 
-CONFIG_VERSION = 2
+CONFIG_VERSION = 3
 CONFIG_SIZE = 32
 REPORT_ID_CONFIG = 100
 
@@ -43,17 +43,19 @@ device.send_feature_report(add_crc(data))
 version = config.get("version", CONFIG_VERSION)
 partial_scroll_timeout = config.get("partial_scroll_timeout", 1000000)
 unmapped_passthrough = config.get("unmapped_passthrough", True)
+interval_override = config.get("interval_override", 0)
 
 flags = UNMAPPED_PASSTHROUGH_FLAG if unmapped_passthrough else 0
 
 data = struct.pack(
-    "<BBBBL21B",
+    "<BBBBLB20B",
     REPORT_ID_CONFIG,
     CONFIG_VERSION,
     SET_CONFIG,
     flags,
     partial_scroll_timeout,
-    *([0] * 21)
+    interval_override,
+    *([0] * 20)
 )
 device.send_feature_report(add_crc(data))
 

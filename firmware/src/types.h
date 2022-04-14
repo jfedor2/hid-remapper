@@ -66,6 +66,7 @@ struct __attribute__((packed)) persist_config_t {
     uint8_t flags;
     uint32_t partial_scroll_timeout;
     uint32_t mapping_count;
+    uint8_t interval_override;
 };
 
 struct __attribute__((packed)) get_config_t {
@@ -75,11 +76,13 @@ struct __attribute__((packed)) get_config_t {
     uint32_t mapping_count;
     uint32_t our_usage_count;
     uint32_t their_usage_count;
+    uint8_t interval_override;
 };
 
 struct __attribute__((packed)) set_config_t {
     uint8_t flags;
     uint32_t partial_scroll_timeout;
+    uint8_t interval_override;
 };
 
 struct __attribute__((packed)) get_indexed_t {

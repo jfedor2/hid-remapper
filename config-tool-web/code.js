@@ -6,7 +6,7 @@ const REPORT_ID_CONFIG = 100;
 const UNMAPPED_PASSTHROUGH_FLAG = 0x01;
 const STICKY_FLAG = 0x01;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 2;
+const CONFIG_VERSION = 3;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -34,6 +34,7 @@ let config = {
     'version': CONFIG_VERSION,
     'unmapped_passthrough': true,
     'partial_scroll_timeout': DEFAULT_PARTIAL_SCROLL_TIMEOUT,
+    'interval_override': 0,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -59,6 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById("partial_scroll_timeout_input").addEventListener("change", partial_scroll_timeout_onchange);
     document.getElementById("unmapped_passthrough_checkbox").addEventListener("change", unmapped_passthrough_onchange);
+    document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
 
     setup_examples();
     modal = new bootstrap.Modal(document.getElementById('usage_modal'), {});
@@ -98,13 +100,14 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8]);
         check_version(config_version);
 
         config['version'] = config_version;
         config['unmapped_passthrough'] = (flags & UNMAPPED_PASSTHROUGH_FLAG) != 0;
         config['partial_scroll_timeout'] = partial_scroll_timeout;
+        config['interval_override'] = interval_override;
         config['mappings'] = [];
 
         for (let i = 0; i < mapping_count; i++) {
@@ -137,6 +140,7 @@ async function save_to_device() {
         await send_feature_command(SET_CONFIG, [
             [UINT8, config['unmapped_passthrough'] ? UNMAPPED_PASSTHROUGH_FLAG : 0],
             [UINT32, config['partial_scroll_timeout']],
+            [UINT8, config['interval_override']],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -202,6 +206,7 @@ async function get_usages_from_device() {
 function set_config_ui_state() {
     document.getElementById('partial_scroll_timeout_input').value = Math.round(config['partial_scroll_timeout'] / 1000);
     document.getElementById('unmapped_passthrough_checkbox').checked = config['unmapped_passthrough'];
+    document.getElementById('interval_override_dropdown').value = config['interval_override'];
 }
 
 function set_mappings_ui_state() {
@@ -457,6 +462,10 @@ function partial_scroll_timeout_onchange() {
 
 function unmapped_passthrough_onchange() {
     config['unmapped_passthrough'] = document.getElementById("unmapped_passthrough_checkbox").checked;
+}
+
+function interval_override_onchange() {
+    config['interval_override'] = parseInt(document.getElementById("interval_override_dropdown").value, 10);
 }
 
 function load_example(n) {

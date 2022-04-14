@@ -8,7 +8,7 @@ import json
 VENDOR_ID = 0xCAFE
 PRODUCT_ID = 0xBAF2
 
-CONFIG_VERSION = 2
+CONFIG_VERSION = 3
 CONFIG_SIZE = 32
 REPORT_ID_CONFIG = 100
 
@@ -41,9 +41,10 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     mapping_count,
     our_usage_count,
     their_usage_count,
+    interval_override,
     *_,
     crc,
-) = struct.unpack("<BBBLLLL10BL", data)
+) = struct.unpack("<BBBLLLLB9BL", data)
 check_crc(data, crc)
 
 usages = {"our_usages": [], "their_usages": []}

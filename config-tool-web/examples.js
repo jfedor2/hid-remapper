@@ -2,9 +2,10 @@ const examples = [
     {
         'description': 'map caps lock to control',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00070039",
@@ -19,9 +20,10 @@ const examples = [
     {
         'description': 'swap left/right mouse buttons',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00090001",
@@ -43,9 +45,10 @@ const examples = [
     {
         'description': 'middle button is ctrl-c, right button is ctrl-v',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00090003",
@@ -81,9 +84,10 @@ const examples = [
     {
         'description': 'invert scroll wheel direction',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00010038",
@@ -98,9 +102,10 @@ const examples = [
     {
         'description': 'moving the mouse scrolls when middle button held',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00090003",
@@ -129,9 +134,10 @@ const examples = [
     {
         'description': 'mouse precision mode when middle button held',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00090003",
@@ -160,9 +166,10 @@ const examples = [
     {
         'description': 'rotate mouse by 90 degrees',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00010030",
@@ -184,9 +191,10 @@ const examples = [
     {
         'description': 'rotate mouse by 30 degrees',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00010030",
@@ -222,9 +230,10 @@ const examples = [
     {
         'description': 'arrows act as mouse when caps lock held',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00070039",
@@ -274,9 +283,10 @@ const examples = [
     {
         'description': 'right button is left button with drag-lock',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x00090002",
@@ -291,9 +301,10 @@ const examples = [
     {
         'description': 'disable windows keys',
         'config': {
-            "version": 2,
+            "version": 3,
             "unmapped_passthrough": true,
             "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
             "mappings": [
                 {
                     "source_usage": "0x000700e3",
