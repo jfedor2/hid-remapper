@@ -13,6 +13,7 @@
 #include "globals.h"
 #include "our_descriptor.h"
 #include "remapper.h"
+#include "interval_override.h"
 extern "C" {
 #include "pio_usb.h"
 }
@@ -41,7 +42,7 @@ void load_config() {
         persist_config_t* config = (persist_config_t*) FLASH_CONFIG_IN_MEMORY;
         unmapped_passthrough = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) != 0;
         partial_scroll_timeout = config->partial_scroll_timeout;
-        set_interval_override(config->interval_override);
+        interval_override = config->interval_override;
         mapping_config_t* buffer_mappings = (mapping_config_t*) (FLASH_CONFIG_IN_MEMORY + sizeof(persist_config_t));
         for (uint32_t i = 0; i < config->mapping_count; i++) {
             config_mappings.push_back(buffer_mappings[i]);
@@ -60,7 +61,7 @@ void fill_get_config(get_config_t* config) {
     config->mapping_count = config_mappings.size();
     config->our_usage_count = our_usages_rle.size();
     config->their_usage_count = their_usages_rle.size();
-    config->interval_override = get_interval_override();
+    config->interval_override = interval_override;
 }
 
 void fill_persist_config(persist_config_t* config) {
@@ -71,7 +72,7 @@ void fill_persist_config(persist_config_t* config) {
     }
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->mapping_count = config_mappings.size();
-    config->interval_override = get_interval_override();
+    config->interval_override = interval_override;
 }
 
 void persist_config() {
@@ -159,7 +160,7 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
                     set_config_t* config = (set_config_t*) ((set_feature_t*) buffer)->data;
                     unmapped_passthrough = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) != 0;
                     partial_scroll_timeout = config->partial_scroll_timeout;
-                    set_interval_override(config->interval_override);
+                    interval_override = config->interval_override;
                     set_mapping_from_config();
                     break;
                 }

@@ -25,6 +25,7 @@
 #include "usb_rx.pio.h"
 
 #include "descriptor_parser.h"
+#include "interval_override.h"
 
 #define UNUSED_PARAMETER(x) (void)x
 
@@ -69,8 +70,6 @@ static root_port_t root_port[PIO_USB_ROOT_PORT_CNT];
 static endpoint_t ep_pool[PIO_USB_EP_POOL_CNT];
 
 static pio_usb_configuration_t current_config;
-
-static volatile uint8_t interval_override = 0;
 
 #define SM_SET_CLKDIV(pio, sm, div) pio_sm_set_clkdiv_int_frac(pio, sm, div.div_int, div.div_frac)
 
