@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2022 Jacek Fedorynski
@@ -34,9 +34,9 @@ extern "C" {
 #include "pio_usb.h"
 }
 
-typedef void (*report_handler_t)(uint8_t* report, int len, uint16_t interface);
+typedef void (*report_handler_t)(const uint8_t* report, int len, uint16_t interface);
 
 void launch_pio_usb();
-void pio_usb_task(report_handler_t);
+bool pio_usb_task(report_handler_t);
 
 #endif

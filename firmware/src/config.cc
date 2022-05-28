@@ -11,12 +11,9 @@
 #include "config.h"
 #include "crc.h"
 #include "globals.h"
+#include "interval_override.h"
 #include "our_descriptor.h"
 #include "remapper.h"
-#include "interval_override.h"
-extern "C" {
-#include "pio_usb.h"
-}
 
 const uint8_t CONFIG_VERSION = 3;
 
@@ -160,7 +157,11 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
                     set_config_t* config = (set_config_t*) ((set_feature_t*) buffer)->data;
                     unmapped_passthrough = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) != 0;
                     partial_scroll_timeout = config->partial_scroll_timeout;
+                    uint8_t prev_interval_override = interval_override;
                     interval_override = config->interval_override;
+                    if (prev_interval_override != interval_override) {
+                        interval_override_updated();
+                    }
                     set_mapping_from_config();
                     break;
                 }

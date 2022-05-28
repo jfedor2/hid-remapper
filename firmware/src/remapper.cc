@@ -6,12 +6,13 @@
 #include <bsp/board.h>
 #include <tusb.h>
 
+#include "pico/stdio.h"
+
 #include "config.h"
 #include "crc.h"
 #include "descriptor_parser.h"
 #include "globals.h"
 #include "our_descriptor.h"
-#include "pio_usb_stuff.h"
 #include "remapper.h"
 
 const uint8_t MAPPING_FLAG_STICKY = 0x01;
@@ -38,14 +39,25 @@ std::vector<uint32_t> layer_triggering_stickies;
 std::vector<uint64_t> sticky_usages;  // non-layer triggering, layer << 32 | usage
 
 // report_id -> ...
-std::unordered_map<uint8_t, uint8_t*> reports;
-std::unordered_map<uint8_t, uint8_t*> prev_reports;
-std::unordered_map<uint8_t, uint8_t*> report_masks_relative;
-std::unordered_map<uint8_t, uint8_t*> report_masks_absolute;
-std::unordered_map<uint8_t, uint16_t> report_sizes;
+uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
+uint8_t* prev_reports[MAX_INPUT_REPORT_ID + 1];
+uint8_t* report_masks_relative[MAX_INPUT_REPORT_ID + 1];
+uint8_t* report_masks_absolute[MAX_INPUT_REPORT_ID + 1];
+uint16_t report_sizes[MAX_INPUT_REPORT_ID + 1];
+
+#define OR_BUFSIZE 8
+uint8_t outgoing_reports[OR_BUFSIZE][CFG_TUD_HID_EP_BUFSIZE + 1];
+uint8_t or_head = 0;
+uint8_t or_tail = 0;
+uint8_t or_items = 0;
+
+// We need a certain part of mapping processing (absolute->relative mappings) to
+// happen exactly once per millisecond. This variable keeps track of whether we
+// already did it this time around. It is set to true when we receive
+// start-of-frame from USB host.
+volatile bool tick_pending;
 
 std::vector<uint8_t> report_ids;
-int report_id_idx = 0;  // we go through the report IDs in a round-robin manner
 
 // usage -> ...
 std::unordered_map<uint32_t, int32_t> input_state;
@@ -54,11 +66,15 @@ std::unordered_map<uint64_t, int32_t> sticky_state;  // layer << 32 | usage -> s
 std::unordered_map<uint32_t, int32_t> accumulated;   // * 1000
 
 std::vector<uint32_t> relative_usages;
+std::unordered_set<uint32_t> relative_usage_set;
 
 std::unordered_map<uint32_t, int32_t> accumulated_scroll;
 std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
 
-uint64_t next_timestamp;
+bool led_state;
+uint64_t next_print = 0;
+uint32_t reports_received;
+uint32_t reports_sent;
 
 int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
     int32_t ret = 0;
@@ -139,7 +155,7 @@ void set_mapping_from_config() {
             .usage = mapping.source_usage,
             .scaling = mapping.scaling,
             .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
-            .layer = mapping.layer,
+            .layer = (mapping.layer < NLAYERS) ? mapping.layer : (uint8_t) 0,
         });
         if (mapping.layer == 0) {
             mapped.insert(mapping.source_usage);
@@ -165,7 +181,42 @@ void set_mapping_from_config() {
     }
 }
 
-void process_mapping() {
+bool differ_on_absolute(const uint8_t* report1, const uint8_t* report2, uint8_t report_id) {
+    uint8_t* absolute = report_masks_absolute[report_id];
+
+    for (int i = 0; i < report_sizes[report_id]; i++) {
+        if ((report1[i] & absolute[i]) != (report2[i] & absolute[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void aggregate_relative(uint8_t* prev_report, const uint8_t* report, uint8_t report_id) {
+    for (auto const& [usage, usage_def] : our_usages[report_id]) {
+        if (usage_def.is_relative) {
+            int32_t val1 = get_bits(report, report_sizes[report_id], usage_def.bitpos, usage_def.size);
+            if (usage_def.logical_minimum < 0) {
+                if (val1 & (1 << (usage_def.size - 1))) {
+                    val1 |= 0xFFFFFFFF << usage_def.size;
+                }
+            }
+            if (val1) {
+                int32_t val2 = get_bits(prev_report, report_sizes[report_id], usage_def.bitpos, usage_def.size);
+                if (usage_def.logical_minimum < 0) {
+                    if (val2 & (1 << (usage_def.size - 1))) {
+                        val2 |= 0xFFFFFFFF << usage_def.size;
+                    }
+                }
+
+                put_bits(prev_report, report_sizes[report_id], usage_def.bitpos, usage_def.size, val1 + val2);
+            }
+        }
+    }
+}
+
+void process_mapping(bool auto_repeat) {
     if (suspended) {
         return;
     }
@@ -177,7 +228,7 @@ void process_mapping() {
         prev_input_state[usage] = input_state[usage];
     }
 
-    static std::unordered_map<uint8_t, bool> layer_state;
+    static bool layer_state[NLAYERS];
     // layer triggers work on all layers (no matter what layer they are defined on)
     // they can be sticky
     layer_state[0] = true;
@@ -211,19 +262,21 @@ void process_mapping() {
         const usage_def_t& our_usage = search->second;
         if (our_usage.is_relative) {
             for (auto const& map_source : sources) {
-                int32_t value = 0;
-                if (map_source.sticky) {
-                    value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] * map_source.scaling;
-                } else {
-                    if (layer_state[map_source.layer]) {
-                        value = input_state[map_source.usage] * map_source.scaling;
-                    }
-                }
-                if (value != 0) {
-                    if (target == V_SCROLL_USAGE || target == H_SCROLL_USAGE) {
-                        accumulated[target] += handle_scroll(map_source.usage, target, value * RESOLUTION_MULTIPLIER);
+                if (auto_repeat || relative_usage_set.count(map_source.usage)) {
+                    int32_t value = 0;
+                    if (map_source.sticky) {
+                        value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] * map_source.scaling;
                     } else {
-                        accumulated[target] += value;
+                        if (layer_state[map_source.layer]) {
+                            value = input_state[map_source.usage] * map_source.scaling;
+                        }
+                    }
+                    if (value != 0) {
+                        if (target == V_SCROLL_USAGE || target == H_SCROLL_USAGE) {
+                            accumulated[target] += handle_scroll(map_source.usage, target, value * RESOLUTION_MULTIPLIER);
+                        } else {
+                            accumulated[target] += value;
+                        }
                     }
                 }
             }
@@ -239,7 +292,9 @@ void process_mapping() {
                     }
                 }
             }
-            put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, value);
+            if (value) {
+                put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, value);
+            }
         }
     }
 
@@ -264,23 +319,44 @@ void process_mapping() {
             put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, existing_val + truncated);
         }
     }
+
+    for (uint i = 0; i < report_ids.size(); i++) {  // XXX what order should we go in? maybe keyboard first so that mappings to ctrl-left click work as expected?
+        uint8_t report_id = report_ids[i];
+        if (needs_to_be_sent(report_id)) {
+            if (or_items == OR_BUFSIZE) {
+                printf("overflow!\n");
+                break;
+            }
+            uint8_t prev = (or_tail + OR_BUFSIZE - 1) % OR_BUFSIZE;
+            if ((or_items > 0) &&
+                (outgoing_reports[prev][0] == report_id) &&
+                !differ_on_absolute(outgoing_reports[prev] + 1, reports[report_id], report_id)) {
+                aggregate_relative(outgoing_reports[prev] + 1, reports[report_id], report_id);
+            } else {
+                outgoing_reports[or_tail][0] = report_id;
+                memcpy(outgoing_reports[or_tail] + 1, reports[report_id], report_sizes[report_id]);
+                memcpy(prev_reports[report_id], reports[report_id], report_sizes[report_id]);
+                or_tail = (or_tail + 1) % OR_BUFSIZE;
+                or_items++;
+            }
+        }
+        memset(reports[report_id], 0, report_sizes[report_id]);
+    }
 }
 
 void send_report() {
-    if (suspended || !tud_hid_ready()) {
+    if (suspended || (or_items == 0)) {
         return;
     }
 
-    for (uint i = 0; i < report_ids.size(); i++) {
-        uint8_t report_id = report_ids[(report_id_idx + i) % report_ids.size()];
-        if (needs_to_be_sent(report_id)) {
-            tud_hid_report(report_id, reports[report_id], report_sizes[report_id]);
-            memcpy(prev_reports[report_id], reports[report_id], report_sizes[report_id]);
-            memset(reports[report_id], 0, report_sizes[report_id]);
-            report_id_idx = (report_id_idx + 1) % report_ids.size();
-            break;
-        }
-    }
+    uint8_t report_id = outgoing_reports[or_head][0];
+
+    tud_hid_report(report_id, outgoing_reports[or_head] + 1, report_sizes[report_id]);
+
+    or_head = (or_head + 1) % OR_BUFSIZE;
+    or_items--;
+
+    reports_sent++;
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage) {
@@ -304,7 +380,11 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
     input_state[source_usage] = value;
 }
 
-void handle_received_report(uint8_t* report, int len, uint16_t interface) {
+void handle_received_report(const uint8_t* report, int len, uint16_t interface) {
+    led_state = !led_state;
+    board_led_write(led_state);
+    reports_received++;
+
     mutex_enter_blocking(&their_usages_mutex);
 
     uint8_t report_id = 0;
@@ -345,6 +425,7 @@ void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output
 
 void update_their_descriptor_derivates() {
     relative_usages.clear();
+    relative_usage_set.clear();
     std::set<uint32_t> their_usages_set;
     for (auto const& [interface, report_id_usage_map] : their_usages) {
         for (auto const& [report_id, usage_map] : report_id_usage_map) {
@@ -352,6 +433,7 @@ void update_their_descriptor_derivates() {
                 their_usages_set.insert(usage);
                 if (usage_def.is_relative) {
                     relative_usages.push_back(usage);
+                    relative_usage_set.insert(usage);
                 }
             }
         }
@@ -363,8 +445,9 @@ void update_their_descriptor_derivates() {
 
 void parse_our_descriptor() {
     bool has_report_id_ours;
-    report_sizes = parse_descriptor(our_usages, has_report_id_ours, our_report_descriptor, our_report_descriptor_length);
-    for (auto const& [report_id, size] : report_sizes) {
+    std::unordered_map<uint8_t, uint16_t> report_sizes_map = parse_descriptor(our_usages, has_report_id_ours, our_report_descriptor, our_report_descriptor_length);
+    for (auto const& [report_id, size] : report_sizes_map) {
+        report_sizes[report_id] = size;
         reports[report_id] = new uint8_t[size];
         memset(reports[report_id], 0, size);
         prev_reports[report_id] = new uint8_t[size];
@@ -394,32 +477,53 @@ void parse_our_descriptor() {
     rlencode(our_usages_set, our_usages_rle);
 }
 
-void sync_rate() {
+void print_stats() {
     uint64_t now = time_us_64();
-    while (next_timestamp < now) {
-        next_timestamp += 1000;
+    if (now > next_print) {
+        printf("%ld %ld\n", reports_received, reports_sent);
+        reports_received = 0;
+        reports_sent = 0;
+        while (next_print < now) {
+            next_print += 1000000;
+        }
     }
-    while (time_us_64() < next_timestamp) {
-    }
-    next_timestamp += 1000;
+}
+
+inline bool get_and_clear_tick_pending() {
+    // atomicity not critical
+    uint8_t tmp = tick_pending;
+    tick_pending = false;
+    return tmp;
+}
+
+void sof_handler(uint32_t frame_count) {
+    tick_pending = true;
 }
 
 int main() {
     mutex_init(&their_usages_mutex);
-    launch_pio_usb();
+    extra_init();
     parse_our_descriptor();
     load_config();
     board_init();
     tusb_init();
+    stdio_init_all();
 
-    next_timestamp = time_us_64() + 1000;
+    tud_sof_isr_set(sof_handler);
+
+    next_print = time_us_64() + 1000000;
 
     while (true) {
-        pio_usb_task(handle_received_report);
-        process_mapping();
-        sync_rate();
+        if (read_report()) {
+            process_mapping(get_and_clear_tick_pending());
+        }
         tud_task();
-        send_report();
+        if (tud_hid_ready()) {
+            if (get_and_clear_tick_pending()) {
+                process_mapping(true);
+            }
+            send_report();
+        }
 
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
@@ -429,6 +533,8 @@ int main() {
             persist_config();
             need_to_persist_config = false;
         }
+
+        print_stats();
     }
 
     return 0;
