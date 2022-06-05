@@ -12,13 +12,13 @@ In addition to the remapping functionality, it can do polling rate overclocking 
 
 ## How to make the device
 
-The remapper is made using a Raspberry Pi Pico and a USB extension cable cut in half. It is possible thanks to this awesome [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) library by [sekigon-gonnoc](https://github.com/sekigon-gonnoc). The Pico's built-in USB interface is used to connect to the host computer and the library is used to handle inputs from a USB mouse.
+The remapper is made using an RP2040 dev board (such as a Raspberry Pi Pico, or a Seeed Studio Xiao RP2040) and a female USB port. It is possible thanks to this awesome [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) library by [sekigon-gonnoc](https://github.com/sekigon-gonnoc). The RP2040's built-in USB interface is used to connect to the host computer and the library is used to handle inputs from a USB mouse.
 
-Making the device is really simple, you just need to cut a USB extension cable in half and solder four wires to the right pins on the Pico: D+ to GPIO0 (pin 1), D- to GPIO1 (pin 2), VBUS to VBUS (pin 40) and GND to GND (pin 38). The wires are usually color coded (green, white, red, black, respectively). See the pictures at the bottom.
+Making the device is really simple, you just need to cut a USB extension cable in half and solder four wires to the right pins on the board: D+ to GPIO0 (pin 1 on a Pi Pico, pin 6 on a Seeed Xiao), D- to GPIO1 (pin 2 on a Pi Pico, pin 7 on a Seeed Xiao), VBUS to VBUS or VCC (pin 40 on a Pi Pico) and GND to GND (pin 38 on a Pi Pico). The wires are usually color coded (green, white, red, black, respectively). See the pictures at the bottom.
 
 The [enclosure](enclosure) folder has 3D-printable files for an optional case, shown in the photo above. It uses four M2x8 flat head screws.
 
-The provided [UF2 file](firmware/remapper.uf2) can be used to flash the firmware onto the Pico the usual way (hold BOOT button while connecting to the computer, then copy the UF2 file to the USB drive that shows up).
+The provided [UF2 file](firmware/remapper.uf2) can be used to flash the firmware onto the RP2040 the usual way (hold BOOT button while connecting to the computer, then copy the UF2 file to the USB drive that shows up).
 
 ## How to use the configuration tool
 
@@ -70,3 +70,4 @@ If you can't use the browser-based configuration tool, there's also a [command-l
 
 ![HID Remapper inside](images/remapper2.jpg)
 ![HID Remapper soldering close-up](images/remapper3.jpg)
+![Seeed Xiao version close-up](images/remapper4.jpg)
