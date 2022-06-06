@@ -304,7 +304,9 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
     input_state[source_usage] = value;
 }
 
-void handle_received_report(uint8_t* report, int len, uint8_t interface) {
+void handle_received_report(uint8_t* report, int len, uint16_t interface) {
+    mutex_enter_blocking(&their_usages_mutex);
+
     uint8_t report_id = 0;
     if (has_report_id_theirs[interface]) {
         report_id = report[0];
@@ -315,17 +317,8 @@ void handle_received_report(uint8_t* report, int len, uint8_t interface) {
     for (auto const& [their_usage, their_usage_def] : their_usages[interface][report_id]) {
         read_input(report, len, their_usage, their_usage_def);
     }
-}
 
-void clear_their_descriptor_derivates() {
-    their_usages.clear();
-    their_usages_rle.clear();
-    has_report_id_theirs.clear();
-    accumulated.clear();
-    input_state.clear();
-    prev_input_state.clear();
-    sticky_state.clear();
-    relative_usages.clear();
+    mutex_exit(&their_usages_mutex);
 }
 
 void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output) {
@@ -351,6 +344,7 @@ void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output
 }
 
 void update_their_descriptor_derivates() {
+    relative_usages.clear();
     std::set<uint32_t> their_usages_set;
     for (auto const& [interface, report_id_usage_map] : their_usages) {
         for (auto const& [report_id, usage_map] : report_id_usage_map) {
@@ -363,6 +357,7 @@ void update_their_descriptor_derivates() {
         }
     }
 
+    their_usages_rle.clear();
     rlencode(their_usages_set, their_usages_rle);
 }
 
@@ -410,6 +405,7 @@ void sync_rate() {
 }
 
 int main() {
+    mutex_init(&their_usages_mutex);
     launch_pio_usb();
     parse_our_descriptor();
     load_config();
@@ -425,10 +421,6 @@ int main() {
         tud_task();
         send_report();
 
-        if (need_to_clear_descriptor_data) {
-            clear_their_descriptor_derivates();
-            need_to_clear_descriptor_data = false;
-        }
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
             their_descriptor_updated = false;

@@ -73,7 +73,7 @@ void pio_usb_task(report_handler_t report_handler) {
                 int len = pio_usb_get_in_data(ep, temp, sizeof(temp));
 
                 if (len > 0) {
-                    report_handler(temp, len, ep->interface);
+                    report_handler(temp, len, (uint16_t) (device->address << 8) | ep->interface);
                 }
             }
         }

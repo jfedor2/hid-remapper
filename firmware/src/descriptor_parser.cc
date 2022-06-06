@@ -33,9 +33,11 @@ void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_d
         });
 }
 
-void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint8_t interface) {
+void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
+    mutex_enter_blocking(&their_usages_mutex);
     parse_descriptor(their_usages[interface], has_report_id_theirs[interface], report_descriptor, len);
     apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len);
+    mutex_exit(&their_usages_mutex);
     their_descriptor_updated = true;
 }
 
@@ -189,6 +191,14 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
     return bitpos;
 }
 
-void clear_descriptor_data() {
-    need_to_clear_descriptor_data = true;
+void clear_descriptor_data(uint8_t dev_addr) {
+    mutex_enter_blocking(&their_usages_mutex);
+    for (auto const& [dev_addr_interface, data] : their_usages) {
+        if (dev_addr_interface >> 8 == dev_addr) {
+            their_usages.erase(dev_addr_interface);
+            has_report_id_theirs.erase(dev_addr_interface);
+        }
+    }
+    mutex_exit(&their_usages_mutex);
+    their_descriptor_updated = true;
 }

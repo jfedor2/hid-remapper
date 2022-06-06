@@ -34,7 +34,7 @@ extern "C" {
 #include "pio_usb.h"
 }
 
-typedef void (*report_handler_t)(uint8_t* report, int len, uint8_t interface);
+typedef void (*report_handler_t)(uint8_t* report, int len, uint16_t interface);
 
 void launch_pio_usb();
 void pio_usb_task(report_handler_t);

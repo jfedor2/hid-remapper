@@ -1252,7 +1252,7 @@ static int enumerate_device(usb_device_t *device, uint8_t address) {
         }
         printf("\n");
         stdio_flush();
-        parse_descriptor(device->vid, device->pid, rx_buffer, desc_len, interface);
+        parse_descriptor(device->vid, device->pid, rx_buffer, desc_len, (uint16_t) (device->address << 8) | interface);
 
       } break;
       default:
@@ -1294,9 +1294,9 @@ static void device_disconnect(usb_device_t *device) {
     device->root->addr0_exists = false;
   }
 
-  memset(device, 0, sizeof(*device));
+  clear_descriptor_data(device->address);
 
-  clear_descriptor_data();
+  memset(device, 0, sizeof(*device));
 }
 
 static int device_pool_vacant(void) {

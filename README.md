@@ -4,7 +4,9 @@ This is a configurable USB dongle that allows you to remap inputs from mice, key
 
 It can do things like reassign buttons, change keyboard layouts, map mouse buttons to keyboard inputs, map keystrokes to mouse inputs, change mouse sensitivity (permanently or when a button is held), rotate mouse axes by arbitrary (non-90 degree) angles, drag-lock for mouse buttons, scroll by moving the mouse, and much more.
 
-It is configurable [through a web browser](https://www.jfedor.org/hid-remapper-config/) using WebHID (Chrome or Chrome-based browser required). Currently it only supports a single input device, but that device can be a keyboard/mouse combo or a wireless receiver with a mouse and a keyboard connected.
+It is configurable [through a web browser](https://www.jfedor.org/hid-remapper-config/) using WebHID (Chrome or Chrome-based browser required).
+
+Wireless receivers are supported and multiple devices can be connected at the same time using a USB hub.
 
 In addition to the remapping functionality, it can do polling rate overclocking up to 1000 Hz.
 
@@ -71,7 +73,6 @@ make
 
 ## Future goals
 
-* Support multiple devices connected through a USB hub.
 * Upstream necessary modifications to the Pico-PIO-USB library.
 * Unmapped input passthrough on layers other than 0.
 * Runtime-configurable output report descriptor.
