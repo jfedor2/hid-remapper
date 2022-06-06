@@ -56,6 +56,19 @@ If this description wasn't particularly clear for you, perhaps looking at some o
 
 If you can't use the browser-based configuration tool, there's also a [command-line tool](config-tool) that takes JSON in the same format as the web tool on standard input. I only tested it on Linux, but in theory it should also run on Windows and Mac.
 
+## How to compile the firmware
+
+```
+git clone https://github.com/jfedor2/hid-remapper.git
+cd hid-remapper
+git submodule update --init
+cd firmware
+mkdir build
+cd build
+cmake ..
+make
+```
+
 ## Future goals
 
 * Support multiple devices connected through a USB hub.
