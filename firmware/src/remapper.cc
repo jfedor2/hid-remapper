@@ -234,8 +234,8 @@ void process_mapping() {
                     value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage];
                 } else {
                     if ((layer_state[map_source.layer]) &&
-                        (input_state[map_source.usage] != 0)) {
-                        value = input_state[map_source.usage];
+                        (input_state[map_source.usage] * map_source.scaling > 0)) {
+                        value = 1;
                     }
                 }
             }

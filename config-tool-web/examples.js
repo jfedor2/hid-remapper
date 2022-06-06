@@ -323,6 +323,52 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'wheel switches tabs',
+        'config': {
+            "version": 3,
+            "unmapped_passthrough": true,
+            "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
+            "mappings": [
+                {
+                    "source_usage": "0x00010038",
+                    "target_usage": "0x000700e0",
+                    "layer": 0,
+                    "sticky": false,
+                    "scaling": -1000
+                },
+                {
+                    "source_usage": "0x00010038",
+                    "target_usage": "0x0007002b",
+                    "layer": 0,
+                    "sticky": false,
+                    "scaling": -1000
+                },
+                {
+                    "source_usage": "0x00010038",
+                    "target_usage": "0x000700e0",
+                    "layer": 0,
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010038",
+                    "target_usage": "0x000700e1",
+                    "layer": 0,
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010038",
+                    "target_usage": "0x0007002b",
+                    "layer": 0,
+                    "sticky": false,
+                    "scaling": 1000
+                }
+            ]
+        }
+    },
 ];
 
 export default examples;
