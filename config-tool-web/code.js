@@ -62,6 +62,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("unmapped_passthrough_checkbox").addEventListener("change", unmapped_passthrough_onchange);
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
 
+    navigator.hid.addEventListener('disconnect', hid_on_disconnect);
+
     setup_examples();
     modal = new bootstrap.Modal(document.getElementById('usage_modal'), {});
     setup_usages_modal();
@@ -486,4 +488,12 @@ function setup_examples() {
         element.appendChild(clone);
     }
     element.appendChild(document.createTextNode('.'));
+}
+
+function hid_on_disconnect(event) {
+    if (event.device === device) {
+        device = null;
+        document.getElementById("load_from_device").disabled = true;
+        document.getElementById("save_to_device").disabled = true;
+    }
 }
