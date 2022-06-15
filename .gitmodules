@@ -1,0 +1,6 @@
+[submodule "firmware/pico-sdk"]
+	path = firmware/pico-sdk
+	url = https://github.com/raspberrypi/pico-sdk
+[submodule "firmware/tinyusb"]
+	path = firmware/tinyusb
+	url = https://github.com/jfedor2/tinyusb

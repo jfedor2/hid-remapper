@@ -25,6 +25,7 @@
 #include "usb_rx.pio.h"
 
 #include "descriptor_parser.h"
+#include "interval_override.h"
 
 #define UNUSED_PARAMETER(x) (void)x
 
@@ -69,8 +70,6 @@ static root_port_t root_port[PIO_USB_ROOT_PORT_CNT];
 static endpoint_t ep_pool[PIO_USB_EP_POOL_CNT];
 
 static pio_usb_configuration_t current_config;
-
-static volatile uint8_t interval_override = 0;
 
 #define SM_SET_CLKDIV(pio, sm, div) pio_sm_set_clkdiv_int_frac(pio, sm, div.div_int, div.div_frac)
 
@@ -1253,7 +1252,7 @@ static int enumerate_device(usb_device_t *device, uint8_t address) {
         }
         printf("\n");
         stdio_flush();
-        parse_descriptor(device->vid, device->pid, rx_buffer, desc_len, interface);
+        parse_descriptor(device->vid, device->pid, rx_buffer, desc_len, (uint16_t) (device->address << 8) | interface);
 
       } break;
       default:
@@ -1295,9 +1294,9 @@ static void device_disconnect(usb_device_t *device) {
     device->root->addr0_exists = false;
   }
 
-  memset(device, 0, sizeof(*device));
+  clear_descriptor_data(device->address);
 
-  clear_descriptor_data();
+  memset(device, 0, sizeof(*device));
 }
 
 static int device_pool_vacant(void) {

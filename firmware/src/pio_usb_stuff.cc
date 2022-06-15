@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2022 Jacek Fedorynski
@@ -54,7 +54,7 @@ void launch_pio_usb() {
     multicore_launch_core1(core1_main);
 }
 
-void pio_usb_task(report_handler_t report_handler) {
+bool pio_usb_task(report_handler_t report_handler) {
     if (usb_device != NULL) {
         for (int dev_idx = 0; dev_idx < PIO_USB_DEVICE_CNT; dev_idx++) {
             usb_device_t* device = &usb_device[dev_idx];
@@ -73,9 +73,11 @@ void pio_usb_task(report_handler_t report_handler) {
                 int len = pio_usb_get_in_data(ep, temp, sizeof(temp));
 
                 if (len > 0) {
-                    report_handler(temp, len, ep->interface);
+                    report_handler(temp, len, (uint16_t) (device->address << 8) | ep->interface);
+                    return true;
                 }
             }
         }
     }
+    return false;
 }
