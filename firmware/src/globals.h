@@ -14,6 +14,9 @@ extern std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_m
 
 extern std::unordered_map<uint16_t, bool> has_report_id_theirs;  // dev_addr+interface -> bool
 
+extern std::unordered_map<uint16_t, uint8_t> interface_index;  // dev_addr+interface -> unique 0-31 integer
+extern uint32_t interface_index_in_use;                        // bit mask
+
 extern std::vector<usage_rle_t> our_usages_rle;
 extern std::vector<usage_rle_t> their_usages_rle;
 

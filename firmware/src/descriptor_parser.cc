@@ -33,10 +33,27 @@ void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_d
         });
 }
 
+void assign_interface_index(uint16_t interface) {
+    if (interface_index.count(interface)) {
+        return;
+    }
+
+    uint8_t i = 0;
+    while (i < 31 && ((1 << i) & interface_index_in_use)) {
+        i++;
+    }
+
+    // if we have more than 32 interfaces, they end up sharing bit 31
+
+    interface_index[interface] = i;
+    interface_index_in_use |= 1 << i;
+}
+
 void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
     mutex_enter_blocking(&their_usages_mutex);
     parse_descriptor(their_usages[interface], has_report_id_theirs[interface], report_descriptor, len);
     apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len);
+    assign_interface_index(interface);
     mutex_exit(&their_usages_mutex);
     their_descriptor_updated = true;
 }
@@ -193,10 +210,18 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
 
 void clear_descriptor_data(uint8_t dev_addr) {
     mutex_enter_blocking(&their_usages_mutex);
-    for (auto const& [dev_addr_interface, data] : their_usages) {
+    for (auto it = their_usages.cbegin(); it != their_usages.cend();) {
+        uint16_t dev_addr_interface = it->first;
         if (dev_addr_interface >> 8 == dev_addr) {
-            their_usages.erase(dev_addr_interface);
             has_report_id_theirs.erase(dev_addr_interface);
+
+            uint8_t index = interface_index[dev_addr_interface];
+            interface_index.erase(dev_addr_interface);
+            interface_index_in_use &= ~(1 << index);
+
+            it = their_usages.erase(it);
+        } else {
+            it++;
         }
     }
     mutex_exit(&their_usages_mutex);

@@ -6,6 +6,9 @@ std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint
 
 std::unordered_map<uint16_t, bool> has_report_id_theirs;
 
+std::unordered_map<uint16_t, uint8_t> interface_index;
+uint32_t interface_index_in_use = 0;
+
 std::vector<usage_rle_t> our_usages_rle;
 std::vector<usage_rle_t> their_usages_rle;
 

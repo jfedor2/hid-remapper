@@ -262,13 +262,17 @@ void process_mapping(bool auto_repeat) {
         const usage_def_t& our_usage = search->second;
         if (our_usage.is_relative) {
             for (auto const& map_source : sources) {
-                if (auto_repeat || relative_usage_set.count(map_source.usage)) {
+                bool source_is_relative = relative_usage_set.count(map_source.usage);
+                if (auto_repeat || source_is_relative) {
                     int32_t value = 0;
                     if (map_source.sticky) {
                         value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] * map_source.scaling;
                     } else {
                         if (layer_state[map_source.layer]) {
-                            value = input_state[map_source.usage] * map_source.scaling;
+                            value = (source_is_relative
+                                            ? input_state[map_source.usage]
+                                            : !!input_state[map_source.usage]) *
+                                    map_source.scaling;
                         }
                     }
                     if (value != 0) {
@@ -287,7 +291,9 @@ void process_mapping(bool auto_repeat) {
                     value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage];
                 } else {
                     if ((layer_state[map_source.layer]) &&
-                        (input_state[map_source.usage] * map_source.scaling > 0)) {
+                        (relative_usage_set.count(map_source.usage)
+                                ? (input_state[map_source.usage] * map_source.scaling > 0)
+                                : input_state[map_source.usage])) {
                         value = 1;
                     }
                 }
@@ -359,7 +365,7 @@ void send_report() {
     reports_sent++;
 }
 
-inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage) {
+inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint16_t interface) {
     int32_t value = 0;
     if (their_usage.is_array) {
         for (uint i = 0; i < their_usage.count; i++) {
@@ -377,7 +383,15 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
         }
     }
 
-    input_state[source_usage] = value;
+    if (their_usage.is_relative) {
+        input_state[source_usage] = value;
+    } else {
+        if (value) {
+            input_state[source_usage] |= 1 << interface_index[interface];
+        } else {
+            input_state[source_usage] &= ~(1 << interface_index[interface]);
+        }
+    }
 }
 
 void handle_received_report(const uint8_t* report, int len, uint16_t interface) {
@@ -395,7 +409,7 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface) 
     }
 
     for (auto const& [their_usage, their_usage_def] : their_usages[interface][report_id]) {
-        read_input(report, len, their_usage, their_usage_def);
+        read_input(report, len, their_usage, their_usage_def, interface);
     }
 
     mutex_exit(&their_usages_mutex);
