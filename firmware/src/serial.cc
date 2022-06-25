@@ -30,8 +30,8 @@ void serial_init() {
 #define ESC_ESC 0335 /* ESC ESC_ESC means ESC data byte */
 
 bool serial_read(msg_recv_cb_t callback) {
-    static uint8_t buffer[256 + 32];
-    static uint8_t bytes_read = 0;
+    static uint8_t buffer[SERIAL_MAX_PAYLOAD_SIZE + 32];
+    static uint16_t bytes_read = 0;
     static bool escaped = false;
 
     while (uart_is_readable(SERIAL_UART)) {

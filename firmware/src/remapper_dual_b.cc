@@ -10,7 +10,7 @@
 #include "serial.h"
 
 bool led_state;
-uint8_t buffer[256 + sizeof(device_connected_t)];
+uint8_t buffer[SERIAL_MAX_PAYLOAD_SIZE + sizeof(device_connected_t)];
 bool initialized = false;
 
 void serial_callback(const uint8_t* data, uint16_t len) {
