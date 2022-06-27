@@ -14,13 +14,9 @@ In addition to the remapping functionality, it can do polling rate overclocking 
 
 ## How to make the device
 
-The remapper is made using a Raspberry Pi Pico and a USB extension cable cut in half. It is possible thanks to this awesome [Pico-PIO-USB](https://github.com/sekigon-gonnoc/Pico-PIO-USB) library by [sekigon-gonnoc](https://github.com/sekigon-gonnoc). The Pico's built-in USB interface is used to connect to the host computer and the library is used to handle inputs from a USB mouse.
+There are two hardware versions of the remapper: the single Pico version and the dual Pico version. They have the same functionality, but the dual Pico version has better device compatibility - most input devices work with either, but some will only work with the dual Pico version.
 
-Making the device is really simple, you just need to cut a USB extension cable in half and solder four wires to the right pins on the Pico: D+ to GPIO0 (pin 1), D- to GPIO1 (pin 2), VBUS to VBUS (pin 40) and GND to GND (pin 38). The wires are usually color coded (green, white, red, black, respectively). See the pictures at the bottom.
-
-The [enclosure](enclosure) folder has 3D-printable files for an optional case, shown in the photo above. It uses four M2x8 flat head screws.
-
-The provided [UF2 file](firmware/remapper.uf2) can be used to flash the firmware onto the Pico the usual way (hold BOOT button while connecting to the computer, then copy the UF2 file to the USB drive that shows up).
+See [here](HARDWARE.md) for details on how to make both versions of the device.
 
 ## How to use the configuration tool
 
@@ -81,6 +77,3 @@ make
 * Explore alternative hardware platforms.
 * Test with more devices.
 * Bluetooth version.
-
-![HID Remapper inside](images/remapper2.jpg)
-![HID Remapper soldering close-up](images/remapper3.jpg)
