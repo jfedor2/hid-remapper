@@ -166,7 +166,7 @@ const uint8_t kensington_slimblade_descriptor[] = {
 };
 
 void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len) {
-    // Buttons Fn1 are described as constants (padding) in the descriptor.
+    // Button Fn1 is described as constants (padding) in the descriptor.
     // We add them as buttons 6.
     if (vendor_id == VENDOR_ID_ELECOM &&
         (product_id == PRODUCT_ID_ELECOM_M_XT3URBK ||
