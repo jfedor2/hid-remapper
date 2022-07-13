@@ -14,8 +14,8 @@ enum class DualCommand : uint8_t {
 
 struct __attribute__((packed)) device_connected_t {
     DualCommand command = DualCommand::DEVICE_CONNECTED;
-    uint8_t vid;
-    uint8_t pid;
+    uint16_t vid;
+    uint16_t pid;
     uint8_t dev_addr;
     uint8_t interface;
     uint8_t report_descriptor[0];
