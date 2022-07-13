@@ -3,6 +3,9 @@
 #include "quirks.h"
 
 const uint16_t VENDOR_ID_ELECOM = 0x056e;
+const uint16_t PRODUCT_ID_ELECOM_M_XT3URBK = 0x00fb;
+const uint16_t PRODUCT_ID_ELECOM_M_XT3DRBK = 0x00fc;
+const uint16_t PRODUCT_ID_ELECOM_M_XT4DRBK = 0x00fd;
 const uint16_t PRODUCT_ID_ELECOM_M_DT1URBK = 0x00fe;
 const uint16_t PRODUCT_ID_ELECOM_M_DT1DRBK = 0x00ff;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1URBK = 0x010c;
@@ -161,6 +164,23 @@ const uint8_t kensington_slimblade_descriptor[] = {
 };
 
 void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len) {
+    // Button Fn1 is described as constants (padding) in the descriptor.
+    // We add them as buttons 6.
+    if (vendor_id == VENDOR_ID_ELECOM &&
+        (product_id == PRODUCT_ID_ELECOM_M_XT3URBK ||
+            product_id == PRODUCT_ID_ELECOM_M_XT3DRBK ||
+            product_id == PRODUCT_ID_ELECOM_M_XT4DRBK) &&
+        len == sizeof(elecom_huge_descriptor) &&
+        !memcmp(report_descriptor, elecom_huge_descriptor, len)) {
+        usage_map[1][0x00090006] = (usage_def_t){
+            .report_id = 1,
+            .size = 1,
+            .bitpos = 5,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+    }
+
     // Buttons Fn1, Fn2, Fn3 are described as constants (padding) in the descriptor.
     // We add them as buttons 6, 7, 8.
     if (vendor_id == VENDOR_ID_ELECOM &&
