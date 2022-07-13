@@ -10,8 +10,8 @@ const uint16_t PRODUCT_ID_ELECOM_M_DT1URBK = 0x00fe;
 const uint16_t PRODUCT_ID_ELECOM_M_DT1DRBK = 0x00ff;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1URBK = 0x010c;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1DRBK = 0x010d;
-const uint16_t PRODUCT_ID_ELECOM_M_XPT1MRBK = 0x0129;
-const uint16_t PRODUCT_ID_ELECOM_M_DPT1MRBK = 0x0132;
+const uint16_t PRODUCT_ID_ELECOM_M_XPT1MRBK_WIRELESS = 0x0129;
+const uint16_t PRODUCT_ID_ELECOM_M_DPT1MRBK_WIRELESS = 0x0132;
 
 const uint16_t VENDOR_ID_KENSINGTON = 0x047d;
 const uint16_t PRODUCT_ID_KENSINGTON_SLIMBLADE = 0x2041;
@@ -124,6 +124,43 @@ const uint8_t elecom_huge_descriptor[] = {
     0xC0,              // End Collection
 };
 
+const uint8_t elecom_exgpro_wireless_descriptor[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x02,        // Usage (Mouse)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, 0x01,        //   Report ID (1)
+    0x09, 0x01,        //   Usage (Pointer)
+    0xA1, 0x00,        //   Collection (Physical)
+    0x05, 0x09,        //     Usage Page (Button)
+    0x19, 0x01,        //     Usage Minimum (0x01)
+    0x29, 0x08,        //     Usage Maximum (0x08)
+    0x15, 0x00,        //     Logical Minimum (0)
+    0x25, 0x01,        //     Logical Maximum (1)
+    0x75, 0x01,        //     Report Size (1)
+    0x95, 0x08,        //     Report Count (8)
+    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
+    0x09, 0x30,        //     Usage (X)
+    0x09, 0x31,        //     Usage (Y)
+    0x16, 0x00, 0x80,  //     Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //     Logical Maximum (32767)
+    0x75, 0x10,        //     Report Size (16)
+    0x95, 0x02,        //     Report Count (2)
+    0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x38,        //     Usage (Wheel)
+    0x15, 0x81,        //     Logical Minimum (-127)
+    0x25, 0x7F,        //     Logical Maximum (127)
+    0x75, 0x08,        //     Report Size (8)
+    0x95, 0x01,        //     Report Count (1)
+    0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x0C,        //     Usage Page (Consumer)
+    0x0A, 0x38, 0x02,  //     Usage (AC Pan)
+    0x95, 0x01,        //     Report Count (1)
+    0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              //   End Collection
+    0xC0,              // End Collection
+};
+
 const uint8_t kensington_slimblade_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
     0x09, 0x02,        // Usage (Mouse)
@@ -186,14 +223,16 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
     // Buttons Fn1, Fn2, Fn3 are described as constants (padding) in the descriptor.
     // We add them as buttons 6, 7, 8.
     if (vendor_id == VENDOR_ID_ELECOM &&
-        (product_id == PRODUCT_ID_ELECOM_M_DT1URBK ||
+        (((product_id == PRODUCT_ID_ELECOM_M_DT1URBK ||
             product_id == PRODUCT_ID_ELECOM_M_DT1DRBK ||
             product_id == PRODUCT_ID_ELECOM_M_HT1URBK ||
-            product_id == PRODUCT_ID_ELECOM_M_HT1DRBK ||
-            product_id == PRODUCT_ID_ELECOM_M_XPT1MRBK ||
-            product_id == PRODUCT_ID_ELECOM_M_DPT1MRBK) &&
+            product_id == PRODUCT_ID_ELECOM_M_HT1DRBK) &&
         len == sizeof(elecom_huge_descriptor) &&
-        !memcmp(report_descriptor, elecom_huge_descriptor, len)) {
+        !memcmp(report_descriptor, elecom_huge_descriptor, len)) ||
+        ((product_id == PRODUCT_ID_ELECOM_M_XPT1MRBK_WIRELESS ||
+            product_id == PRODUCT_ID_ELECOM_M_DPT1MRBK_WIRELESS) &&
+        len == sizeof(elecom_exgpro_wireless_descriptor) &&
+        !memcmp(report_descriptor, elecom_exgpro_wireless_descriptor, len)))) {
         usage_map[1][0x00090006] = (usage_def_t){
             .report_id = 1,
             .size = 1,
