@@ -278,7 +278,7 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
     }
 
     // Direct launch buttons use vendor-specific usages.
-    // They can be remapped as is, but we also add them as buttons 6, 7, 8, 0x00090009, 0x00090010 and 0x00090011.
+    // They can be remapped as is, but we also add them as buttons 6, 7, 8, 0x00090009, 0x0009000a and 0x0009000b.
     if (vendor_id == VENDOR_ID_KENSINGTON &&
         product_id == PRODUCT_ID_KENSINGTON_EXPERT_MOUSE_PRO &&
         len == sizeof(kensington_expert_mouse_pro_descriptor) &&
@@ -311,14 +311,14 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
-        usage_map[0][0x00090010] = (usage_def_t){
+        usage_map[0][0x0009000a] = (usage_def_t){
             .report_id = 0,
             .size = 1,
             .bitpos = 36,
             .is_relative = false,
             .logical_minimum = 0,
         };
-        usage_map[0][0x00090011] = (usage_def_t){
+        usage_map[0][0x0009000b] = (usage_def_t){
             .report_id = 0,
             .size = 1,
             .bitpos = 37,
