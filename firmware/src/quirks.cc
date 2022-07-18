@@ -13,6 +13,7 @@ const uint16_t PRODUCT_ID_ELECOM_M_HT1DRBK = 0x010d;
 
 const uint16_t VENDOR_ID_KENSINGTON = 0x047d;
 const uint16_t PRODUCT_ID_KENSINGTON_SLIMBLADE = 0x2041;
+const uint16_t PRODUCT_ID_KENSINGTON_EXPERT_MOUSE_PRO = 0x1002;
 
 const uint8_t elecom_huge_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
@@ -163,6 +164,47 @@ const uint8_t kensington_slimblade_descriptor[] = {
     0xC0,              // End Collection
 };
 
+const uint8_t kensington_expert_mouse_pro_descriptor[] {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x02,        // Usage (Mouse)
+    0xA1, 0x01,        // Collection (Application)
+    0x09, 0x01,        //   Usage (Pointer)
+    0xA1, 0x00,        //   Collection (Physical)
+    0x05, 0x09,        //     Usage Page (Button)
+    0x19, 0x01,        //     Usage Minimum (0x01)
+    0x29, 0x05,        //     Usage Maximum (0x05)
+    0x15, 0x00,        //     Logical Minimum (0)
+    0x25, 0x01,        //     Logical Maximum (1)
+    0x95, 0x05,        //     Report Count (5)
+    0x75, 0x01,        //     Report Size (1)
+    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,        //     Report Count (1)
+    0x75, 0x03,        //     Report Size (3)
+    0x81, 0x01,        //     Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x01,        //     Usage Page (Generic Desktop Ctrls)
+    0x09, 0x30,        //     Usage (X)
+    0x09, 0x31,        //     Usage (Y)
+    0x09, 0x38,        //     Usage (Wheel)
+    0x15, 0x81,        //     Logical Minimum (-127)
+    0x25, 0x7F,        //     Logical Maximum (127)
+    0x75, 0x08,        //     Report Size (8)
+    0x95, 0x03,        //     Report Count (3)
+    0x81, 0x06,        //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x09,        //     Usage Page (Button)
+    0x19, 0x06,        //     Usage Minimum (0x06)
+    0x29, 0x0B,        //     Usage Maximum (0x0B)
+    0x15, 0x00,        //     Logical Minimum (0)
+    0x25, 0x01,        //     Logical Maximum (1)
+    0x95, 0x06,        //     Report Count (6)
+    0x75, 0x01,        //     Report Size (1)
+    0x81, 0x02,        //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,        //     Report Count (1)
+    0x75, 0x02,        //     Report Size (2)
+    0x81, 0x01,        //     Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              //   End Collection
+    0xC0,              // End Collection
+};
+
 void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len) {
     // Button Fn1 is described as a constant (padding) in the descriptor.
     // We add it as button 6.
@@ -230,6 +272,56 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .report_id = 0,
             .size = 1,
             .bitpos = 33,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+    }
+
+    // Direct launch buttons use vendor-specific usages.
+    // They can be remapped as is, but we also add them as buttons 6, 7, 8, 0x00090009, 0x00090010 and 0x00090011.
+    if (vendor_id == VENDOR_ID_KENSINGTON &&
+        product_id == PRODUCT_ID_KENSINGTON_EXPERT_MOUSE_PRO &&
+        len == sizeof(kensington_expert_mouse_pro_descriptor) &&
+        !memcmp(report_descriptor, kensington_expert_mouse_pro_descriptor, len)) {
+        usage_map[0][0x00090006] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 32,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090007] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 33,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090008] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 34,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090009] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 35,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090010] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 36,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090011] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 37,
             .is_relative = false,
             .logical_minimum = 0,
         };
