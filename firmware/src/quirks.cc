@@ -14,6 +14,9 @@ const uint16_t PRODUCT_ID_ELECOM_M_HT1DRBK = 0x010d;
 const uint16_t VENDOR_ID_KENSINGTON = 0x047d;
 const uint16_t PRODUCT_ID_KENSINGTON_SLIMBLADE = 0x2041;
 
+const uint16_t VENDOR_ID_CH_PRODUCTS = 0x068e;
+const uint16_t PRODUCT_ID_CH_PRODUCTS_DT225 = 0xf700;
+
 const uint8_t elecom_huge_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
     0x09, 0x02,        // Usage (Mouse)
@@ -163,6 +166,35 @@ const uint8_t kensington_slimblade_descriptor[] = {
     0xC0,              // End Collection
 };
 
+const uint8_t ch_products_dt225_descriptor[] = {
+    0x05, 0x01,  // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x02,  // Usage (Mouse)
+    0xA1, 0x01,  // Collection (Application)
+    0x09, 0x01,  //   Usage (Pointer)
+    0xA1, 0x00,  //   Collection (Physical)
+    0x05, 0x09,  //     Usage Page (Button)
+    0x19, 0x01,  //     Usage Minimum (0x01)
+    0x29, 0x01,  //     Usage Maximum (0x01)
+    0x15, 0x00,  //     Logical Minimum (0)
+    0x25, 0x01,  //     Logical Maximum (1)
+    0x95, 0x04,  //     Report Count (4)
+    0x75, 0x01,  //     Report Size (1)
+    0x81, 0x02,  //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,  //     Report Count (1)
+    0x75, 0x04,  //     Report Size (4)
+    0x81, 0x01,  //     Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x01,  //     Usage Page (Generic Desktop Ctrls)
+    0x09, 0x30,  //     Usage (X)
+    0x09, 0x31,  //     Usage (Y)
+    0x15, 0x81,  //     Logical Minimum (-127)
+    0x25, 0x7F,  //     Logical Maximum (127)
+    0x75, 0x08,  //     Report Size (8)
+    0x95, 0x02,  //     Report Count (2)
+    0x81, 0x06,  //     Input (Data,Var,Rel,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,        //   End Collection
+    0xC0,        // End Collection
+};
+
 void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len) {
     // Button Fn1 is described as a constant (padding) in the descriptor.
     // We add it as button 6.
@@ -230,6 +262,34 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .report_id = 0,
             .size = 1,
             .bitpos = 33,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+    }
+
+    // Buttons 2-4 don't work because Usage Maximum=1 when it should be 4
+    if (vendor_id == VENDOR_ID_CH_PRODUCTS &&
+        product_id == PRODUCT_ID_CH_PRODUCTS_DT225 &&
+        len == sizeof(ch_products_dt225_descriptor) &&
+        !memcmp(report_descriptor, ch_products_dt225_descriptor, len)) {
+        usage_map[0][0x00090002] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 1,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090003] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 2,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[0][0x00090004] = (usage_def_t){
+            .report_id = 0,
+            .size = 1,
+            .bitpos = 3,
             .is_relative = false,
             .logical_minimum = 0,
         };
