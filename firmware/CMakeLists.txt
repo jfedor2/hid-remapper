@@ -42,3 +42,8 @@ add_executable(remapper_dual_b src/remapper_dual_b.cc src/crc.cc src/interval_ov
 target_include_directories(remapper_dual_b PRIVATE src src/tusb_config_host)
 target_link_libraries(remapper_dual_b pico_stdlib tinyusb_host tinyusb_board)
 pico_add_extra_outputs(remapper_dual_b)
+
+add_executable(remapper_serial src/remapper.cc src/remapper_serial.cc src/crc.cc src/descriptor_parser.cc src/tinyusb_stuff.cc src/our_descriptor.cc src/globals.cc src/config.cc src/quirks.cc src/interval_override.cc src/serial.cc)
+target_include_directories(remapper_serial PRIVATE src src/tusb_config_device)
+target_link_libraries(remapper_serial pico_stdlib hardware_flash tinyusb_device tinyusb_board)
+pico_add_extra_outputs(remapper_serial)

@@ -10,11 +10,13 @@ Wireless receivers are supported and multiple devices can be connected at the sa
 
 In addition to the remapping functionality, it can do polling rate overclocking up to 1000 Hz.
 
+A separate [serial](SERIAL.md) version of the remapper takes inputs from a serial (RS-232) mouse and translates them to USB.
+
 ![HID Remapper](images/remapper1.jpg)
 
 ## How to make the device
 
-There are two hardware versions of the remapper: the single Pico version and the dual Pico version. They have the same functionality, but the dual Pico version has better device compatibility - most input devices work with either, but some will only work with the dual Pico version.
+There are two main hardware versions of the remapper: the single Pico version and the dual Pico version. They have the same functionality, but the dual Pico version has better device compatibility - most input devices work with either, but some will only work with the dual Pico version.
 
 See [here](HARDWARE.md) for details on how to make both versions of the device.
 
