@@ -132,6 +132,13 @@ const usages = {
     "0x00070032": { 'name': 'Non-US # ~', 'class': 'keyboard' },
     "0x00070065": { 'name': 'Application', 'class': 'keyboard' },
     "0x00070066": { 'name': 'Power', 'class': 'keyboard' },
+    "0x00070087": { 'name': '\\ _', 'class': 'keyboard' },
+    "0x00070089": { 'name': '¥ |', 'class': 'keyboard' },
+    "0x0007008a": { 'name': 'Henkan', 'class': 'keyboard' },
+    "0x0007008b": { 'name': 'Muhenkan', 'class': 'keyboard' },
+    "0x00070088": { 'name': 'Kana', 'class': 'keyboard' },
+    "0x00070090": { 'name': 'Kana (Mac)', 'class': 'keyboard' },
+    "0x00070091": { 'name': 'Eisū (Mac)', 'class': 'keyboard' },
 
     "0x000c00e9": { 'name': 'Volume up', 'class': 'media' },
     "0x000c00ea": { 'name': 'Volume down', 'class': 'media' },

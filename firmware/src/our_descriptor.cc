@@ -89,6 +89,16 @@ const uint8_t our_report_descriptor[] = {
     0x29, 0x73,                //   Usage Maximum (0x73)
     0x95, 0x70,                //   Report Count (112)
     0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x19, 0x87,                //   Usage Minimum (0x87)
+    0x29, 0x8B,                //   Usage Maximum (0x8B)
+    0x95, 0x05,                //   Report Count (5)
+    0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x90,                //   Usage (0x90)
+    0x09, 0x91,                //   Usage (0x91)
+    0x95, 0x02,                //   Report Count (2)
+    0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,                //   Report Count (1)
+    0x81, 0x03,                //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,                      // End Collection
 
     0x05, 0x0C,                // Usage Page (Consumer)
