@@ -114,10 +114,12 @@ const uint8_t our_report_descriptor[] = {
     0x09, 0xE2,                //   Usage (Mute)
     0x09, 0xE9,                //   Usage (Volume Increment)
     0x09, 0xEA,                //   Usage (Volume Decrement)
+    0x75, 0x01,                //   Report Size (1)
+    0x95, 0x07,                //   Report Count (7)
+    0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0x05, 0x0B,                //   Usage Page (Telephony)
     0x09, 0x2F,                //   Usage (Phone Mute)
-    0x75, 0x01,                //   Report Size (1)
-    0x95, 0x08,                //   Report Count (8)
+    0x95, 0x01,                //   Report Count (1)
     0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,                      // End Collection
 
