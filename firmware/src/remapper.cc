@@ -15,6 +15,13 @@
 #include "our_descriptor.h"
 #include "remapper.h"
 
+extern "C" {
+#include "PicoTM1637.h"
+}
+
+#define TM1637_CLK_PIN 18
+#define TM1637_DIO_PIN 19
+
 const uint8_t MAPPING_FLAG_STICKY = 0x01;
 
 const uint8_t V_RESOLUTION_BITMASK = (1 << 0);
@@ -73,8 +80,16 @@ std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
 
 bool led_state;
 uint64_t next_print = 0;
+uint64_t next_wpm_measurement = 0;
 uint32_t reports_received;
 uint32_t reports_sent;
+uint32_t kb_reports_sent = 0;
+uint32_t kb_reports_sent_sum = 0;
+
+#define WPM_TIME_WINDOW_SIZE 5
+uint32_t kb_reports_sent_window[WPM_TIME_WINDOW_SIZE];
+uint8_t kb_reports_index = 0;
+uint8_t kb_reports_active_window_size = 0;
 
 int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
     int32_t ret = 0;
@@ -363,6 +378,10 @@ void send_report() {
     or_items--;
 
     reports_sent++;
+
+    if (report_id == 2) {
+        kb_reports_sent++;
+    }
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint16_t interface) {
@@ -503,6 +522,35 @@ void print_stats() {
     }
 }
 
+void measure_wpm() {
+    uint64_t now = time_us_64();
+    if (now > next_wpm_measurement) {
+        kb_reports_sent_sum -= kb_reports_sent_window[kb_reports_index];
+        kb_reports_sent_window[kb_reports_index] = kb_reports_sent;
+        kb_reports_index = (kb_reports_index + 1) % WPM_TIME_WINDOW_SIZE;
+        kb_reports_sent_sum += kb_reports_sent;
+
+        if (kb_reports_sent_sum == 0) {
+            kb_reports_active_window_size = 0;
+        } else {
+            if (kb_reports_active_window_size < WPM_TIME_WINDOW_SIZE) {
+                kb_reports_active_window_size++;
+            }
+        }
+
+        if ((kb_reports_sent > 0) && (kb_reports_active_window_size > 0)) {
+            uint32_t wpm = kb_reports_sent_sum * 60 / 2 / kb_reports_active_window_size / 5;
+            TM1637_display(wpm, false);
+        }
+
+        kb_reports_sent = 0;
+
+        while (next_wpm_measurement < now) {
+            next_wpm_measurement += 1000000;
+        }
+    }
+}
+
 inline bool get_and_clear_tick_pending() {
     // atomicity not critical
     uint8_t tmp = tick_pending;
@@ -523,9 +571,13 @@ int main() {
     tusb_init();
     stdio_init_all();
 
+    TM1637_init(TM1637_CLK_PIN, TM1637_DIO_PIN);
+    TM1637_clear();
+    TM1637_set_brightness(7);
+
     tud_sof_isr_set(sof_handler);
 
-    next_print = time_us_64() + 1000000;
+    next_wpm_measurement = next_print = time_us_64() + 1000000;
 
     while (true) {
         if (read_report()) {
@@ -549,6 +601,7 @@ int main() {
         }
 
         print_stats();
+        measure_wpm();
     }
 
     return 0;

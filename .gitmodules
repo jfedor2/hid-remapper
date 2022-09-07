@@ -4,3 +4,6 @@
 [submodule "firmware/tinyusb"]
 	path = firmware/tinyusb
 	url = https://github.com/jfedor2/tinyusb
+[submodule "firmware/TM1637-pico"]
+	path = firmware/TM1637-pico
+	url = https://github.com/wahlencraft/TM1637-pico.git

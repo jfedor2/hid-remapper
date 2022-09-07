@@ -18,6 +18,8 @@ add_compile_options(-Wall)
 
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
 
+add_subdirectory("TM1637-pico/src")
+
 add_executable(remapper src/remapper.cc src/remapper_single.cc ${OUR_PIO_USB_PATH}/pio_usb.c ${OUR_PIO_USB_PATH}/usb_crc.c src/crc.cc src/descriptor_parser.cc src/pio_usb_stuff.cc src/tinyusb_stuff.cc src/our_descriptor.cc src/globals.cc src/config.cc src/quirks.cc src/interval_override.cc)
 
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
@@ -28,14 +30,14 @@ pico_generate_pio_header(remapper ${OUR_PIO_USB_PATH}/usb_rx.pio)
 
 target_include_directories(remapper PRIVATE src src/tusb_config_device ${OUR_PIO_USB_PATH})
 
-target_link_libraries(remapper pico_stdlib pico_multicore hardware_pio hardware_dma hardware_flash tinyusb_device tinyusb_board)
+target_link_libraries(remapper pico_stdlib pico_multicore hardware_pio hardware_dma hardware_flash tinyusb_device tinyusb_board PicoTM1637)
 
 pico_add_extra_outputs(remapper)
 
 
 add_executable(remapper_dual_a src/remapper.cc src/remapper_dual_a.cc src/crc.cc src/descriptor_parser.cc src/tinyusb_stuff.cc src/our_descriptor.cc src/globals.cc src/config.cc src/quirks.cc src/interval_override.cc src/serial.cc)
 target_include_directories(remapper_dual_a PRIVATE src src/tusb_config_device)
-target_link_libraries(remapper_dual_a pico_stdlib hardware_flash tinyusb_device tinyusb_board)
+target_link_libraries(remapper_dual_a pico_stdlib hardware_flash tinyusb_device tinyusb_board PicoTM1637)
 pico_add_extra_outputs(remapper_dual_a)
 
 add_executable(remapper_dual_b src/remapper_dual_b.cc src/crc.cc src/interval_override.cc src/serial.cc)
@@ -45,5 +47,5 @@ pico_add_extra_outputs(remapper_dual_b)
 
 add_executable(remapper_serial src/remapper.cc src/remapper_serial.cc src/crc.cc src/descriptor_parser.cc src/tinyusb_stuff.cc src/our_descriptor.cc src/globals.cc src/config.cc src/quirks.cc src/interval_override.cc src/serial.cc)
 target_include_directories(remapper_serial PRIVATE src src/tusb_config_device)
-target_link_libraries(remapper_serial pico_stdlib hardware_flash tinyusb_device tinyusb_board)
+target_link_libraries(remapper_serial pico_stdlib hardware_flash tinyusb_device tinyusb_board PicoTM1637)
 pico_add_extra_outputs(remapper_serial)
