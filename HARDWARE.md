@@ -1,6 +1,8 @@
-# How to make the device
+# How to make the Pico variants of the device
 
-There are two hardware versions of the remapper: the single Pico version and the dual Pico version. They have the same functionality, but the dual Pico version has better device compatibility - most input devices work with either, but some will only work with the dual Pico version.
+This document describes how to make the HID Remapper using a Raspberry Pi Pico (or two). Alternatively, if you don't want to do any soldering, you can have a custom board made at a service like JLCPCB. For more details on this option, see [here](custom-boards/).
+
+There are two variants of the hardware: the single Pico version and the dual Pico version. They have the same functionality, but the dual Pico version has better device compatibility - most input devices work with either, but some will only work with the dual Pico version.
 
 ## Single Pico version
 

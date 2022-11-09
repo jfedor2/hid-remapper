@@ -16,9 +16,9 @@ A separate [serial](SERIAL.md) version of the remapper takes inputs from a seria
 
 ## How to make the device
 
-There are two main hardware versions of the remapper: the single Pico version and the dual Pico version. They have the same functionality, but the dual Pico version has better device compatibility - most input devices work with either, but some will only work with the dual Pico version.
+There are two main ways of making the HID Remapper. You can either make it yourself using a Raspberry Pi Pico (or two), or you can use the provided files to manufacture a custom board at JLCPCB or a similar service. Their functionality is the same.
 
-See [here](HARDWARE.md) for details on how to make both versions of the device.
+See [here](HARDWARE.md) for details on how to make the Pico variants of the device and [here](custom-boards/) for details on the custom board option.
 
 ## How to use the configuration tool
 
@@ -66,6 +66,8 @@ cd firmware
 mkdir build
 cd build
 cmake ..
+# or, to build for the custom boards:
+# PICO_BOARD=remapper cmake ..
 make
 ```
 
