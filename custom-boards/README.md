@@ -32,10 +32,9 @@ Option 1 is to do it the same way as the A side, by connecting it to a computer.
 
 Option 2 is to flash the B side using the A side as a programmer. It is possible because, on our boards, side B's debugging pins SWCLK and SWDIO are connected to side A's GPIO28 and GPIO27 pins. This is a more complex process, but it can be useful if you don't have the non-standard cable or you already have the v2 board wired inside a trackball and want to update the firmware.
 
-I will try and provide more detailed instructions in the future, but the process goes as follows:
+I will try to streamline the process in the future, for now it goes as follows:
 
-* Compile [picoprobe](https://github.com/raspberrypi/picoprobe), changing the pin definitions to match our board.
-* Flash A side with picoprobe.uf2.
-* Compile [Raspberry Pi's fork of openocd](https://github.com/raspberrypi/openocd).
-* Use openocd to flash B side with the [remapper\_board\_b.elf](../firmware/remapper_board_b.elf) file.
+* Flash A side with [picoprobe.uf2](https://github.com/jfedor2/picoprobe/blob/master/picoprobe.uf2). This will let us use it as a programmer for B side.
+* Install OpenOCD (version at least 0.12.0-rc2) on your computer.
+* Flash B side with the [remapper\_board\_b.elf](../firmware/remapper_board_b.elf) file using the following command:<br>`openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -s tcl -c "adapter speed 10000; program remapper_board_b.elf verify reset exit"`<br>This doesn't require pressing the BOOT button or shorting pins.
 * Flash A side with [remapper\_board\_a.uf2](../firmware/remapper_board_a.uf2).
