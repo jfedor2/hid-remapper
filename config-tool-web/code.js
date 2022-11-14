@@ -12,6 +12,7 @@ const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
 const DEFAULT_SCALING = 1000;
 
+const RESET_INTO_BOOTSEL = 1;
 const SET_CONFIG = 2;
 const GET_CONFIG = 3;
 const CLEAR_MAPPING = 4;
@@ -53,10 +54,10 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("add_mapping").addEventListener("click", add_mapping_onclick);
     document.getElementById("download_json").addEventListener("click", download_json);
     document.getElementById("upload_json").addEventListener("click", upload_json);
+    document.getElementById("flash_firmware").addEventListener("click", flash_firmware);
     document.getElementById("file_input").addEventListener("change", file_uploaded);
 
-    document.getElementById("load_from_device").disabled = true;
-    document.getElementById("save_to_device").disabled = true;
+    device_buttons_set_disabled_state(true);
 
     document.getElementById("partial_scroll_timeout_input").addEventListener("change", partial_scroll_timeout_onchange);
     document.getElementById("unmapped_passthrough_checkbox").addEventListener("change", unmapped_passthrough_onchange);
@@ -87,8 +88,9 @@ async function open_device() {
             setup_usages_modal();
         }
     }
-    document.getElementById("load_from_device").disabled = !success;
-    document.getElementById("save_to_device").disabled = !success;
+
+    device_buttons_set_disabled_state(!success);
+
     if (!success) {
         device = null;
     }
@@ -265,6 +267,11 @@ function download_json() {
 function upload_json() {
     clear_error();
     document.getElementById("file_input").click();
+}
+
+async function flash_firmware() {
+    await send_feature_command(RESET_INTO_BOOTSEL);
+    display_error("HID Remapper should now be in firmware flashing mode. Copy UF2 file to RPI-RP2 drive. If you don't want to flash new firmware at this time, just unplug and replug the device.");
 }
 
 function file_uploaded() {
@@ -493,7 +500,12 @@ function setup_examples() {
 function hid_on_disconnect(event) {
     if (event.device === device) {
         device = null;
-        document.getElementById("load_from_device").disabled = true;
-        document.getElementById("save_to_device").disabled = true;
+        device_buttons_set_disabled_state(true);
     }
+}
+
+function device_buttons_set_disabled_state(state) {
+    document.getElementById("load_from_device").disabled = state;
+    document.getElementById("save_to_device").disabled = state;
+    document.getElementById("flash_firmware").disabled = state;
 }

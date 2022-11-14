@@ -38,3 +38,7 @@ I will try to streamline the process in the future, for now it goes as follows:
 * Install OpenOCD (version at least 0.12.0-rc2) on your computer.
 * Flash B side with the [remapper\_board\_b.elf](../firmware/remapper_board_b.elf) file using the following command:<br>`openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -s tcl -c "adapter speed 10000; program remapper_board_b.elf verify reset exit"`<br>This doesn't require pressing the BOOT button or shorting pins.
 * Flash A side with [remapper\_board\_a.uf2](../firmware/remapper_board_a.uf2).
+
+In situations where the BOOT button is not easily accessible, it is possible to put the board in firmware flashing mode through software. If the device is currently flashed with HID Remapper firmware, you can go to the web config tool and press the "Flash firmware" button (there's also an equivalent [command line tool](../config-tool/reset_into_bootsel.py)). If the device is currently flashed with the picoprobe firmware, you can do it with the following command (this only works with [my fork](https://github.com/jfedor2/picoprobe) of picoprobe):
+
+`openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -s tcl -c "adapter speed 10000; init; cmsis-dap cmd 80; exit"`
