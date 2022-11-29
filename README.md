@@ -12,6 +12,8 @@ In addition to the remapping functionality, it can do polling rate overclocking 
 
 A separate [serial](SERIAL.md) version of the remapper takes inputs from a serial (RS-232) mouse and translates them to USB.
 
+There's also a [Bluetooth](BLUETOOTH.md) version that runs on nRF52840-based boards, which translates Bluetooth inputs to USB.
+
 ![HID Remapper](images/remapper1.jpg)
 
 ## How to make the device
@@ -80,4 +82,3 @@ make
 * Interactive remapping.
 * Explore alternative hardware platforms.
 * Test with more devices.
-* Bluetooth version.
