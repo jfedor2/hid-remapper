@@ -1,0 +1,9 @@
+---
+Language: Cpp
+BasedOnStyle: Chromium
+ColumnLimit: 0
+Cpp11BracedListStyle: false
+IndentWidth: 4
+SpaceAfterCStyleCast: true
+AlignAfterOpenBracket: DontAlign
+...
