@@ -4,11 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "pico/mutex.h"
-
 #include "types.h"
-
-extern mutex_t their_usages_mutex;
 
 extern std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>> their_usages;  // dev_addr+interface -> report_id -> usage -> usage_def
 

@@ -1,19 +1,19 @@
+#include <cstdio>
+#include <cstring>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include <bsp/board.h>
-#include <tusb.h>
-
-#include "pico/stdio.h"
 
 #include "config.h"
 #include "crc.h"
 #include "descriptor_parser.h"
 #include "globals.h"
 #include "our_descriptor.h"
+#include "platform.h"
 #include "remapper.h"
+
+#define MAX_REPORT_SIZE 64
 
 const uint8_t MAPPING_FLAG_STICKY = 0x01;
 
@@ -46,16 +46,10 @@ uint8_t* report_masks_absolute[MAX_INPUT_REPORT_ID + 1];
 uint16_t report_sizes[MAX_INPUT_REPORT_ID + 1];
 
 #define OR_BUFSIZE 8
-uint8_t outgoing_reports[OR_BUFSIZE][CFG_TUD_HID_EP_BUFSIZE + 1];
+uint8_t outgoing_reports[OR_BUFSIZE][MAX_REPORT_SIZE + 1];
 uint8_t or_head = 0;
 uint8_t or_tail = 0;
 uint8_t or_items = 0;
-
-// We need a certain part of mapping processing (absolute->relative mappings) to
-// happen exactly once per millisecond. This variable keeps track of whether we
-// already did it this time around. It is set to true when we receive
-// start-of-frame from USB host.
-volatile bool tick_pending;
 
 std::vector<uint8_t> report_ids;
 
@@ -71,8 +65,6 @@ std::unordered_set<uint32_t> relative_usage_set;
 std::unordered_map<uint32_t, int32_t> accumulated_scroll;
 std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
 
-bool led_state;
-uint64_t next_print = 0;
 uint32_t reports_received;
 uint32_t reports_sent;
 
@@ -82,14 +74,14 @@ int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t move
         ret = movement;
     } else {  // lo-res
         if (movement != 0) {
-            last_scroll_timestamp[source_usage] = time_us_64();
+            last_scroll_timestamp[source_usage] = get_time();
             accumulated_scroll[source_usage] += movement;
             int ticks = accumulated_scroll[source_usage] / (1000 * RESOLUTION_MULTIPLIER);
             accumulated_scroll[source_usage] -= ticks * (1000 * RESOLUTION_MULTIPLIER);
             ret = ticks * 1000;
         } else {
             if ((accumulated_scroll[source_usage] != 0) &&
-                (time_us_64() - last_scroll_timestamp[source_usage] > partial_scroll_timeout)) {
+                (get_time() - last_scroll_timestamp[source_usage] > partial_scroll_timeout)) {
                 accumulated_scroll[source_usage] = 0;
             }
         }
@@ -326,7 +318,7 @@ void process_mapping(bool auto_repeat) {
         }
     }
 
-    for (uint i = 0; i < report_ids.size(); i++) {  // XXX what order should we go in? maybe keyboard first so that mappings to ctrl-left click work as expected?
+    for (unsigned int i = 0; i < report_ids.size(); i++) {  // XXX what order should we go in? maybe keyboard first so that mappings to ctrl-left click work as expected?
         uint8_t report_id = report_ids[i];
         if (needs_to_be_sent(report_id)) {
             if (or_items == OR_BUFSIZE) {
@@ -350,25 +342,28 @@ void process_mapping(bool auto_repeat) {
     }
 }
 
-void send_report() {
+bool send_report(send_report_t do_send_report) {
     if (suspended || (or_items == 0)) {
-        return;
+        return false;
     }
 
     uint8_t report_id = outgoing_reports[or_head][0];
 
-    tud_hid_report(report_id, outgoing_reports[or_head] + 1, report_sizes[report_id]);
+    bool sent = do_send_report(outgoing_reports[or_head], report_sizes[report_id] + 1);
 
+    // XXX even if not sent?
     or_head = (or_head + 1) % OR_BUFSIZE;
     or_items--;
 
     reports_sent++;
+
+    return sent;
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint16_t interface) {
     int32_t value = 0;
     if (their_usage.is_array) {
-        for (uint i = 0; i < their_usage.count; i++) {
+        for (unsigned int i = 0; i < their_usage.count; i++) {
             if (get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size) == their_usage.index) {
                 value = 1;
                 break;
@@ -395,11 +390,9 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
 }
 
 void handle_received_report(const uint8_t* report, int len, uint16_t interface) {
-    led_state = !led_state;
-    board_led_write(led_state);
     reports_received++;
 
-    mutex_enter_blocking(&their_usages_mutex);
+    usages_mutex_enter();
 
     uint8_t report_id = 0;
     if (has_report_id_theirs[interface]) {
@@ -412,7 +405,7 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface) 
         read_input(report, len, their_usage, their_usage_def, interface);
     }
 
-    mutex_exit(&their_usages_mutex);
+    usages_mutex_exit();
 }
 
 void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output) {
@@ -492,64 +485,7 @@ void parse_our_descriptor() {
 }
 
 void print_stats() {
-    uint64_t now = time_us_64();
-    if (now > next_print) {
-        printf("%ld %ld\n", reports_received, reports_sent);
-        reports_received = 0;
-        reports_sent = 0;
-        while (next_print < now) {
-            next_print += 1000000;
-        }
-    }
-}
-
-inline bool get_and_clear_tick_pending() {
-    // atomicity not critical
-    uint8_t tmp = tick_pending;
-    tick_pending = false;
-    return tmp;
-}
-
-void sof_handler(uint32_t frame_count) {
-    tick_pending = true;
-}
-
-int main() {
-    mutex_init(&their_usages_mutex);
-    extra_init();
-    parse_our_descriptor();
-    load_config();
-    board_init();
-    tusb_init();
-    stdio_init_all();
-
-    tud_sof_isr_set(sof_handler);
-
-    next_print = time_us_64() + 1000000;
-
-    while (true) {
-        if (read_report()) {
-            process_mapping(get_and_clear_tick_pending());
-        }
-        tud_task();
-        if (tud_hid_ready()) {
-            if (get_and_clear_tick_pending()) {
-                process_mapping(true);
-            }
-            send_report();
-        }
-
-        if (their_descriptor_updated) {
-            update_their_descriptor_derivates();
-            their_descriptor_updated = false;
-        }
-        if (need_to_persist_config) {
-            persist_config();
-            need_to_persist_config = false;
-        }
-
-        print_stats();
-    }
-
-    return 0;
+    printf("%lu %lu\n", reports_received, reports_sent);
+    reports_received = 0;
+    reports_sent = 0;
 }

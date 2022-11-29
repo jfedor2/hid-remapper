@@ -16,6 +16,8 @@ enum class ConfigCommand : int8_t {
     GET_THEIR_USAGES = 9,
     SUSPEND = 10,
     RESUME = 11,
+    PAIR_NEW_DEVICE = 12,
+    CLEAR_BONDS = 13,
 };
 
 struct usage_def_t {

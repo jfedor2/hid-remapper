@@ -1,24 +1,15 @@
+#include <cstring>
 #include <unordered_set>
-
-#include <bsp/board.h>
-#include <tusb.h>
-
-#include <pico/bootrom.h>
-#include <pico/stdlib.h>
-
-#include <hardware/flash.h>
 
 #include "config.h"
 #include "crc.h"
 #include "globals.h"
 #include "interval_override.h"
 #include "our_descriptor.h"
+#include "platform.h"
 #include "remapper.h"
 
 const uint8_t CONFIG_VERSION = 3;
-
-const uint32_t CONFIG_OFFSET_IN_FLASH = (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE);
-const uint8_t* FLASH_CONFIG_IN_MEMORY = (((uint8_t*) XIP_BASE) + CONFIG_OFFSET_IN_FLASH);
 
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH = 0x01;
 
@@ -33,18 +24,17 @@ bool version_ok(const uint8_t* buffer) {
     return ((set_feature_t*) buffer)->version == CONFIG_VERSION;
 }
 
-void load_config() {
-    if (checksum_ok(FLASH_CONFIG_IN_MEMORY, FLASH_SECTOR_SIZE) && version_ok(FLASH_CONFIG_IN_MEMORY)) {
-        persist_config_t* config = (persist_config_t*) FLASH_CONFIG_IN_MEMORY;
+void load_config(const uint8_t* persisted_config) {
+    if (checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) && version_ok(persisted_config)) {
+        persist_config_t* config = (persist_config_t*) persisted_config;
         unmapped_passthrough = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) != 0;
         partial_scroll_timeout = config->partial_scroll_timeout;
         interval_override = config->interval_override;
-        mapping_config_t* buffer_mappings = (mapping_config_t*) (FLASH_CONFIG_IN_MEMORY + sizeof(persist_config_t));
+        mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_t));
         for (uint32_t i = 0; i < config->mapping_count; i++) {
             config_mappings.push_back(buffer_mappings[i]);
         }
     }
-    set_mapping_from_config();
 }
 
 void fill_get_config(get_config_t* config) {
@@ -73,7 +63,7 @@ void fill_persist_config(persist_config_t* config) {
 
 void persist_config() {
     // stack size is 2KB
-    static uint8_t buffer[FLASH_SECTOR_SIZE];
+    static uint8_t buffer[PERSISTED_CONFIG_SIZE];
     memset(buffer, 0, sizeof(buffer));
 
     persist_config_t* config = (persist_config_t*) buffer;
@@ -83,20 +73,17 @@ void persist_config() {
         buffer_mappings[i] = config_mappings[i];
     }
 
-    ((crc32_t*) (buffer + FLASH_SECTOR_SIZE - 4))->crc32 = crc32(buffer, FLASH_SECTOR_SIZE - 4);
+    ((crc32_t*) (buffer + PERSISTED_CONFIG_SIZE - 4))->crc32 = crc32(buffer, PERSISTED_CONFIG_SIZE - 4);
 
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(CONFIG_OFFSET_IN_FLASH, FLASH_SECTOR_SIZE);
-    flash_range_program(CONFIG_OFFSET_IN_FLASH, buffer, FLASH_SECTOR_SIZE);
-    restore_interrupts(ints);
+    do_persist_config(buffer);
 }
 
-void tud_mount_cb() {
-    // reset hi-res scroll for when we reboot from Windows into Linux
+void reset_resolution_multiplier() {
+    // reset hi-res scroll on reboots
     resolution_multiplier = 0;
 }
 
-uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+uint16_t handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) {
     if (report_id == REPORT_ID_MULTIPLIER && reqlen >= 1) {
         memcpy(buffer, &resolution_multiplier, 1);
         return 1;
@@ -140,7 +127,7 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
     return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsize) {
     if (report_id == REPORT_ID_MULTIPLIER && bufsize >= 1) {
         memcpy(&resolution_multiplier, buffer, 1);
     }
@@ -150,7 +137,7 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
             last_config_command = config_buffer->command;
             switch (config_buffer->command) {
                 case ConfigCommand::RESET_INTO_BOOTSEL:
-                    reset_usb_boot(0, 0);
+                    reset_to_bootloader();
                     break;
                 case ConfigCommand::SET_CONFIG: {
                     set_config_t* config = (set_config_t*) ((set_feature_t*) buffer)->data;
@@ -190,6 +177,12 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
                 case ConfigCommand::RESUME:
                     suspended = false;
                     // XXX clear input_state, sticky_state, accumulated?
+                    break;
+                case ConfigCommand::PAIR_NEW_DEVICE:
+                    pair_new_device();
+                    break;
+                case ConfigCommand::CLEAR_BONDS:
+                    clear_bonds();
                     break;
                 default:
                     break;

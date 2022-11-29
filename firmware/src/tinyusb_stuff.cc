@@ -26,6 +26,7 @@
 
 #include <tusb.h>
 
+#include "config.h"
 #include "our_descriptor.h"
 
 // These IDs are bogus. If you want to distribute any hardware using this,
@@ -124,4 +125,16 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
 
     return _desc_str;
+}
+
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+    return handle_get_report(report_id, buffer, reqlen);
+}
+
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+    handle_set_report(report_id, buffer, bufsize);
+}
+
+void tud_mount_cb() {
+    reset_resolution_multiplier();
 }
