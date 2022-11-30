@@ -6,6 +6,8 @@ There's a special version of the remapper that takes inputs from Bluetooth devic
 
 **It only works with Bluetooth Low Energy devices, not Bluetooth Classic.** You can usually tell that a device uses Bluetooth LE if the documentation says it requires Bluetooth version 4 or 5, but some devices say they use Bluetooth 4 or 5 and still use Bluetooth Classic (which technically isn't wrong as Bluetooth Classic is still part of the newer spec).
 
+![HID Remapper Bluetooth](images/bluetooth.jpg)
+
 The Bluetooth version of the remapper runs on Nordic's nRF52840 chip. Currently precompiled binaries are available for the following boards:
 
 * [Adafruit Feather nRF52840 Express](https://www.adafruit.com/product/4062)
