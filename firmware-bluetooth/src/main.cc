@@ -587,6 +587,8 @@ static void int_in_ready_cb(const struct device* dev) {
 }
 
 static const struct hid_ops ops0 = {
+    .get_report = get_report_cb,
+    .set_report = set_report_cb,
     .int_in_ready = int_in_ready_cb,
 };
 
