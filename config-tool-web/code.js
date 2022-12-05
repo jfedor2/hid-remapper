@@ -67,7 +67,11 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("unmapped_passthrough_checkbox").addEventListener("change", unmapped_passthrough_onchange);
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
 
-    navigator.hid.addEventListener('disconnect', hid_on_disconnect);
+    if ("hid" in navigator) {
+        navigator.hid.addEventListener('disconnect', hid_on_disconnect);
+    } else {
+        display_error("Your browser doesn't support WebHID. Try Chrome (desktop version) or a Chrome-based browser.");
+    }
 
     setup_examples();
     modal = new bootstrap.Modal(document.getElementById('usage_modal'), {});
