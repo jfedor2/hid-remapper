@@ -46,7 +46,8 @@ static K_SEM_DEFINE(usb_sem, 1, 1);
 // we don't really need the mutex if we're parsing both the reports and the descriptors in the main loop
 K_MUTEX_DEFINE(their_usages_mutex);
 
-static const struct device* hid_dev;
+static const struct device* hid_dev0;
+static const struct device* hid_dev1; // config interface
 
 struct report_type {
     uint8_t conn_idx;
@@ -585,14 +586,17 @@ static void int_in_ready_cb(const struct device* dev) {
     k_sem_give(&usb_sem);
 }
 
-static const struct hid_ops ops = {
-    .get_report = get_report_cb,
-    .set_report = set_report_cb,
+static const struct hid_ops ops0 = {
     .int_in_ready = int_in_ready_cb,
 };
 
+static const struct hid_ops ops1 = {
+    .get_report = get_report_cb,
+    .set_report = set_report_cb,
+};
+
 static bool do_send_report(const uint8_t* report_with_id, uint8_t len) {
-    return CHK(hid_int_ep_write(hid_dev, report_with_id, len, NULL));
+    return CHK(hid_int_ep_write(hid_dev0, report_with_id, len, NULL));
 }
 
 static void button_init() {
@@ -636,14 +640,22 @@ static void status_cb(enum usb_dc_status_code status, const uint8_t* param) {
 }
 
 static void usb_init() {
-    hid_dev = device_get_binding("HID_0");
-    if (hid_dev == NULL) {
-        LOG_ERR("Cannot get USB HID Device.");
+    hid_dev0 = device_get_binding("HID_0");
+    if (hid_dev0 == NULL) {
+        LOG_ERR("Cannot get USB HID Device 0.");
         return;
     }
 
-    usb_hid_register_device(hid_dev, our_report_descriptor, our_report_descriptor_length, &ops);
-    CHK(usb_hid_init(hid_dev));
+    hid_dev1 = device_get_binding("HID_1");
+    if (hid_dev1 == NULL) {
+        LOG_ERR("Cannot get USB HID Device 1.");
+        return;
+    }
+
+    usb_hid_register_device(hid_dev0, our_report_descriptor, our_report_descriptor_length, &ops0);
+    usb_hid_register_device(hid_dev1, config_report_descriptor, config_report_descriptor_length, &ops1);
+    CHK(usb_hid_init(hid_dev0));
+    CHK(usb_hid_init(hid_dev1));
     CHK(usb_enable(status_cb));
 }
 

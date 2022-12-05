@@ -85,8 +85,9 @@ async function open_device() {
     const devices = await navigator.hid.requestDevice({
         filters: [{ vendorId: VENDOR_ID, productId: PRODUCT_ID }]
     }).catch((err) => { display_error(err); });
-    if (devices !== undefined && devices.length > 0) {
-        device = devices[0];
+    const config_interface = devices?.find(d => d.collections.some(c => c.usagePage == 0xff00));
+    if (config_interface !== undefined) {
+        device = config_interface;
         if (!device.opened) {
             await device.open().catch((err) => { display_error(err + "\nIf you're on Linux, you might need to give yourself permissions to the appropriate /dev/hidraw* device."); });
         }

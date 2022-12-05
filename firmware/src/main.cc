@@ -54,7 +54,7 @@ void sof_handler(uint32_t frame_count) {
 }
 
 bool do_send_report(const uint8_t* report_with_id, uint8_t len) {
-    tud_hid_report(report_with_id[0], report_with_id + 1, len - 1);
+    tud_hid_n_report(0, report_with_id[0], report_with_id + 1, len - 1);
     return true;  // XXX?
 }
 
@@ -116,7 +116,7 @@ int main() {
             process_mapping(get_and_clear_tick_pending());
         }
         tud_task();
-        if (tud_hid_ready()) {
+        if (tud_hid_n_ready(0)) {
             if (get_and_clear_tick_pending()) {
                 process_mapping(true);
             }
