@@ -3,14 +3,16 @@ import usages from './usages.js';
 import examples from './examples.js';
 
 const REPORT_ID_CONFIG = 100;
-const UNMAPPED_PASSTHROUGH_FLAG = 0x01;
 const STICKY_FLAG = 0x01;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 3;
+const CONFIG_VERSION = 4;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
 const DEFAULT_SCALING = 1000;
+
+const NLAYERS = 4;
+const LAYERS_USAGE_PAGE = 0xFFF10000;
 
 const RESET_INTO_BOOTSEL = 1;
 const SET_CONFIG = 2;
@@ -36,13 +38,13 @@ let modal = null;
 let extra_usages = [];
 let config = {
     'version': CONFIG_VERSION,
-    'unmapped_passthrough': true,
+    'unmapped_passthrough_layers': [0, 1, 2, 3],
     'partial_scroll_timeout': DEFAULT_PARTIAL_SCROLL_TIMEOUT,
     'interval_override': 0,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
-        'layer': 0,
+        'layers': [0],
         'sticky': false,
         'scaling': DEFAULT_SCALING,
     }]
@@ -66,7 +68,9 @@ document.addEventListener("DOMContentLoaded", function () {
     device_buttons_set_disabled_state(true);
 
     document.getElementById("partial_scroll_timeout_input").addEventListener("change", partial_scroll_timeout_onchange);
-    document.getElementById("unmapped_passthrough_checkbox").addEventListener("change", unmapped_passthrough_onchange);
+    for (let i = 0; i < NLAYERS; i++) {
+        document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
+    }
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
 
     if ("hid" in navigator) {
@@ -121,20 +125,20 @@ async function load_from_device() {
         check_version(config_version);
 
         config['version'] = config_version;
-        config['unmapped_passthrough'] = (flags & UNMAPPED_PASSTHROUGH_FLAG) != 0;
+        config['unmapped_passthrough_layers'] = mask_to_layer_list(flags & ((1 << NLAYERS) - 1));
         config['partial_scroll_timeout'] = partial_scroll_timeout;
         config['interval_override'] = interval_override;
         config['mappings'] = [];
 
         for (let i = 0; i < mapping_count; i++) {
             await send_feature_command(GET_MAPPING, [[UINT32, i]]);
-            const [target_usage, source_usage, scaling, layer, mapping_flags] =
+            const [target_usage, source_usage, scaling, layer_mask, mapping_flags] =
                 await read_config_feature([UINT32, UINT32, INT32, UINT8, UINT8]);
             config['mappings'].push({
                 'target_usage': '0x' + target_usage.toString(16).padStart(8, '0'),
                 'source_usage': '0x' + source_usage.toString(16).padStart(8, '0'),
                 'scaling': scaling,
-                'layer': layer,
+                'layers': mask_to_layer_list(layer_mask),
                 'sticky': (mapping_flags & STICKY_FLAG) != 0,
             });
         }
@@ -154,7 +158,7 @@ async function save_to_device() {
     try {
         await send_feature_command(SUSPEND);
         await send_feature_command(SET_CONFIG, [
-            [UINT8, config['unmapped_passthrough'] ? UNMAPPED_PASSTHROUGH_FLAG : 0],
+            [UINT8, layer_list_to_mask(config['unmapped_passthrough_layers'])],
             [UINT32, config['partial_scroll_timeout']],
             [UINT8, config['interval_override']],
         ]);
@@ -165,7 +169,7 @@ async function save_to_device() {
                 [UINT32, parseInt(mapping['target_usage'], 16)],
                 [UINT32, parseInt(mapping['source_usage'], 16)],
                 [INT32, mapping['scaling']],
-                [UINT8, mapping['layer']],
+                [UINT8, layer_list_to_mask(mapping['layers'])],
                 [UINT8, mapping['sticky'] ? STICKY_FLAG : 0],
             ]);
         }
@@ -221,7 +225,10 @@ async function get_usages_from_device() {
 
 function set_config_ui_state() {
     document.getElementById('partial_scroll_timeout_input').value = Math.round(config['partial_scroll_timeout'] / 1000);
-    document.getElementById('unmapped_passthrough_checkbox').checked = config['unmapped_passthrough'];
+    for (let i = 0; i < NLAYERS; i++) {
+        document.getElementById('unmapped_passthrough_checkbox' + i).checked =
+            config['unmapped_passthrough_layers'].includes(i);
+    }
     document.getElementById('interval_override_dropdown').value = config['interval_override'];
 }
 
@@ -233,6 +240,16 @@ function set_mappings_ui_state() {
 }
 
 function set_ui_state() {
+    if (config['version'] == 3) {
+        config['unmapped_passthrough_layers'] = config['unmapped_passthrough'] ? [0] : [];
+        delete config['unmapped_passthrough'];
+        for (const mapping of config['mappings']) {
+            mapping['layers'] = [mapping['layer']];
+            delete mapping['layer'];
+        }
+        config['version'] = CONFIG_VERSION;
+    }
+
     set_config_ui_state();
     set_mappings_ui_state();
 }
@@ -248,9 +265,11 @@ function add_mapping(mapping) {
     const scaling_input = clone.querySelector(".scaling_input");
     scaling_input.value = mapping['scaling'] / 1000;
     scaling_input.addEventListener("input", scaling_onchange(mapping, scaling_input));
-    const layer_dropdown = clone.querySelector(".layer_dropdown");
-    layer_dropdown.value = mapping['layer'];
-    layer_dropdown.addEventListener("change", layer_onchange(mapping, layer_dropdown));
+    for (let i = 0; i < NLAYERS; i++) {
+        const layer_checkbox = clone.querySelector(".layer_checkbox" + i);
+        layer_checkbox.checked = mapping['layers'].includes(i);
+        layer_checkbox.addEventListener("change", layer_checkbox_onchange(mapping, layer_checkbox, i));
+    }
     const source_button = clone.querySelector(".source_button");
     source_button.innerText = (mapping['source_usage'] in usages) ? usages[mapping['source_usage']]['name'] : mapping['source_usage'];
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
@@ -392,7 +411,7 @@ function add_crc(data) {
 }
 
 function check_version(config_version) {
-    if (config_version != CONFIG_VERSION) {
+    if ((config_version != 3) && (config_version != 4)) {
         throw new Error("Incompatible version.");
     }
 }
@@ -422,9 +441,16 @@ function scaling_onchange(mapping, element) {
     };
 }
 
-function layer_onchange(mapping, element) {
+function layer_checkbox_onchange(mapping, element, layer) {
     return function () {
-        mapping['layer'] = element.value;
+        if (element.checked) {
+            if (!mapping['layers'].includes(layer)) {
+                mapping['layers'].push(layer)
+                mapping['layers'].sort();
+            }
+        } else {
+            mapping['layers'] = mapping['layers'].filter((x) => x != layer);
+        }
     };
 }
 
@@ -439,6 +465,25 @@ function show_usage_modal(mapping, source_or_target, element) {
                 let usage = clone.getAttribute('data-hid-usage');
                 mapping[source_or_target + '_usage'] = usage;
                 element.innerText = usage in usages ? usages[usage]['name'] : usage;
+
+                if (source_or_target == "target") {
+                    const mapping_container = element.closest(".mapping_container");
+                    for (let i = 0; i < NLAYERS; i++) {
+                        mapping_container.querySelector(".layer_checkbox" + i).disabled = false;
+                    }
+                    const usage_int = parseInt(usage, 16);
+                    if (((usage_int & 0xFFFF0000) >>> 0) == LAYERS_USAGE_PAGE) {
+                        const layer = usage_int & 0xFFFF;
+                        if (!mapping['layers'].includes(layer)) {
+                            mapping['layers'].push(layer)
+                            mapping['layers'].sort();
+                        }
+                        const layer_checkbox = mapping_container.querySelector(".layer_checkbox" + layer);
+                        layer_checkbox.checked = true;
+                        layer_checkbox.disabled = true;
+                    }
+                }
+
                 modal.hide();
             });
         });
@@ -450,7 +495,7 @@ function add_mapping_onclick() {
     let new_mapping = {
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
-        'layer': 0,
+        'layers': [0],
         'sticky': false,
         'scaling': DEFAULT_SCALING
     };
@@ -495,7 +540,12 @@ function partial_scroll_timeout_onchange() {
 }
 
 function unmapped_passthrough_onchange() {
-    config['unmapped_passthrough'] = document.getElementById("unmapped_passthrough_checkbox").checked;
+    config['unmapped_passthrough_layers'] = [];
+    for (let i = 0; i < NLAYERS; i++) {
+        if (document.getElementById("unmapped_passthrough_checkbox" + i).checked) {
+            config['unmapped_passthrough_layers'].push(i);
+        }
+    }
 }
 
 function interval_override_onchange() {
@@ -542,4 +592,24 @@ function bluetooth_buttons_set_visibility(visible) {
     document.getElementById("pair_new_device_container").classList.toggle("d-none", !visible);
     document.getElementById("clear_bonds_container").classList.toggle("d-none", !visible);
     document.getElementById("flash_b_side_container").classList.toggle("d-none", visible);
+}
+
+function mask_to_layer_list(layer_mask) {
+    let layers = [];
+    for (let i = 0; i < NLAYERS; i++) {
+        if ((layer_mask & (1 << i)) != 0) {
+            layers.push(i);
+        }
+    }
+    return layers;
+}
+
+function layer_list_to_mask(layers) {
+    let layer_mask = 0;
+
+    for (const layer of layers) {
+        layer_mask |= (1 << layer);
+    }
+
+    return layer_mask;
 }

@@ -7,9 +7,11 @@ PRODUCT_ID = 0xBAF2
 
 CONFIG_USAGE_PAGE = 0xFF00
 
-CONFIG_VERSION = 3
+CONFIG_VERSION = 4
 CONFIG_SIZE = 32
 REPORT_ID_CONFIG = 100
+
+NLAYERS = 4
 
 RESET_INTO_BOOTSEL = 1
 SET_CONFIG = 2
@@ -50,3 +52,11 @@ def get_device():
     if len(devices) > 1:
         raise Exception("More than one HID Remapper device found.")
     return hid.Device(path=devices[0]["path"])
+
+
+def mask_to_layer_list(layer_mask):
+    return [layer for layer in range(NLAYERS) if (layer_mask & (1 << layer))]
+
+
+def layer_list_to_mask(layer_list):
+    return sum([(1 << layer) for layer in range(NLAYERS) if layer in layer_list])

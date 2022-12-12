@@ -51,9 +51,24 @@
             <button id="add_mapping" type="button" class="btn btn-primary">Add mapping</button>
         </div>
 
-        <div class="form-check mb-2 mt-4">
-            <input type="checkbox" id="unmapped_passthrough_checkbox" class="form-check-input">
-            <label for="unmapped_passthrough_checkbox" class="form-check-label">Unmapped inputs passthrough</label>
+        <div class="mb-2 mt-4">
+            <span class="me-3">Unmapped inputs passthrough on layer:</span>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" id="unmapped_passthrough_checkbox0" class="form-check-input">
+                <label for="unmapped_passthrough_checkbox0" class="form-check-label">0</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" id="unmapped_passthrough_checkbox1" class="form-check-input">
+                <label for="unmapped_passthrough_checkbox1" class="form-check-label">1</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" id="unmapped_passthrough_checkbox2" class="form-check-input">
+                <label for="unmapped_passthrough_checkbox2" class="form-check-label">2</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" id="unmapped_passthrough_checkbox3" class="form-check-input">
+                <label for="unmapped_passthrough_checkbox3" class="form-check-label">3</label>
+            </div>
         </div>
         <div class="row mb-2">
             <div class="col-auto">
@@ -117,20 +132,32 @@
     </div>
 
     <template id="mapping_template">
-        <div class="row mb-1">
+        <div class="row mb-1 mapping_container">
             <div class="col-1"><button type="button" class="btn btn-primary delete_button">×</button></div>
             <div class="col-3"><button type="button" class="btn btn-primary w-100 source_button">source</button></div>
             <div class="col-3"><button type="button" class="btn btn-primary w-100 target_button">target</button></div>
             <div class="col-2">
-                <select class="form-select layer_dropdown">
-                    <option value="0" selected>0</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                </select>
+                <div class="row justify-content-center gx-1 lh-1 text-center">
+                    <div class="col-auto">
+                        <input class="form-check-input layer_checkbox0 mt-1" type="checkbox" value="">
+                        <br><span class="text-muted small">0</span>
+                    </div>
+                    <div class="col-auto">
+                        <input class="form-check-input layer_checkbox1 mt-1" type="checkbox" value="">
+                        <br><span class="text-muted small">1</span>
+                    </div>
+                    <div class="col-auto">
+                        <input class="form-check-input layer_checkbox2 mt-1" type="checkbox" value="">
+                        <br><span class="text-muted small">2</span>
+                    </div>
+                    <div class="col-auto">
+                        <input class="form-check-input layer_checkbox3 mt-1" type="checkbox" value="">
+                        <br><span class="text-muted small">3</span>
+                    </div>
+                </div>
             </div>
             <div class="col-2"><input class="form-control scaling_input" type="number"></div>
-            <div class="col-1 form-check d-flex align-items-center justify-content-center"><input class="form-check-input sticky_checkbox" type="checkbox" value=""></div>
+            <div class="col-1 d-flex justify-content-center"><input class="form-check-input sticky_checkbox mt-2" type="checkbox" value=""></div>
         </div>
     </template>
 

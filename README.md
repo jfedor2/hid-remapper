@@ -28,7 +28,7 @@ A live version of the web configuration tool can be found [here](https://www.jfe
 
 The input remapping mechanism is based on a list of _mappings_. Every mapping has an input and an output. Inputs and outputs are things like mouse buttons, mouse axes, keyboard keys etc. For example if you want the right mouse button to act as the left mouse button, add a mapping with input set to "Right button" and output set to "Left button".
 
-By default all inputs that aren't explicitly mapped to anything are passed through unchanged. If you don't want that, you can uncheck the "Unmapped inputs passthrough" checkbox.
+By default all inputs that aren't explicitly mapped to anything are passed through unchanged. If you don't want that, you can uncheck the "Unmapped inputs passthrough" checkbox (for each layer separately, see below).
 
 There can be more than one mapping with the same input and the same output. It is useful when you want to map a mouse button to, say, Ctrl-C. You can achieve that by adding two mappings, both with that button as input, one with "Control" as output and one with "C" as output.
 
@@ -42,9 +42,9 @@ Having an axis as input and a button as output currently doesn't make a lot of s
 
 The _sticky_ flag on a mapping can be used to implement drag-lock functionality. When the flag is enabled on a mapping, pressing (and releasing) the input button will cause the output button to be held until the input button is pressed again.
 
-The _layers_ mechanism might sound familiar if you ever used a custom ergo keyboard. It works as follows. A special mapping can be added with some button as input and "Layer X" as output. This means that when that button is pressed, layer X is active and therefore mappings from layer X are applied (every mapping has a layer assigned, 0 by default). If no layer is explicitly activated, layer 0 is active. More than one layer can be active at the same time. This mechanism has many useful applications, from completely separate keyboard layouts to things like "sniper button" on a mouse - increasing precision when a certain button is held.
+The _layers_ mechanism might sound familiar if you ever used a custom ergo keyboard. It works as follows. A special mapping can be added with some button as input and "Layer X" as output. This means that when that button is pressed, layer X is active and therefore mappings from layer X are applied. Every mapping has a set of layers on which it is present. If no layer is explicitly activated, layer 0 is active. More than one layer can be active at the same time. This mechanism has many useful applications, from completely separate keyboard layouts to things like "sniper button" on a mouse - increasing precision when a certain button is held.
 
-Layer activating mappings work on all layers, regardless of which layer they are defined on. They can be sticky.
+Layer activating mappings are forced to be present on the layer that they activate. They can be sticky.
 
 The configuration tool comes with a list of standard inputs like mouse buttons and axes, keyboard keys and media keys like play/pause, mute, etc. Some devices will use inputs from outside that list. Good news is they can still be mapped. To make the device-specific inputs appear on the list, just connect your device to the remapper, and the remapper to your computer, and click the "Open device" button before you define the mappings. The configuration tool will fetch the list of inputs declared by your device and they will show up at the bottom of the input list. Unfortunately they will only appear as hex codes and will not have human friendly names. Therefore it might require some trial and error to find the input you want (and some devices will have a lot of them!).
 
@@ -76,7 +76,6 @@ make
 ## Future goals
 
 * Upstream necessary modifications to the Pico-PIO-USB library.
-* Unmapped input passthrough on layers other than 0.
 * Runtime-configurable output report descriptor.
 * Non-binary absolute usage support (d-pads and joysticks).
 * Interactive remapping.

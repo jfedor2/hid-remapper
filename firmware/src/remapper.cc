@@ -35,8 +35,8 @@ std::unordered_map<uint32_t, std::vector<map_source_t>> reverse_mapping;  // tar
 std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
 std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 
-std::vector<uint32_t> layer_triggering_stickies;
-std::vector<uint64_t> sticky_usages;  // non-layer triggering, layer << 32 | usage
+std::vector<uint64_t> layer_triggering_stickies;  // layer_mask << 32 | usage
+std::vector<uint64_t> sticky_usages;              // non-layer triggering, layer_mask << 32 | usage
 
 // report_id -> ...
 uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
@@ -56,8 +56,9 @@ std::vector<uint8_t> report_ids;
 // usage -> ...
 std::unordered_map<uint32_t, int32_t> input_state;
 std::unordered_map<uint32_t, int32_t> prev_input_state;
-std::unordered_map<uint64_t, int32_t> sticky_state;  // layer << 32 | usage -> state
-std::unordered_map<uint32_t, int32_t> accumulated;   // * 1000
+std::unordered_map<uint32_t, int8_t> sticky_state;  // usage -> state per layer (mask)
+std::unordered_map<uint32_t, int32_t> accumulated;  // * 1000
+uint8_t layer_state_mask = 1;
 
 std::vector<uint32_t> relative_usages;
 std::unordered_set<uint32_t> relative_usage_set;
@@ -136,27 +137,30 @@ bool needs_to_be_sent(uint8_t report_id) {
 }
 
 void set_mapping_from_config() {
-    std::unordered_set<uint32_t> layer_triggering_sticky_set;
+    std::unordered_set<uint64_t> layer_triggering_sticky_set;
     std::unordered_set<uint64_t> sticky_usage_set;
-    std::unordered_set<uint32_t> mapped;
+    std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     reverse_mapping.clear();
 
     for (auto const& mapping : config_mappings) {
+        uint8_t layer_mask = mapping.layer_mask;
+        if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
+            // layer-triggering mappings are forced to be present on the layer they trigger
+            layer_mask |= (1 << (mapping.target_usage & 0xFFFF)) & ((1 << NLAYERS) - 1);
+        }
         reverse_mapping[mapping.target_usage].push_back((map_source_t){
             .usage = mapping.source_usage,
             .scaling = mapping.scaling,
             .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
-            .layer = (mapping.layer < NLAYERS) ? mapping.layer : (uint8_t) 0,
+            .layer_mask = layer_mask,
         });
-        if (mapping.layer == 0) {
-            mapped.insert(mapping.source_usage);
-        }
+        mapped_on_layers[mapping.source_usage] |= layer_mask;
         if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
             if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
-                layer_triggering_sticky_set.insert(mapping.source_usage);
+                layer_triggering_sticky_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
             } else {
-                sticky_usage_set.insert(((uint64_t) mapping.layer << 32) | mapping.source_usage);
+                sticky_usage_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
             }
         }
     }
@@ -164,10 +168,14 @@ void set_mapping_from_config() {
     layer_triggering_stickies.assign(layer_triggering_sticky_set.begin(), layer_triggering_sticky_set.end());
     sticky_usages.assign(sticky_usage_set.begin(), sticky_usage_set.end());
 
-    if (unmapped_passthrough) {
+    if (unmapped_passthrough_layer_mask) {
         for (auto const& [usage, usage_def] : our_usages_flat) {
-            if (!mapped.count(usage)) {
-                reverse_mapping[usage].push_back((map_source_t){ .usage = usage });
+            uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
+            if (unmapped_layers) {
+                reverse_mapping[usage].push_back((map_source_t){
+                    .usage = usage,
+                    .layer_mask = unmapped_layers,
+                });
             }
         }
     }
@@ -213,36 +221,44 @@ void process_mapping(bool auto_repeat) {
         return;
     }
 
-    for (auto const& usage : layer_triggering_stickies) {
-        if ((prev_input_state[usage] == 0) && (input_state[usage] != 0)) {
+    for (auto const& layer_usage : layer_triggering_stickies) {
+        uint32_t usage = layer_usage & 0xFFFFFFFF;
+        uint32_t layer_mask = layer_usage >> 32;
+        if ((layer_mask & layer_state_mask) &&
+            (prev_input_state[usage] == 0) && (input_state[usage] != 0)) {
             sticky_state[usage] = !sticky_state[usage];
         }
         prev_input_state[usage] = input_state[usage];
     }
 
-    static bool layer_state[NLAYERS];
-    // layer triggers work on all layers (no matter what layer they are defined on)
-    // they can be sticky
-    layer_state[0] = true;
+    uint8_t new_layer_state_mask = 0;
     for (int i = 1; i < NLAYERS; i++) {
-        layer_state[i] = false;
         for (auto const& map_source : reverse_mapping[LAYERS_USAGE_PAGE | i]) {
-            if (map_source.sticky ? sticky_state[map_source.usage] : input_state[map_source.usage]) {
-                layer_state[i] = true;
-                layer_state[0] = false;
+            if ((map_source.layer_mask & layer_state_mask) &&
+                (map_source.sticky ? sticky_state[map_source.usage] : input_state[map_source.usage])) {
+                new_layer_state_mask |= 1 << i;
                 break;
             }
         }
     }
 
+    // if no layer is active then layer 0 is active
+    if (new_layer_state_mask == 0) {
+        new_layer_state_mask = 1;
+    }
+
+    layer_state_mask = new_layer_state_mask;
+
     for (auto const& layer_usage : sticky_usages) {
         uint32_t usage = layer_usage & 0xFFFFFFFF;
-        uint32_t layer = layer_usage >> 32;
-        if (layer_state[layer]) {
-            if ((prev_input_state[usage] == 0) && (input_state[usage] != 0)) {
-                sticky_state[layer_usage] = !sticky_state[layer_usage];
-            }
+        uint32_t layer_mask = layer_usage >> 32;
+        if ((layer_state_mask & layer_mask) &&
+            ((prev_input_state[usage] == 0) && (input_state[usage] != 0))) {
+            sticky_state[usage] ^= (layer_state_mask & layer_mask);
         }
+    }
+    for (auto const& layer_usage : sticky_usages) {
+        uint32_t usage = layer_usage & 0xFFFFFFFF;
         prev_input_state[usage] = input_state[usage];
     }
 
@@ -258,9 +274,9 @@ void process_mapping(bool auto_repeat) {
                 if (auto_repeat || source_is_relative) {
                     int32_t value = 0;
                     if (map_source.sticky) {
-                        value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] * map_source.scaling;
+                        value = !!(sticky_state[map_source.usage] & map_source.layer_mask) * map_source.scaling;
                     } else {
-                        if (layer_state[map_source.layer]) {
+                        if (layer_state_mask & map_source.layer_mask) {
                             value = (source_is_relative
                                             ? input_state[map_source.usage]
                                             : !!input_state[map_source.usage]) *
@@ -279,10 +295,12 @@ void process_mapping(bool auto_repeat) {
         } else {
             int32_t value = 0;
             for (auto const& map_source : sources) {
-                if (map_source.sticky && (sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage] != 0)) {
-                    value = sticky_state[((uint64_t) map_source.layer << 32) | map_source.usage];
+                if (map_source.sticky) {
+                    if (sticky_state[map_source.usage] & map_source.layer_mask) {
+                        value = 1;
+                    }
                 } else {
-                    if ((layer_state[map_source.layer]) &&
+                    if ((layer_state_mask & map_source.layer_mask) &&
                         (relative_usage_set.count(map_source.usage)
                                 ? (input_state[map_source.usage] * map_source.scaling > 0)
                                 : input_state[map_source.usage])) {

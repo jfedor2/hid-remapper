@@ -14,11 +14,20 @@ data = struct.pack("<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, SUSPEND, *([0] *
 device.send_feature_report(add_crc(data))
 
 version = config.get("version", CONFIG_VERSION)
+if version < 3:
+    raise Exception("Incompatible version.")
 partial_scroll_timeout = config.get("partial_scroll_timeout", 1000000)
-unmapped_passthrough = config.get("unmapped_passthrough", True)
+if version == 3:
+    unmapped_passthrough_layer_mask = (
+        1 if config.get("unmapped_passthrough", True) else 0
+    )
+else:
+    unmapped_passthrough_layer_mask = layer_list_to_mask(
+        config.get("unmapped_passthrough_layers", list(range(NLAYERS)))
+    )
 interval_override = config.get("interval_override", 0)
 
-flags = UNMAPPED_PASSTHROUGH_FLAG if unmapped_passthrough else 0
+flags = unmapped_passthrough_layer_mask
 
 data = struct.pack(
     "<BBBBLB20B",
@@ -41,7 +50,10 @@ for mapping in config.get("mappings", []):
     target_usage = int(mapping["target_usage"], 16)
     source_usage = int(mapping["source_usage"], 16)
     scaling = mapping.get("scaling", 1000)
-    layer = mapping.get("layer", 0)
+    if version == 3:
+        layer_mask = 1 << mapping.get("layer", 0)
+    else:
+        layer_mask = layer_list_to_mask(mapping.get("layers", [0]))
     flags = STICKY_FLAG if mapping.get("sticky", False) else 0
     data = struct.pack(
         "<BBBLLlBB12B",
@@ -51,7 +63,7 @@ for mapping in config.get("mappings", []):
         target_usage,
         source_usage,
         scaling,
-        layer,
+        layer_mask,
         flags,
         *([0] * 12)
     )

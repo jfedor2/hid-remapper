@@ -37,7 +37,7 @@ struct map_source_t {
     uint32_t usage;
     int32_t scaling = 1000;  // * 1000
     bool sticky = false;
-    uint8_t layer = 0;
+    uint8_t layer_mask = 1;
 };
 
 struct usage_rle_t {
@@ -61,7 +61,7 @@ struct __attribute__((packed)) mapping_config_t {
     uint32_t target_usage;
     uint32_t source_usage;
     int32_t scaling;  // * 1000
-    uint8_t layer;
+    uint8_t layer_mask;
     uint8_t flags;
 };
 

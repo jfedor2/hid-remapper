@@ -28,7 +28,7 @@ check_crc(data, crc)
 
 config = {
     "version": version,
-    "unmapped_passthrough": (flags & UNMAPPED_PASSTHROUGH_FLAG) != 0,
+    "unmapped_passthrough_layers": mask_to_layer_list(flags & ((1 << NLAYERS) - 1)),
     "partial_scroll_timeout": partial_scroll_timeout,
     "interval_override": interval_override,
     "mappings": [],
@@ -45,7 +45,7 @@ for i in range(mapping_count):
         target_usage,
         source_usage,
         scaling,
-        layer,
+        layer_mask,
         flags,
         *_,
         crc,
@@ -56,7 +56,7 @@ for i in range(mapping_count):
             "target_usage": "{0:#010x}".format(target_usage),
             "source_usage": "{0:#010x}".format(source_usage),
             "scaling": scaling,
-            "layer": layer,
+            "layers": mask_to_layer_list(layer_mask),
             "sticky": (flags & 0x01) != 0,
         }
     )

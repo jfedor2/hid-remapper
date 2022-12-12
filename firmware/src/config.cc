@@ -9,9 +9,11 @@
 #include "platform.h"
 #include "remapper.h"
 
-const uint8_t CONFIG_VERSION = 3;
+const uint8_t CONFIG_VERSION = 4;
 
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH = 0x01;
+const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK = 0b00001111;
+const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT = 0;
 
 ConfigCommand last_config_command = ConfigCommand::NO_COMMAND;
 uint32_t requested_index = 0;
@@ -20,19 +22,33 @@ bool checksum_ok(const uint8_t* buffer, uint16_t data_size) {
     return crc32(buffer, data_size - 4) == ((crc32_t*) (buffer + data_size - 4))->crc32;
 }
 
-bool version_ok(const uint8_t* buffer) {
-    return ((set_feature_t*) buffer)->version == CONFIG_VERSION;
+bool persisted_version_ok(const uint8_t* buffer) {
+    uint8_t version = ((set_feature_t*) buffer)->version;
+    return (version == 3) || (version == 4);
+}
+
+bool command_version_ok(const uint8_t* buffer) {
+    uint8_t version = ((set_feature_t*) buffer)->version;
+    return version == CONFIG_VERSION;
 }
 
 void load_config(const uint8_t* persisted_config) {
-    if (checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) && version_ok(persisted_config)) {
+    if (checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) && persisted_version_ok(persisted_config)) {
         persist_config_t* config = (persist_config_t*) persisted_config;
-        unmapped_passthrough = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) != 0;
+        if (config->version == 3) {
+            unmapped_passthrough_layer_mask = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) ? 1 : 0;
+        } else {
+            unmapped_passthrough_layer_mask =
+                (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
+        }
         partial_scroll_timeout = config->partial_scroll_timeout;
         interval_override = config->interval_override;
         mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_t));
         for (uint32_t i = 0; i < config->mapping_count; i++) {
             config_mappings.push_back(buffer_mappings[i]);
+            if (config->version == 3) {
+                config_mappings.back().layer_mask = 1 << config_mappings.back().layer_mask;
+            }
         }
     }
 }
@@ -40,9 +56,8 @@ void load_config(const uint8_t* persisted_config) {
 void fill_get_config(get_config_t* config) {
     config->version = CONFIG_VERSION;
     config->flags = 0;
-    if (unmapped_passthrough) {
-        config->flags |= CONFIG_FLAG_UNMAPPED_PASSTHROUGH;
-    }
+    config->flags |=
+        (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->mapping_count = config_mappings.size();
     config->our_usage_count = our_usages_rle.size();
@@ -53,9 +68,8 @@ void fill_get_config(get_config_t* config) {
 void fill_persist_config(persist_config_t* config) {
     config->version = CONFIG_VERSION;
     config->flags = 0;
-    if (unmapped_passthrough) {
-        config->flags |= CONFIG_FLAG_UNMAPPED_PASSTHROUGH;
-    }
+    config->flags |=
+        (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->mapping_count = config_mappings.size();
     config->interval_override = interval_override;
@@ -132,7 +146,7 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
         memcpy(&resolution_multiplier, buffer, 1);
     }
     if (report_id == REPORT_ID_CONFIG && bufsize >= CONFIG_SIZE) {
-        if (checksum_ok(buffer, CONFIG_SIZE) && version_ok(buffer)) {
+        if (checksum_ok(buffer, CONFIG_SIZE) && command_version_ok(buffer)) {
             set_feature_t* config_buffer = (set_feature_t*) buffer;
             last_config_command = config_buffer->command;
             switch (config_buffer->command) {
@@ -141,7 +155,8 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     break;
                 case ConfigCommand::SET_CONFIG: {
                     set_config_t* config = (set_config_t*) ((set_feature_t*) buffer)->data;
-                    unmapped_passthrough = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) != 0;
+                    unmapped_passthrough_layer_mask =
+                        (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
                     partial_scroll_timeout = config->partial_scroll_timeout;
                     uint8_t prev_interval_override = interval_override;
                     interval_override = config->interval_override;
