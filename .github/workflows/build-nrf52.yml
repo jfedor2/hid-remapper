@@ -1,0 +1,26 @@
+name: build-nrf52
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - 'firmware-bluetooth/**'
+defaults:
+  run:
+    shell: bash --noprofile --norc -x -e -o pipefail {0}
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container: nordicplayground/nrfconnect-sdk:v2.2-branch
+    strategy:
+      matrix:
+        board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: |
+          west build -b ${{ matrix.board }}
+          mv build/zephyr/remapper.uf2 remapper_${{ matrix.board }}.uf2
+        working-directory: ./firmware-bluetooth
+      - uses: actions/upload-artifact@v3
+        with:
+          path: firmware-bluetooth/remapper_${{ matrix.board }}.uf2

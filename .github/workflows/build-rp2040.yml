@@ -1,0 +1,40 @@
+name: build-rp2040
+on:
+  push:
+    paths:
+      - 'firmware/**'
+defaults:
+  run:
+    shell: bash --noprofile --norc -x -e -o pipefail {0}
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Install compiler and libraries
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+          cd ..
+          mkdir build-boards
+          cd build-boards
+          PICO_BOARD=remapper cmake ..
+          make
+          cd ..
+          mkdir artifacts
+          mv build/*.uf2 artifacts
+          mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board_a.uf2
+          mv build-boards/remapper_dual_b.uf2 artifacts/remapper_board_b.uf2
+          mv build-boards/remapper_dual_b.elf artifacts/remapper_board_b.elf
+        working-directory: ./firmware
+      - uses: actions/upload-artifact@v3
+        with:
+          path: firmware/artifacts/*
