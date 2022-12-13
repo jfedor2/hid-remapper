@@ -4,14 +4,12 @@
 #include <bluetooth/gatt_dm.h>
 #include <bluetooth/scan.h>
 #include <bluetooth/services/hogp.h>
-#include <drivers/gpio.h>
-#include <usb/class/usb_hid.h>
-#include <usb/usb_device.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
@@ -19,6 +17,8 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/types.h>
+#include <zephyr/usb/class/usb_hid.h>
+#include <zephyr/usb/usb_device.h>
 
 #include "config.h"
 #include "descriptor_parser.h"
@@ -47,7 +47,7 @@ static K_SEM_DEFINE(usb_sem, 1, 1);
 K_MUTEX_DEFINE(their_usages_mutex);
 
 static const struct device* hid_dev0;
-static const struct device* hid_dev1; // config interface
+static const struct device* hid_dev1;  // config interface
 
 struct report_type {
     uint8_t conn_idx;
@@ -747,7 +747,7 @@ uint64_t get_time() {
 void interval_override_updated() {
 }
 
-void main() {
+int main() {
     LOG_INF("HID Remapper Bluetooth");
 
     button_init();
@@ -804,4 +804,6 @@ void main() {
         // without this sleep, some devices won't pair; some thread priority issue?
         k_sleep(K_USEC(1));  // XXX
     }
+
+    return 0;
 }
