@@ -1,41 +1,14 @@
 #!/usr/bin/env python3
 
+from common import *
+
 import sys
-import hid
-import binascii
 import struct
 import json
 
-VENDOR_ID = 0xCAFE
-PRODUCT_ID = 0xBAF2
-
-CONFIG_VERSION = 3
-CONFIG_SIZE = 32
-REPORT_ID_CONFIG = 100
-
-SET_CONFIG = 2
-CLEAR_MAPPING = 4
-ADD_MAPPING = 5
-PERSIST_CONFIG = 7
-SUSPEND = 10
-RESUME = 11
-
-UNMAPPED_PASSTHROUGH_FLAG = 0x01
-STICKY_FLAG = 0x01
-
-
-def check_crc(buf, crc_):
-    if binascii.crc32(buf[1:29]) != crc_:
-        raise Exception("CRC mismatch")
-
-
-def add_crc(buf):
-    return buf + struct.pack("<L", binascii.crc32(buf[1:]))
-
-
 config = json.load(sys.stdin)
 
-device = hid.Device(VENDOR_ID, PRODUCT_ID)
+device = get_device()
 
 data = struct.pack("<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, SUSPEND, *([0] * 26))
 device.send_feature_report(add_crc(data))

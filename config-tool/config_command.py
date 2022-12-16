@@ -1,32 +1,17 @@
 #!/usr/bin/env python3
 
+from common import *
+
 import sys
-import hid
-import binascii
 import struct
 
-VENDOR_ID = 0xCAFE
-PRODUCT_ID = 0xBAF2
-
-CONFIG_VERSION = 3
-REPORT_ID_CONFIG = 100
-
 commands = {
-    "reset_into_bootsel": 1,
-    "pair_new_device": 12,
-    "clear_bonds": 13,
+    "reset_into_bootsel": RESET_INTO_BOOTSEL,
+    "pair_new_device": PAIR_NEW_DEVICE,
+    "clear_bonds": CLEAR_BONDS,
 }
 
-
-def add_crc(buf):
-    return buf + struct.pack("<L", binascii.crc32(buf[1:]))
-
-
-if len(sys.argv) < 2 or sys.argv[1].lower() not in commands:
-    print("Available commands: " + ", ".join(commands.keys()))
-    sys.exit()
-
-device = hid.Device(VENDOR_ID, PRODUCT_ID)
+device = get_device()
 
 config_command = commands[sys.argv[1].lower()]
 
