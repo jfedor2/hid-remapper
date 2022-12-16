@@ -12,7 +12,7 @@ Making the device is really simple, you just need to cut a USB extension cable i
 
 The [enclosure](enclosure) folder has 3D-printable files for an optional case, seen in the photo below. It uses four M2x8 flat head screws.
 
-The provided [remapper.uf2](firmware/remapper.uf2) file can be used to flash the firmware onto the Pico the usual way (hold BOOTSEL button while connecting to the computer, then copy the UF2 file to the USB drive that shows up).
+The provided [remapper.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper.uf2) file can be used to flash the firmware onto the Pico the usual way (hold BOOTSEL button while connecting to the computer, then copy the UF2 file to the USB drive that shows up).
 
 ![HID Remapper single Pico version](images/remapper1.jpg)
 ![HID Remapper single Pico version inside](images/remapper2.jpg)
@@ -35,7 +35,7 @@ You have to solder six wires between the two Picos, connecting the pins as shown
 
 ![HID Remapper dual Pico version connection diagram](images/remapper-dual-diagram.png)
 
-There are two firmware files, one for each side. The side that will be connected to the computer has to be flashed with the [remapper\_dual\_a.uf2](firmware/remapper_dual_a.uf2) file, and the other side (that you will connect your input devices to using an OTG cable or adapter) has to be flashed with the [remapper\_dual\_b.uf2](firmware/remapper_dual_b.uf2) file. Flashing is done the usual way: hold BOOTSEL button while connecting to the computer, then copy the UF2 file to the USB drive that shows up. It is okay to do the flashing after the two Picos are connected as described above, but don't connect both sides to a host at the same time.
+There are two firmware files, one for each side. The side that will be connected to the computer has to be flashed with the [remapper\_dual\_a.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_dual_a.uf2) file, and the other side (that you will connect your input devices to using an OTG cable or adapter) has to be flashed with the [remapper\_dual\_b.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_dual_b.uf2) file. Flashing is done the usual way: hold BOOTSEL button while connecting to the computer, then copy the UF2 file to the USB drive that shows up. It is okay to do the flashing after the two Picos are connected as described above, but don't connect both sides to a host at the same time.
 
 The [enclosure](enclosure) folder has 3D-printable files for an optional case, seen in the photo below. It uses four M2x4 screws to attach the Pico boards and two M2x16 flat head screws to keep the two halves together.
 

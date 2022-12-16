@@ -18,7 +18,7 @@ If you want to use some other service than JLCPCB, you will likely need to adapt
 
 ## How to flash the firmware
 
-Each board has two RP2040 chips and works the same way as the dual Pico variant described [here](../HARDWARE.md). Therefore you need to flash both chips with appropriate firmware files. The A side (the one that connects to your computer) needs to be flashed with the [remapper\_board\_a.uf2](../firmware/remapper_board_a.uf2) file. The B side (the one you connect your devices to) needs to be flashed with the [remapper\_board\_b.uf2](../firmware/remapper_board_b.uf2) file.
+Each board has two RP2040 chips and works the same way as the dual Pico variant described [here](../HARDWARE.md). Therefore you need to flash both chips with appropriate firmware files. The A side (the one that connects to your computer) needs to be flashed with the [remapper\_board\_a.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_a.uf2) file. The B side (the one you connect your devices to) needs to be flashed with the [remapper\_board\_b.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_b.uf2) file.
 
 The v1 version of the board has buttons labeled BOOT\_A and BOOT\_B. They work the same way as the BOOTSEL button on a Raspberry Pi Pico (there are two buttons because there are two RP2040 chips). The v2 version doesn't have the buttons, but has equivalent pins broken out. Shorting the appropriate BOOT pin to GND is the same as pressing the button.
 
@@ -36,8 +36,8 @@ I will try to streamline the process in the future, for now it goes as follows:
 
 * Flash A side with [picoprobe.uf2](https://github.com/jfedor2/picoprobe/blob/master/picoprobe.uf2). This will let us use it as a programmer for B side.
 * Install OpenOCD (version at least 0.12.0-rc2) on your computer.
-* Flash B side with the [remapper\_board\_b.elf](../firmware/remapper_board_b.elf) file using the following command:<br>`openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -s tcl -c "adapter speed 10000; program remapper_board_b.elf verify reset exit"`<br>This doesn't require pressing the BOOT button or shorting pins.
-* Flash A side with [remapper\_board\_a.uf2](../firmware/remapper_board_a.uf2).
+* Flash B side with the [remapper\_board\_b.elf](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_b.elf) file using the following command:<br>`openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -s tcl -c "adapter speed 10000; program remapper_board_b.elf verify reset exit"`<br>This doesn't require pressing the BOOT button or shorting pins.
+* Flash A side with [remapper\_board\_a.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_a.uf2).
 
 In situations where the BOOT button is not easily accessible, it is possible to put the board in firmware flashing mode through software. If the device is currently flashed with HID Remapper firmware, you can go to the web config tool and press the "Flash firmware" button (there's also an equivalent [command line tool](../config-tool/reset_into_bootsel.py)). If the device is currently flashed with the picoprobe firmware, you can do it with the following command (this only works with [my fork](https://github.com/jfedor2/picoprobe) of picoprobe):
 
