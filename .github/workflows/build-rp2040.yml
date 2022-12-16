@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'firmware/**'
+  workflow_call:
 defaults:
   run:
     shell: bash --noprofile --norc -x -e -o pipefail {0}
