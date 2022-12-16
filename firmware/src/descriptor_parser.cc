@@ -19,7 +19,7 @@ const uint8_t HID_USAGE_MAXIMUM = 0x28;
 const uint8_t HID_LOGICAL_MINIMUM = 0x14;
 const uint8_t HID_LOGICAL_MAXIMUM = 0x24;
 
-void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, uint32_t usage, uint8_t report_id, uint16_t bitpos, uint8_t size, bool is_relative, int32_t logical_minimum, bool is_array = false, uint32_t index = 0, uint32_t count = 0) {
+void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, uint32_t usage, uint8_t report_id, uint16_t bitpos, uint8_t size, bool is_relative, int32_t logical_minimum, bool is_array = false, uint32_t index = 0, uint32_t count = 0, uint32_t usage_maximum = 0) {
     usage_map[report_id].try_emplace(usage,
         (usage_def_t){
             .report_id = report_id,
@@ -30,6 +30,7 @@ void mark_usage(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_d
             .logical_minimum = logical_minimum,
             .index = index,
             .count = count,
+            .usage_maximum = usage_maximum,
         });
 }
 
@@ -116,13 +117,8 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
                     }
                 } else if ((value & 0x03) == 0x00) {  // array
                     if (usage_minimum && usage_maximum) {
-                        uint32_t usage = usage_minimum;
-                        for (int index = logical_minimum; index <= logical_maximum; index++) {
-                            mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum, true, index, report_count);
-                            if (usage < usage_maximum) {
-                                usage++;
-                            }
-                        }
+                        uint32_t effective_usage_maximum = std::min(usage_maximum, usage_minimum + logical_maximum - logical_minimum);
+                        mark_usage(usage_map, usage_minimum, report_id, bitpos[report_id], report_size, relative, logical_minimum, true, logical_minimum, report_count, effective_usage_maximum);
                     } else if (!usages.empty()) {
                         uint32_t usage = 0;
                         for (int index = logical_minimum; index <= logical_maximum; index++) {

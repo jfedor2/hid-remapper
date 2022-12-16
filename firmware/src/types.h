@@ -29,6 +29,7 @@ struct usage_def_t {
     int32_t logical_minimum;
     uint32_t index = 0;  // for arrays
     uint32_t count = 0;  // for arrays
+    uint32_t usage_maximum; // effective, for arrays/usage ranges
 };
 
 struct map_source_t {

@@ -389,6 +389,22 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
     }
 }
 
+inline void read_input_range(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint16_t interface) {
+    // is_array and !is_relative is implied
+    for (uint32_t actual_usage = source_usage; actual_usage <= their_usage.usage_maximum; actual_usage++) {
+        input_state[actual_usage] &= ~(1 << interface_index[interface]);
+    }
+    for (unsigned int i = 0; i < their_usage.count; i++) {
+        uint32_t bits = get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size);
+        // XXX consider negative indexes
+        if ((bits >= their_usage.logical_minimum) &&
+            (bits <= their_usage.logical_minimum + their_usage.usage_maximum - source_usage)) {
+            uint32_t actual_usage = source_usage + bits - their_usage.logical_minimum;
+            input_state[actual_usage] |= 1 << interface_index[interface];
+        }
+    }
+}
+
 void handle_received_report(const uint8_t* report, int len, uint16_t interface) {
     reports_received++;
 
@@ -402,27 +418,37 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface) 
     }
 
     for (auto const& [their_usage, their_usage_def] : their_usages[interface][report_id]) {
-        read_input(report, len, their_usage, their_usage_def, interface);
+        if (their_usage_def.usage_maximum == 0) {
+            read_input(report, len, their_usage, their_usage_def, interface);
+        } else {
+            read_input_range(report, len, their_usage, their_usage_def, interface);
+        }
     }
 
     usages_mutex_exit();
 }
 
-void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output) {
+void rlencode(const std::set<uint64_t>& usage_ranges, std::vector<usage_rle_t>& output) {
     uint32_t start_usage = 0;
     uint32_t count = 0;
-    for (auto const& usage : usages) {
+    for (auto const& range : usage_ranges) {
+        uint32_t usage_minimum = range >> 32;
+        uint32_t usage_maximum = range & 0xFFFFFFFF;
+
         if (start_usage == 0) {
-            start_usage = usage;
-            count = 1;
+            start_usage = usage_minimum;
+            count = 1 + usage_maximum - usage_minimum;
             continue;
         }
-        if (usage == start_usage + count) {
-            count++;
+        if (usage_minimum <= start_usage + count) {
+            if (usage_maximum < start_usage + count) {
+                continue;
+            }
+            count += 1 + usage_maximum - (start_usage + count);
         } else {
             output.push_back({ .usage = start_usage, .count = count });
-            start_usage = usage;
-            count = 1;
+            start_usage = usage_minimum;
+            count = 1 + usage_maximum - usage_minimum;
         }
     }
     if (start_usage != 0) {
@@ -433,11 +459,11 @@ void rlencode(const std::set<uint32_t>& usages, std::vector<usage_rle_t>& output
 void update_their_descriptor_derivates() {
     relative_usages.clear();
     relative_usage_set.clear();
-    std::set<uint32_t> their_usages_set;
+    std::set<uint64_t> their_usage_ranges_set;
     for (auto const& [interface, report_id_usage_map] : their_usages) {
         for (auto const& [report_id, usage_map] : report_id_usage_map) {
             for (auto const& [usage, usage_def] : usage_map) {
-                their_usages_set.insert(usage);
+                their_usage_ranges_set.insert(((uint64_t) usage << 32) | (usage_def.usage_maximum ? usage_def.usage_maximum : usage));
                 if (usage_def.is_relative) {
                     relative_usages.push_back(usage);
                     relative_usage_set.insert(usage);
@@ -447,7 +473,7 @@ void update_their_descriptor_derivates() {
     }
 
     their_usages_rle.clear();
-    rlencode(their_usages_set, their_usages_rle);
+    rlencode(their_usage_ranges_set, their_usages_rle);
 }
 
 void parse_our_descriptor() {
@@ -467,11 +493,11 @@ void parse_our_descriptor() {
         report_ids.push_back(report_id);
     }
 
-    std::set<uint32_t> our_usages_set;
+    std::set<uint64_t> our_usage_ranges_set;
     for (auto const& [report_id, usage_map] : our_usages) {
         for (auto const& [usage, usage_def] : usage_map) {
             our_usages_flat[usage] = usage_def;
-            our_usages_set.insert(usage);
+            our_usage_ranges_set.insert(((uint64_t) usage << 32) | (usage_def.usage_maximum ? usage_def.usage_maximum : usage));
 
             if (usage_def.is_relative) {
                 put_bits(report_masks_relative[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
@@ -481,7 +507,7 @@ void parse_our_descriptor() {
         }
     }
 
-    rlencode(our_usages_set, our_usages_rle);
+    rlencode(our_usage_ranges_set, our_usages_rle);
 }
 
 void print_stats() {
