@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.13)
 add_compile_definitions(PICO_DEFAULT_UART_BAUD_RATE=921600)
 add_compile_definitions(PERSISTED_CONFIG_SIZE=4096)
 
-set(PICO_COPY_TO_RAM 1)
-
 set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/pico-sdk")
 set(PICO_TINYUSB_PATH "${CMAKE_CURRENT_LIST_DIR}/tinyusb")
 set(OUR_PIO_USB_PATH "${CMAKE_CURRENT_LIST_DIR}/src/pio_usb")
@@ -59,6 +57,7 @@ target_link_libraries(remapper
     tinyusb_board
 )
 
+pico_set_binary_type(remapper copy_to_ram)
 pico_add_extra_outputs(remapper)
 
 
