@@ -1,8 +1,18 @@
+#include <cstdio>
+
 #include "descriptor_parser.h"
 #include "dual.h"
 #include "interval_override.h"
 #include "remapper.h"
 #include "serial.h"
+
+#include "dual_b_binary.h"
+
+extern "C" {
+#include "adi.h"
+#include "flash.h"
+#include "swd.h"
+}
 
 void send_b_init() {
     b_init_t msg;
@@ -46,4 +56,23 @@ bool read_report() {
 void interval_override_updated() {
     restart_t msg;
     serial_write((uint8_t*) &msg, sizeof(msg));
+}
+
+bool swd_initialized = false;
+
+void flash_b_side() {
+    if (!swd_initialized) {
+        printf("swd_init: %d\n", swd_init());
+        swd_initialized = true;
+    }
+    printf("dp_init: %d\n", dp_init());
+
+    core_select(0);
+    core_reset_halt();
+    core_select(1);
+    core_reset_halt();
+    core_select(0);
+
+    rp2040_add_flash_bit(0, dual_b_binary, dual_b_binary_length);
+    rp2040_add_flash_bit(0xffffffff, NULL, 0);
 }

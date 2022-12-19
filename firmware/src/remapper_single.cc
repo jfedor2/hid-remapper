@@ -12,3 +12,6 @@ bool read_report() {
 
 void interval_override_updated() {
 }
+
+void flash_b_side() {
+}

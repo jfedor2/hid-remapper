@@ -18,6 +18,7 @@ enum class ConfigCommand : int8_t {
     RESUME = 11,
     PAIR_NEW_DEVICE = 12,
     CLEAR_BONDS = 13,
+    FLASH_B_SIDE = 14,
 };
 
 struct usage_def_t {

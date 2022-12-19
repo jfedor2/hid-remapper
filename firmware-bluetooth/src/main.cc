@@ -720,6 +720,9 @@ void reset_to_bootloader() {
     sys_reboot(DFU_MAGIC_UF2_RESET);
 }
 
+void flash_b_side() {
+}
+
 void pair_new_device() {
     peers_only = false;
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));

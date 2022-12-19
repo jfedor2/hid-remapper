@@ -9,13 +9,15 @@
 #include "hardware/pio.h"
 #include "swd.pio.h"
 
-#include "lerp/task.h"
-#include "lerp/debug.h"
 #include "swd.h"
 
+#ifndef PIN_SWDCLK
+#define PIN_SWDCLK 2
+#endif
 
-//#define PIN_SWDCLK              26
-//#define PIN_SWDIO               22
+#ifndef PIN_SWDIO
+#define PIN_SWDIO 3
+#endif
 
 #define OUT                 1
 #define IN                  0
@@ -25,55 +27,6 @@ static uint                 swd_sm;
 
 #define CHECK_OK(func)      { int rc = func; if (rc != SWD_OK) return rc; }
 
-
-
-static struct task *waiting_on_put = NULL;
-static struct task *waiting_on_get = NULL;
-
-/**
- * @brief Blocking (lerp_task) version of pio_sm_put
- * 
- * @param pio 
- * @param sm 
- * @param data 
- */
-static inline void lerp_sm_put_blocking(PIO pio, uint sm, uint32_t data) {
-    if (pio_sm_is_tx_fifo_full(pio, sm)) {
-        waiting_on_put = current_task();
-        task_block();
-    }
-    return pio_sm_put(pio, sm, data);
-}
-
-/**
- * @brief Blocking (lerp_task) version of pio_sm_get
- * 
- * @param pio 
- * @param sm 
- * @return uint32_t 
- */
-static inline uint32_t lerp_sm_get_blocking(PIO pio, uint sm) {
-    if (pio_sm_is_rx_fifo_empty(pio, sm)) {
-        waiting_on_get = current_task();
-        task_block();
-    }
-    return pio_sm_get(pio, sm);
-}
-
-/**
- * @brief The poll function that tracks pio/sm block and releases them
- * 
- */
-void swd_pio_poll() {
-    if (waiting_on_put && !pio_sm_is_tx_fifo_full(swd_pio, swd_sm)) {
-        task_wake(waiting_on_put, 0);
-        waiting_on_put = NULL;
-    }
-    if (waiting_on_get && !pio_sm_is_rx_fifo_empty(swd_pio, swd_sm)) {
-        task_wake(waiting_on_get, 0);
-        waiting_on_get = NULL;
-    }
-}
 
 
 /**
@@ -161,7 +114,7 @@ static inline void swd_short_output(int count, uint32_t data) {
     assert(count > 0);
     assert(count <= 21);
 
-    lerp_sm_put_blocking(swd_pio, swd_sm, (data << 10) | ((count-1) << 5) | swd_offset_short_output);
+    pio_sm_put_blocking(swd_pio, swd_sm, (data << 10) | ((count-1) << 5) | swd_offset_short_output);
 }
 
 /**
@@ -175,8 +128,8 @@ static inline void swd_short_output(int count, uint32_t data) {
 static inline uint32_t swd_short_input(int count) {
     assert(count > 0);
 
-    lerp_sm_put_blocking(swd_pio, swd_sm, ((count-1) << 5) | swd_offset_input);
-    return lerp_sm_get_blocking(swd_pio, swd_sm);
+    pio_sm_put_blocking(swd_pio, swd_sm, ((count-1) << 5) | swd_offset_input);
+    return pio_sm_get_blocking(swd_pio, swd_sm);
 }
 
 /**
@@ -195,16 +148,16 @@ void swd_targetsel(uint32_t target) {
     swd_short_output(8, 0b10011001);
 
     // Now we read 5 bits (trn, ack0, ack1, ack2, trn) ... (will send it back)
-    lerp_sm_put_blocking(swd_pio, swd_sm, ((5-1) << 5) | swd_offset_input);
+    pio_sm_put_blocking(swd_pio, swd_sm, ((5-1) << 5) | swd_offset_input);
 
     // Now we can write the target id (lsb) and a parity bit
-    lerp_sm_put_blocking(swd_pio, swd_sm, ((33-1) << 5) | swd_offset_output);
-    lerp_sm_put_blocking(swd_pio, swd_sm, target);               // lsb first
-    lerp_sm_put_blocking(swd_pio, swd_sm, parity);
+    pio_sm_put_blocking(swd_pio, swd_sm, ((33-1) << 5) | swd_offset_output);
+    pio_sm_put_blocking(swd_pio, swd_sm, target);               // lsb first
+    pio_sm_put_blocking(swd_pio, swd_sm, parity);
 
     // Now we can read back the three bits (well 6) that should be waiting for us
     // and discard them
-    lerp_sm_get_blocking(swd_pio, swd_sm);
+    pio_sm_get_blocking(swd_pio, swd_sm);
 }
 
 /**
@@ -244,11 +197,11 @@ static int _swd_read(int APnDP, int addr, uint32_t *result) {
     // 5 bits -- location to jump to if good
     // 14 bits -- locatiom to jump to if we fail
     //
-    lerp_sm_put_blocking(swd_pio, swd_sm, swd_offset_start << (5+8+5)        // go to start on failure
+    pio_sm_put_blocking(swd_pio, swd_sm, swd_offset_start << (5+8+5)        // go to start on failure
                             | swd_offset_in_jmp << (5+8)                    // to in_jump on success
                             | (33-1) << 5                                   // 32 + 1 parity
                             | swd_offset_conditional);                      // conditional
-    ack = lerp_sm_get_blocking(swd_pio, swd_sm) >> 1;
+    ack = pio_sm_get_blocking(swd_pio, swd_sm) >> 1;
 
     //
     // We expect an OK response, otherwise decode the error... there will be no
@@ -262,8 +215,8 @@ static int _swd_read(int APnDP, int addr, uint32_t *result) {
         return SWD_ERROR;
     }
 
-    res = lerp_sm_get_blocking(swd_pio, swd_sm);
-    parity = (lerp_sm_get_blocking(swd_pio, swd_sm) & 0x80000000) == 0x80000000;
+    res = pio_sm_get_blocking(swd_pio, swd_sm);
+    parity = (pio_sm_get_blocking(swd_pio, swd_sm) & 0x80000000) == 0x80000000;
     if (parity != parity32(res)) return SWD_PARITY;
     *result = res;
 
@@ -316,14 +269,14 @@ static int _swd_write(int APnDP, int addr, uint32_t value) {
     // 5 bits -- location to jump to if good
     // 14 bits -- locatiom to jump to if we fail
     //
-    lerp_sm_put_blocking(swd_pio, swd_sm, swd_offset_cond_write_fail << (5+8+5)  // for failure
+    pio_sm_put_blocking(swd_pio, swd_sm, swd_offset_cond_write_fail << (5+8+5)  // for failure
                             | swd_offset_cond_write_ok << (5+8)                 // to in_jump on success
                             | (33-1) << 5                                       // 32 + 1 parity
                             | swd_offset_conditional);                          // conditional
-    lerp_sm_put_blocking(swd_pio, swd_sm, value);
-    lerp_sm_put_blocking(swd_pio, swd_sm, parity);
+    pio_sm_put_blocking(swd_pio, swd_sm, value);
+    pio_sm_put_blocking(swd_pio, swd_sm, parity);
 
-    ack = lerp_sm_get_blocking(swd_pio, swd_sm) >> 1;
+    ack = pio_sm_get_blocking(swd_pio, swd_sm) >> 1;
 
     //
     // We expect an OK response, otherwise decode the error... the system will throw
@@ -358,15 +311,15 @@ int swd_write(int APnDP, int addr, uint32_t value) {
  */
 void swd_send_bits(uint32_t *data, int bitcount) {
     // Jump to the output function...
-    lerp_sm_put_blocking(swd_pio, swd_sm, ((bitcount-1) << 5) | swd_offset_output);
+    pio_sm_put_blocking(swd_pio, swd_sm, ((bitcount-1) << 5) | swd_offset_output);
 
     // And write them...
     while (bitcount > 0) {
-        lerp_sm_put_blocking(swd_pio, swd_sm, *data++);
+        pio_sm_put_blocking(swd_pio, swd_sm, *data++);
         bitcount -= 32;
     }
     // Do we need a sacrificial word?
-    if (bitcount == 0) lerp_sm_put_blocking(swd_pio, swd_sm, 0); 
+    if (bitcount == 0) pio_sm_put_blocking(swd_pio, swd_sm, 0);
 }
 
 void swd_line_reset() {

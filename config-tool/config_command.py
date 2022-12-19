@@ -9,6 +9,7 @@ commands = {
     "reset_into_bootsel": RESET_INTO_BOOTSEL,
     "pair_new_device": PAIR_NEW_DEVICE,
     "clear_bonds": CLEAR_BONDS,
+    "flash_b_side": FLASH_B_SIDE,
 }
 
 device = get_device()

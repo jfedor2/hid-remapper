@@ -184,6 +184,9 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                 case ConfigCommand::CLEAR_BONDS:
                     clear_bonds();
                     break;
+                case ConfigCommand::FLASH_B_SIDE:
+                    flash_b_side();
+                    break;
                 default:
                     break;
             }

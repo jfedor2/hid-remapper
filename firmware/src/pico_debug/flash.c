@@ -29,8 +29,8 @@
 #include "swd.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "pico/stdlib.h"
-#include "lerp/debug.h"
 
 #include "adi.h"
 
@@ -57,13 +57,13 @@ static int rp2040_program_flash_chunk(int offset, int length) {
     extern char __stop_for_target[];
     int rc;
 
-    debug_printf("FLASH: Request to flash 0x%08x (len=%d)\r\n", offset, length);
+    printf("FLASH: Request to flash 0x%08x (len=%d)\r\n", offset, length);
 
     // Copy the code over ... only needed once per flashing cycle...
 
     if (!flash_code_copied) {
         int code_len = (__stop_for_target - __start_for_target);
-        debug_printf("FLASH: Copying custom flash code to 0x%08x (%d bytes)\r\n", CODE_START, code_len);
+        printf("FLASH: Copying custom flash code to 0x%08x (%d bytes)\r\n", CODE_START, code_len);
         rc = mem_write_block(CODE_START, code_len, (uint8_t *)__start_for_target);
         if (rc != SWD_OK) return rc;
         flash_code_copied = 1;
@@ -81,7 +81,7 @@ static int rp2040_program_flash_chunk(int offset, int length) {
     erased = (r0 >> 24) * 4;
     programmed = r0 & 0x00ffffff;
 
-    debug_printf("FLASH: Erased %dk and programmed %d bytes in %dms\r\n", erased, programmed, (time_us_32() - t)/1000);
+    printf("FLASH: Erased %luk and programmed %lu bytes in %lums\r\n", erased, programmed, (time_us_32() - t)/1000);
 
     return 0;
 }
@@ -103,10 +103,10 @@ static int rp2040_program_flash_chunk(int offset, int length) {
 static uint32_t     chunk_start = 0;        // flash address of the start
 static uint32_t     chunk_size = 0;         // how much is already done
 
-int rp2040_add_flash_bit(uint32_t offset, uint8_t *src, int size) {
+int rp2040_add_flash_bit(uint32_t offset, const uint8_t *src, int size) {
     int rc;
 
-    debug_printf("FLASH: writing %d bytes to flash at 0x%08x\r\n", size, offset);
+    printf("FLASH: writing %d bytes to flash at 0x%08lx\r\n", size, offset);
 
 
     // If we are starting outside the range of an existing block...
@@ -135,10 +135,10 @@ int rp2040_add_flash_bit(uint32_t offset, uint8_t *src, int size) {
 
         rc = mem_write_block(DATA_BUFFER + (offset - chunk_start), count, src);
         if (rc != SWD_OK) {
-            debug_printf("COPY FAILED: %d\r\n", rc);
+            printf("COPY FAILED: %d\r\n", rc);
             return 1;;
         }
-        debug_printf("FLASH: Copied %d bytes to location 0x%08x (%d ms)\r\n", count, DATA_BUFFER+(offset-chunk_start),
+        printf("FLASH: Copied %d bytes to location 0x%08lx (%lu ms)\r\n", count, DATA_BUFFER+(offset-chunk_start),
                                                                             (time_us_32() - t)/1000);
         chunk_size += count;
 

@@ -74,17 +74,24 @@ add_executable(remapper_dual_a
     src/quirks.cc
     src/interval_override.cc
     src/serial.cc
+    src/pico_debug/swd.c
+    src/pico_debug/flash.c
+    src/pico_debug/adi.c
+    dual_b_binary.c
 )
 target_include_directories(remapper_dual_a PRIVATE
     src
     src/tusb_config_device
+    src/pico_debug
 )
 target_link_libraries(remapper_dual_a
     pico_stdlib
     hardware_flash
+    hardware_pio
     tinyusb_device
     tinyusb_board
 )
+pico_generate_pio_header(remapper_dual_a ${CMAKE_CURRENT_LIST_DIR}/src/pico_debug/swd.pio)
 pico_add_extra_outputs(remapper_dual_a)
 
 add_executable(remapper_dual_b
@@ -103,6 +110,13 @@ target_link_libraries(remapper_dual_b
     tinyusb_board
 )
 pico_add_extra_outputs(remapper_dual_b)
+
+add_custom_command(
+  OUTPUT dual_b_binary.c dual_b_binary.h
+  DEPENDS remapper_dual_b
+  COMMAND srec_cat remapper_dual_b.hex -Intel -Output dual_b_binary.c -C-Array dual_b_binary -INClude
+  VERBATIM
+)
 
 add_executable(remapper_serial
     src/main.cc

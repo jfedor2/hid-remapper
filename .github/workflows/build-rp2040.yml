@@ -14,10 +14,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - name: Install compiler and libraries
+      - name: Install compiler, libraries and tools
         run: |
           sudo apt update
-          sudo apt install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+          sudo apt install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib srecord
       - name: Build
         run: |
           mkdir build
@@ -28,13 +28,11 @@ jobs:
           mkdir build-boards
           cd build-boards
           PICO_BOARD=remapper cmake ..
-          make
+          make remapper_dual_a
           cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
-          mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board_a.uf2
-          mv build-boards/remapper_dual_b.uf2 artifacts/remapper_board_b.uf2
-          mv build-boards/remapper_dual_b.elf artifacts/remapper_board_b.elf
+          mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board.uf2
         working-directory: ./firmware
       - uses: actions/upload-artifact@v3
         with:

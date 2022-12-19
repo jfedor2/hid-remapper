@@ -8,6 +8,9 @@
 
 #define HID_REMAPPER_BOARD
 
+#define PIN_SWDCLK 28
+#define PIN_SWDIO 27
+
 // --- FLASH ---
 
 #define PICO_BOOT_STAGE2_CHOOSE_W25Q080 1

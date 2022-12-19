@@ -42,7 +42,7 @@ int mem_read_block(uint32_t addr, uint32_t count, uint8_t *dest);
 int mem_write8(uint32_t addr, uint8_t value);
 int mem_write16(uint32_t addr, uint16_t value);
 int mem_write32(uint32_t addr, uint32_t value);
-int mem_write_block(uint32_t addr, uint32_t count, uint8_t *src);
+int mem_write_block(uint32_t addr, uint32_t count, const uint8_t *src);
 
 int core_select(int num);
 int core_get();

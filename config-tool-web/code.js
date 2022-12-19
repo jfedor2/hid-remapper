@@ -25,6 +25,7 @@ const SUSPEND = 10;
 const RESUME = 11;
 const PAIR_NEW_DEVICE = 12;
 const CLEAR_BONDS = 13;
+const FLASH_B_SIDE = 14;
 
 const UINT8 = Symbol('uint8');
 const UINT32 = Symbol('uint32');
@@ -57,6 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("download_json").addEventListener("click", download_json);
     document.getElementById("upload_json").addEventListener("click", upload_json);
     document.getElementById("flash_firmware").addEventListener("click", flash_firmware);
+    document.getElementById("flash_b_side").addEventListener("click", flash_b_side);
     document.getElementById("pair_new_device").addEventListener("click", pair_new_device);
     document.getElementById("clear_bonds").addEventListener("click", clear_bonds);
     document.getElementById("file_input").addEventListener("change", file_uploaded);
@@ -282,6 +284,11 @@ function upload_json() {
 async function flash_firmware() {
     display_error("HID Remapper should now be in firmware flashing mode. Copy UF2 file to the drive that appeared. If you don't want to flash new firmware at this time, just unplug and replug the device.");
     await send_feature_command(RESET_INTO_BOOTSEL);
+}
+
+async function flash_b_side() {
+    display_error("Side B should now be flashed with firmware version matching side A. Disconnect and reconnect the device.");
+    await send_feature_command(FLASH_B_SIDE);
 }
 
 async function pair_new_device() {
@@ -526,6 +533,7 @@ function device_buttons_set_disabled_state(state) {
     document.getElementById("load_from_device").disabled = state;
     document.getElementById("save_to_device").disabled = state;
     document.getElementById("flash_firmware").disabled = state;
+    document.getElementById("flash_b_side").disabled = state;
     document.getElementById("pair_new_device").disabled = state;
     document.getElementById("clear_bonds").disabled = state;
 }
@@ -533,4 +541,5 @@ function device_buttons_set_disabled_state(state) {
 function bluetooth_buttons_set_visibility(visible) {
     document.getElementById("pair_new_device_container").classList.toggle("d-none", !visible);
     document.getElementById("clear_bonds_container").classList.toggle("d-none", !visible);
+    document.getElementById("flash_b_side_container").classList.toggle("d-none", visible);
 }

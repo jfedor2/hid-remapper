@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "lerp/debug.h"
 
 #include "adi.h"
 #include "swd.h"
@@ -393,7 +392,7 @@ int mem_write32(uint32_t addr, uint32_t value) {
  * @param src 
  * @return int 
  */
-static int mem_write_block_aligned(uint32_t addr, uint32_t count, uint32_t *src) {
+static int mem_write_block_aligned(uint32_t addr, uint32_t count, const uint32_t *src) {
     // Set auto-increment and the starting address...
     CHECK_OK(ap_mem_set_csw(AP_MEM_CSW_INC | AP_MEM_CSW_32));
     CHECK_OK(ap_write(0, AP_MEM_TAR, addr));
@@ -423,7 +422,7 @@ static int mem_write_block_aligned(uint32_t addr, uint32_t count, uint32_t *src)
  * @param src 
  * @return int 
  */
-static int mem_write_block_unaligned(uint32_t addr, uint32_t count, uint8_t *src) {
+static int mem_write_block_unaligned(uint32_t addr, uint32_t count, const uint8_t *src) {
     uint32_t v32;
 
     // Set auto-increment and the starting address...
@@ -449,7 +448,7 @@ static int mem_write_block_unaligned(uint32_t addr, uint32_t count, uint8_t *src
     return SWD_OK;
 }
 
-int mem_write_block(uint32_t addr, uint32_t count, uint8_t *src) {
+int mem_write_block(uint32_t addr, uint32_t count, const uint8_t *src) {
     uint16_t v16;
 
     // The first phase is getting to an aligned address if we aren't...
@@ -847,7 +846,7 @@ int core_update_status() {
     if (dhcsr & (1<<25)) {
         core->reason = REASON_DBGRQ;
     } else if (dfsr & (1<<1)) {
-        debug_printf("dfsr=0x%08x\r\n", dfsr);
+        printf("dfsr=0x%08lx\r\n", dfsr);
         core->reason = REASON_BREAKPOINT;
         CHECK_OK(mem_write32(DCB_DFSR, (1<<1)));    // clear the BKPT bit
     }
@@ -988,8 +987,8 @@ int rp2040_call_function(uint32_t addr, uint32_t args[], int argc) {
 
 
     rc = core_is_halted();
-    if (rc == -1) lerp_panic("aaarg!");
-    if (!rc) lerp_panic("core not halted");
+    if (rc == -1) panic("aaarg!");
+    if (!rc) panic("core not halted");
 
     // Now can we continue and just wait for a halt?
 //    core_unhalt();
@@ -997,7 +996,7 @@ int rp2040_call_function(uint32_t addr, uint32_t args[], int argc) {
     while(1) {
         busy_wait_ms(2);
         rc = core_is_halted();
-        if (rc == -1) lerp_panic("here");
+        if (rc == -1) panic("here");
         if (rc) break;
     }
 
@@ -1031,22 +1030,22 @@ int dp_rescue_reset() {
     uint32_t rv;
     const uint32_t zero[] = { 0 };
 
-    debug_printf("Attempting rescue_dp reset\r\n");
+    printf("Attempting rescue_dp reset\r\n");
 
     swd_from_dormant();
     swd_line_reset();
     swd_targetsel(0xf1002927);
     rc = swd_read(0, DP_DPIDR, &rv);
     if (rc != SWD_OK) {
-        debug_printf("rescue failed (DP_IDR read rc=%d)\r\n", rc);
+        printf("rescue failed (DP_IDR read rc=%d)\r\n", rc);
         return rc;
     }
 
     // Now toggle the power request which will cause the reset...
     rc = swd_write(0, DP_CTRL_STAT, CDBGPWRUPREQ);
-    debug_printf("RESET rc=%d\r\n", rc, rv);
+    printf("RESET rc=%d\r\n", rc);
     rc = swd_write(0, DP_CTRL_STAT, 0);
-    debug_printf("RESET rc=%d\r\n", rc, rv);
+    printf("RESET rc=%d\r\n", rc);
 
     // Make sure the write completes...
     swd_send_bits((uint32_t *)zero, 8);
@@ -1176,10 +1175,10 @@ int dp_initialise() {
     // Now try to read DP_DLIDR (bank 3)
     rc = swd_write(0, DP_SELECT, 0x3);
     if (rc != SWD_OK) {
-        debug_printf("rc=%d\r\n", rc);
+        printf("rc=%d\r\n", rc);
     }
     rc = swd_read(0, 0x4, &rv);
-    debug_printf("DP_DLIDR rc=%d val=0x%08x\r\n", rc, rv);
+    printf("DP_DLIDR rc=%d val=0x%08x\r\n", rc, rv);
 */
 
     return SWD_OK;
@@ -1226,7 +1225,7 @@ int check_cores() {
     core_update_status();
     if ((core->state == STATE_HALTED) && core->state != old_state) {
         // We must have stopped... so we should stop the other one
-        debug_printf("looks like core %d has halted\r\n", cur);
+        printf("looks like core %d has halted\r\n", cur);
         to_halt = other;
         rc = cur;
     }
@@ -1234,7 +1233,7 @@ int check_cores() {
     old_state = core->state;
     core_update_status();
     if ((core->state == STATE_HALTED) && core->state != old_state) {
-        debug_printf("looks like core %d has halted\r\n", other);
+        printf("looks like core %d has halted\r\n", other);
         to_halt = cur;
         rc = other;
     }
@@ -1242,7 +1241,7 @@ int check_cores() {
     // At this point we have other selected, so we can halt it if needed...
     if (to_halt == other) {
         if (core->state != STATE_HALTED) {
-            debug_printf("Halting core: %d\r\n", other);
+            printf("Halting core: %d\r\n", other);
             core_halt();
         }
     }
@@ -1251,7 +1250,7 @@ int check_cores() {
     core_select(cur);
     if (to_halt == cur) {
         if (core->state != STATE_HALTED) {
-            debug_printf("Halting core: %d\r\n", cur);
+            printf("Halting core: %d\r\n", cur);
             core_halt();
         }
     }
