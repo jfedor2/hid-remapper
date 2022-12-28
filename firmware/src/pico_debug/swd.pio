@@ -1,0 +1,99 @@
+;
+;
+
+.program swd
+
+; We side set the clock signal...
+.side_set 1 opt
+
+.wrap_target
+
+; The default approach is to just accept jump targets in the fifo so they effectively
+; become a series of function calls, each function can then process arguments as needed
+; The jump target is 5 bits (the least significant 5)
+public start:
+    out pc, 5
+
+; // BULK OUTPUT //
+;
+; Simple sends up to 2^27 bits worth of data over the link. The remaining 27 bits of the
+; first control word dictate how many bits will be sent, then the bits follow in 32bit words
+; until no more are needed. If we end of a exact 32 bit boundary then we must send another
+; word (this saves on an instruction in here.)
+public output:
+    out x, 27
+public out_jmp:
+    set pindirs, 1              side 0
+bulk_out_loop:
+    out pins, 1                 side 0
+    jmp x--, bulk_out_loop      side 1
+    set pins, 0                 side 0
+    out NULL, 32                                ; clear anything not sent
+    jmp start
+
+; // INPUT // -- reads in a certain number of bits and pushes them into the fifo, this
+;                will push at the end
+public input:
+    out x, 27
+public in_jmp:
+    set pindirs, 0          side 0
+bulk_in_loop:
+    in pins, 1              side 1
+    jmp x--, bulk_in_loop   side 0
+    push
+    jmp start
+
+; // SHORT OUTPUT //
+;
+; Using a single control word sends up to 21 bits of data. The first 5 will be the jump
+; target (i.e. to here), then 5 to say how many bits, then up to 21 bits of data to send
+; (cant be 22 otherwise we'd end on a 32bit boundary and need two words)
+public short_output:
+    out x, 5
+    jmp out_jmp
+
+
+; // NEW CONDITIONAL //
+;
+; First 5 bits of the jump target to here, then we have 8 bits telling us how many
+; bits we will be reading or writing.
+; Then 5 bits of the location to go to if we are successful (cond_write_ok, or in_jmp)
+; Then 14 bits of the location to go if we have failed (cond_write_fail, or start)
+;
+public conditional:
+    ; We always have a trn, then we need to read 3 bits
+    set pindirs, 0          side 1
+    set x, 2                side 0
+cond_in_loop:
+    in pins, 1              side 1
+    jmp x--, cond_in_loop   side 0
+
+    ; Now we have three bits...
+    in NULL, 28                         ; move them to the lsb's (bar 1 to stop autopush)
+    mov y, ISR                          ; keep a copy in y
+    push                                ; and return the value
+    set x, 0b0010                       ; load the good value in x
+    jmp x!=y, cond_fail                 ; failure
+
+    ; If we get here then we are good...
+    ; For a read we just keep reading (we'll add the trn later)
+    ; For a write we need a trn
+    out x, 8                            ; load the value of x
+    out pc, (14 + 5)                    ; clear out and jump to the good value
+
+public cond_write_ok:
+; If we are ok on a write, then we need a trn before we output the data
+    jmp out_jmp             side 1
+
+cond_fail:
+; we always have a trn to do, but we don't have space to set pindirs and output
+; so we'll do that in the code.
+    out NULL, (8 + 5)                   ; move past the bit count and good jmp
+    out pc, 14                          ; clear out and jump to the error value
+
+public cond_write_fail:
+; if we failed on a write then we need to throw away the following two words
+    out NULL, 32
+    out NULL, 32
+.wrap
+
