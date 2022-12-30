@@ -46,6 +46,8 @@ static K_SEM_DEFINE(usb_sem, 1, 1);
 // we don't really need the mutex if we're parsing both the reports and the descriptors in the main loop
 K_MUTEX_DEFINE(their_usages_mutex);
 
+K_MUTEX_DEFINE(macros_mutex);
+
 static const struct device* hid_dev0;
 static const struct device* hid_dev1;  // config interface
 
@@ -741,6 +743,17 @@ void usages_mutex_enter() {
 
 void usages_mutex_exit() {
     k_mutex_unlock(&their_usages_mutex);
+}
+
+void macros_mutex_init() {
+}
+
+void macros_mutex_enter() {
+    k_mutex_lock(&macros_mutex, K_FOREVER);
+}
+
+void macros_mutex_exit() {
+    k_mutex_unlock(&macros_mutex);
 }
 
 uint64_t get_time() {

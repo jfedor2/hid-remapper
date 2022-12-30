@@ -12,6 +12,9 @@ const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
 const DEFAULT_SCALING = 1000;
 
 const NLAYERS = 4;
+const NMACROS = 8;
+const MACRO_ITEMS_IN_PACKET = 6;
+
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 
 const RESET_INTO_BOOTSEL = 1;
@@ -28,6 +31,9 @@ const RESUME = 11;
 const PAIR_NEW_DEVICE = 12;
 const CLEAR_BONDS = 13;
 const FLASH_B_SIDE = 14;
+const CLEAR_MACROS = 15;
+const APPEND_TO_MACRO = 16;
+const GET_MACRO = 17;
 
 const UINT8 = Symbol('uint8');
 const UINT32 = Symbol('uint32');
@@ -47,7 +53,10 @@ let config = {
         'layers': [0],
         'sticky': false,
         'scaling': DEFAULT_SCALING,
-    }]
+    }],
+    macros: [
+        [], [], [], [], [], [], [], []
+    ],
 };
 const ignored_usages = new Set([
 ]);
@@ -82,6 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setup_examples();
     modal = new bootstrap.Modal(document.getElementById('usage_modal'), {});
     setup_usages_modal();
+    setup_macros();
     set_ui_state();
 });
 
@@ -143,6 +153,36 @@ async function load_from_device() {
             });
         }
 
+        config['macros'] = [];
+
+        for (let macro_i = 0; macro_i < NMACROS; macro_i++) {
+            let macro = [];
+            let i = 0;
+            let keep_going = true;
+            while (keep_going) {
+                await send_feature_command(GET_MACRO, [[UINT32, macro_i], [UINT32, i]]);
+                const fields = await read_config_feature([UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32]);
+                const nitems = fields[0];
+                const usages = fields.slice(1);
+                if (nitems < MACRO_ITEMS_IN_PACKET) {
+                    keep_going = false;
+                }
+                if ((macro.length == 0) && (nitems > 0)) {
+                    macro = [[]];
+                }
+                for (const usage of usages.slice(0, nitems)) {
+                    if (usage == 0) {
+                        macro.push([]);
+                    } else {
+                        macro.at(-1).push('0x' + usage.toString(16).padStart(8, '0'));
+                    }
+                }
+                i += MACRO_ITEMS_IN_PACKET;
+            }
+
+            config['macros'].push(macro);
+        }
+
         set_ui_state();
     } catch (e) {
         display_error(e);
@@ -172,6 +212,29 @@ async function save_to_device() {
                 [UINT8, layer_list_to_mask(mapping['layers'])],
                 [UINT8, mapping['sticky'] ? STICKY_FLAG : 0],
             ]);
+        }
+
+        await send_feature_command(CLEAR_MACROS);
+        let macro_i = 0;
+        for (const macro of config['macros']) {
+            if (macro_i >= NMACROS) {
+                break;
+            }
+
+            const flat_zero_separated = macro.map((x) => x.concat(["0x00"])).flat().slice(0, -1);
+
+            for (let i = 0; i < flat_zero_separated.length; i += MACRO_ITEMS_IN_PACKET) {
+                const chunk_size = i + MACRO_ITEMS_IN_PACKET > flat_zero_separated.length
+                    ? flat_zero_separated.length - i
+                    : MACRO_ITEMS_IN_PACKET;
+                await send_feature_command(APPEND_TO_MACRO,
+                    [[UINT8, macro_i], [UINT8, chunk_size]].concat(
+                        flat_zero_separated
+                            .slice(i, i + chunk_size)
+                            .map((x) => [UINT32, parseInt(x, 16)])));
+            }
+
+            macro_i++;
         }
 
         await send_feature_command(PERSIST_CONFIG);
@@ -239,6 +302,45 @@ function set_mappings_ui_state() {
     }
 }
 
+function set_macros_ui_state() {
+    let macro_i = 0;
+    for (const macro of config['macros']) {
+        if (macro_i >= NMACROS) {
+            break;
+        }
+
+        const macro_element = document.getElementById('macro_' + macro_i);
+        const macro_entries = macro_element.querySelector('.macro_entries');
+        clear_children(macro_entries);
+        for (const entry of macro) {
+            const entry_element = add_macro_entry(macro_element);
+            for (const item of entry) {
+                const item_element = add_macro_item(entry_element);
+                const usage_button_element = item_element.querySelector('.macro_item_usage');
+                usage_button_element.innerText = readable_usage_name(item);
+                usage_button_element.setAttribute('data-hid-usage', item);
+            }
+            if (entry.length == 0) {
+                add_macro_item(entry_element);
+            }
+        }
+
+        macro_i++;
+    }
+    set_macro_previews();
+}
+
+function set_macro_previews() {
+    for (let i = 0; i < NMACROS; i++) {
+        const macro_element = document.getElementById('macro_' + i);
+        const preview = Array.from(macro_element.querySelectorAll('.macro_entry'),
+            (entry_element) => Array.from(entry_element.querySelectorAll('.macro_item_usage'),
+                (item_element) => item_element.innerText == "Nothing" ? "∅" : item_element.innerText
+            ).join('+')).join(', ');
+        macro_element.querySelector('.macro_preview').innerText = preview;
+    }
+}
+
 function set_ui_state() {
     if (config['version'] == 3) {
         config['unmapped_passthrough_layers'] = config['unmapped_passthrough'] ? [0] : [];
@@ -247,11 +349,13 @@ function set_ui_state() {
             mapping['layers'] = [mapping['layer']];
             delete mapping['layer'];
         }
+        config['macros'] = [ [], [], [], [], [], [], [], [] ];
         config['version'] = CONFIG_VERSION;
     }
 
     set_config_ui_state();
     set_mappings_ui_state();
+    set_macros_ui_state();
 }
 
 function add_mapping(mapping) {
@@ -271,11 +375,11 @@ function add_mapping(mapping) {
         layer_checkbox.addEventListener("change", layer_checkbox_onchange(mapping, layer_checkbox, i));
     }
     const source_button = clone.querySelector(".source_button");
-    source_button.innerText = (mapping['source_usage'] in usages) ? usages[mapping['source_usage']]['name'] : mapping['source_usage'];
+    source_button.innerText = readable_usage_name(mapping['source_usage']);
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
     source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));
     const target_button = clone.querySelector(".target_button");
-    target_button.innerText = (mapping['target_usage'] in usages) ? usages[mapping['target_usage']]['name'] : mapping['target_usage'];
+    target_button.innerText = readable_usage_name(mapping['target_usage']);
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
     target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
     container.appendChild(clone);
@@ -463,8 +567,10 @@ function show_usage_modal(mapping, source_or_target, element) {
             button.parentNode.replaceChild(clone, button); // to clear existing event listeners
             clone.addEventListener("click", function () {
                 let usage = clone.getAttribute('data-hid-usage');
-                mapping[source_or_target + '_usage'] = usage;
-                element.innerText = usage in usages ? usages[usage]['name'] : usage;
+                if (mapping !== null) {
+                    mapping[source_or_target + '_usage'] = usage;
+                }
+                element.innerText = readable_usage_name(usage);
 
                 if (source_or_target == "target") {
                     const mapping_container = element.closest(".mapping_container");
@@ -482,6 +588,11 @@ function show_usage_modal(mapping, source_or_target, element) {
                         layer_checkbox.checked = true;
                         layer_checkbox.disabled = true;
                     }
+                }
+
+                if (source_or_target == "macro_item") {
+                    element.setAttribute('data-hid-usage', usage);
+                    set_macros_config_from_ui_state();
                 }
 
                 modal.hide();
@@ -527,6 +638,78 @@ function setup_usages_modal() {
         clone.setAttribute('data-hid-usage', usage_);
         usage_classes['extra'].appendChild(clone);
     }
+}
+
+function setup_macros() {
+    const macros_container = document.getElementById('macros_container');
+    let template = document.getElementById('macro_template');
+    for (let i = 0; i < NMACROS; i++) {
+        let clone = template.content.cloneNode(true).firstElementChild;
+        clone.id = 'macro_' + i;
+        clone.querySelector('.accordion-button').setAttribute('data-bs-target', '#collapse_' + i);
+        clone.querySelector('.accordion-button').querySelector('.macro_name').innerText = 'Macro ' + (i + 1);
+        clone.querySelector('.accordion-collapse').id = 'collapse_' + i;
+        clone.querySelector('.add_macro_entry').addEventListener("click", () => {
+            const entry_element = add_macro_entry(clone);
+            add_macro_item(entry_element);
+            set_macros_config_from_ui_state();
+        });
+        macros_container.appendChild(clone);
+    }
+}
+
+function add_macro_entry(element) {
+    const template = document.getElementById('macro_entry_template');
+    const clone = template.content.cloneNode(true).firstElementChild;
+    clone.querySelector('.add_macro_item').addEventListener("click", () => {
+        add_macro_item(clone);
+        set_macros_config_from_ui_state();
+    });
+    element.querySelector('.macro_entries').appendChild(clone);
+    return clone;
+}
+
+function add_macro_item(element) {
+    const template = document.getElementById('macro_item_template');
+    const clone = template.content.cloneNode(true).firstElementChild;
+    const button = clone.querySelector('.macro_item_usage');
+    button.addEventListener("click", show_usage_modal(null, 'macro_item', button));
+    clone.querySelector('.delete_macro_item').addEventListener("click", () => {
+        delete_macro_item(clone);
+        set_macros_config_from_ui_state();
+    });
+    element.insertBefore(clone, element.querySelector(".add_item_container"));
+    return clone;
+}
+
+function delete_macro_item(element) {
+    const parent = element.parentNode;
+    parent.removeChild(element);
+    if (parent.querySelectorAll('.macro_item').length == 0) {
+        const macro_entry = parent.closest('.macro_entry');
+        macro_entry.parentNode.removeChild(macro_entry);
+    }
+}
+
+function set_macros_config_from_ui_state() {
+    config['macros'] = [];
+    for (let i = 0; i < NMACROS; i++) {
+        let macro = [];
+        const macro_element = document.querySelector('#macro_' + i);
+        for (const entry_element of macro_element.querySelectorAll('.macro_entry')) {
+            let entry = [];
+            for (const item_element of entry_element.querySelectorAll('.macro_item_usage')) {
+                const usage = item_element.getAttribute('data-hid-usage');
+                if (usage != '0x00000000') {
+                    entry.push(usage);
+                }
+            }
+            macro.push(entry);
+        }
+        config['macros'].push(macro);
+    }
+
+    set_macro_previews();
 }
 
 function partial_scroll_timeout_onchange() {
@@ -612,4 +795,8 @@ function layer_list_to_mask(layers) {
     }
 
     return layer_mask;
+}
+
+function readable_usage_name(usage) {
+    return (usage in usages) ? usages[usage]['name'] : usage;
 }

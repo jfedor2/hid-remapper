@@ -70,6 +70,36 @@ for mapping in config.get("mappings", []):
     device.send_feature_report(add_crc(data))
 
 data = struct.pack(
+    "<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, CLEAR_MACROS, *([0] * 26)
+)
+device.send_feature_report(add_crc(data))
+
+for macro_index, macro in enumerate(config.get("macros", [])):
+    if macro_index >= NMACROS:
+        break
+    flat_zero_separated = [
+        int(item, 16) for entry in macro for item in entry + ["0x00"]
+    ][:-1]
+    print("flat_zero_separated", flat_zero_separated)
+    for chunk in batched(flat_zero_separated, MACRO_ITEMS_IN_PACKET):
+        print("chunk", chunk)
+        data = struct.pack(
+            "<BBBBB6L",
+            REPORT_ID_CONFIG,
+            CONFIG_VERSION,
+            APPEND_TO_MACRO,
+            macro_index,
+            len(chunk),
+            *(chunk + (0,) * (MACRO_ITEMS_IN_PACKET - len(chunk)))
+        )
+        print(
+            macro_index,
+            len(chunk),
+            *(chunk + (0,) * (MACRO_ITEMS_IN_PACKET - len(chunk)))
+        )
+        device.send_feature_report(add_crc(data))
+
+data = struct.pack(
     "<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, PERSIST_CONFIG, *([0] * 26)
 )
 device.send_feature_report(add_crc(data))

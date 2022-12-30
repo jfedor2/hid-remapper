@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <queue>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -24,6 +25,7 @@ const uint32_t H_SCROLL_USAGE = 0x000C0238;
 
 const uint8_t NLAYERS = 4;
 const uint32_t LAYERS_USAGE_PAGE = 0xFFF10000;
+const uint32_t MACRO_USAGE_PAGE = 0xFFF20000;
 
 const std::unordered_map<uint32_t, uint8_t> resolution_multiplier_masks = {
     { V_SCROLL_USAGE, V_RESOLUTION_BITMASK },
@@ -62,6 +64,9 @@ uint8_t layer_state_mask = 1;
 
 std::vector<uint32_t> relative_usages;
 std::unordered_set<uint32_t> relative_usage_set;
+
+std::queue<std::vector<uint32_t>> macro_queue;
+std::vector<uint64_t> macro_usages;  // layer_mask << 32 | usage
 
 std::unordered_map<uint32_t, int32_t> accumulated_scroll;
 std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
@@ -139,6 +144,7 @@ bool needs_to_be_sent(uint8_t report_id) {
 void set_mapping_from_config() {
     std::unordered_set<uint64_t> layer_triggering_sticky_set;
     std::unordered_set<uint64_t> sticky_usage_set;
+    std::unordered_set<uint64_t> macro_usage_set;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     reverse_mapping.clear();
@@ -156,6 +162,9 @@ void set_mapping_from_config() {
             .layer_mask = layer_mask,
         });
         mapped_on_layers[mapping.source_usage] |= layer_mask;
+        if ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE) {
+            macro_usage_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
+        }
         if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
             if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
                 layer_triggering_sticky_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
@@ -167,6 +176,7 @@ void set_mapping_from_config() {
 
     layer_triggering_stickies.assign(layer_triggering_sticky_set.begin(), layer_triggering_sticky_set.end());
     sticky_usages.assign(sticky_usage_set.begin(), sticky_usage_set.end());
+    macro_usages.assign(macro_usage_set.begin(), macro_usage_set.end());
 
     if (unmapped_passthrough_layer_mask) {
         for (auto const& [usage, usage_def] : our_usages_flat) {
@@ -312,6 +322,44 @@ void process_mapping(bool auto_repeat) {
                 put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, value);
             }
         }
+    }
+
+    // queue triggered macros
+    for (int macro = 0; macro < NMACROS; macro++) {
+        auto search = reverse_mapping.find(MACRO_USAGE_PAGE | (macro + 1));
+        if (search == reverse_mapping.end()) {
+            continue;
+        }
+        auto const& sources = search->second;
+
+        for (auto const& map_source : sources) {
+            if ((layer_state_mask & map_source.layer_mask) &&
+                ((prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0))) {
+                macros_mutex_enter();
+                for (auto const& usages : macros[macro]) {
+                    printf("8==D %d\n", usages.size());
+                    macro_queue.push(usages);
+                }
+                macros_mutex_exit();
+            }
+        }
+    }
+
+    for (auto const& layer_usage : macro_usages) {
+        uint32_t usage = layer_usage & 0xFFFFFFFF;
+        prev_input_state[usage] = input_state[usage];
+    }
+
+    // execute queued macros
+    if ((or_items == 0) && !macro_queue.empty()) {
+        for (uint32_t usage : macro_queue.front()) {
+            auto search = our_usages_flat.find(usage);
+            if (search != our_usages_flat.end()) {
+                const usage_def_t& our_usage = search->second;
+                put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, 1);
+            }
+        }
+        macro_queue.pop();
     }
 
     for (auto usage : relative_usages) {

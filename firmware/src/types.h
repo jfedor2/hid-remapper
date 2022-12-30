@@ -19,6 +19,9 @@ enum class ConfigCommand : int8_t {
     PAIR_NEW_DEVICE = 12,
     CLEAR_BONDS = 13,
     FLASH_B_SIDE = 14,
+    CLEAR_MACROS = 15,
+    APPEND_TO_MACRO = 16,
+    GET_MACRO = 17,
 };
 
 struct usage_def_t {
@@ -93,8 +96,30 @@ struct __attribute__((packed)) get_indexed_t {
     uint32_t requested_index;
 };
 
+#define MACRO_ITEMS_IN_PACKET 6
+
+struct __attribute__((packed)) append_to_macro_t {
+    uint8_t macro;
+    uint8_t nitems;
+    uint32_t usages[MACRO_ITEMS_IN_PACKET];
+};
+
 struct __attribute__((packed)) crc32_t {
     uint32_t crc32;
+};
+
+struct __attribute__((packed)) get_macro_t {
+    uint32_t requested_macro;
+    uint32_t requested_macro_item;
+};
+
+struct __attribute__((packed)) get_macro_response_t {
+    uint8_t nitems;
+    uint32_t usages[MACRO_ITEMS_IN_PACKET];
+};
+
+struct __attribute__((packed)) macro_item_t {
+    uint32_t usage;
 };
 
 #define NUSAGES_IN_PACKET 3

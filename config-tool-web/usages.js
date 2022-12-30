@@ -153,6 +153,14 @@ const usages = {
     "0xfff10001": { 'name': 'Layer 1', 'class': 'other' },
     "0xfff10002": { 'name': 'Layer 2', 'class': 'other' },
     "0xfff10003": { 'name': 'Layer 3', 'class': 'other' },
+    "0xfff20001": { 'name': 'Macro 1', 'class': 'other' },
+    "0xfff20002": { 'name': 'Macro 2', 'class': 'other' },
+    "0xfff20003": { 'name': 'Macro 3', 'class': 'other' },
+    "0xfff20004": { 'name': 'Macro 4', 'class': 'other' },
+    "0xfff20005": { 'name': 'Macro 5', 'class': 'other' },
+    "0xfff20006": { 'name': 'Macro 6', 'class': 'other' },
+    "0xfff20007": { 'name': 'Macro 7', 'class': 'other' },
+    "0xfff20008": { 'name': 'Macro 8', 'class': 'other' },
 };
 
 export default usages;

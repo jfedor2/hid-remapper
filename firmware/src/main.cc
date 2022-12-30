@@ -31,6 +31,7 @@ volatile bool tick_pending;
 uint64_t next_print = 0;
 
 mutex_t their_usages_mutex;
+mutex_t macros_mutex;
 
 void print_stats_maybe() {
     uint64_t now = time_us_64();
@@ -87,12 +88,25 @@ void usages_mutex_exit() {
     mutex_exit(&their_usages_mutex);
 }
 
+void macros_mutex_init() {
+    mutex_init(&macros_mutex);
+}
+
+void macros_mutex_enter() {
+    mutex_enter_blocking(&macros_mutex);
+}
+
+void macros_mutex_exit() {
+    mutex_exit(&macros_mutex);
+}
+
 uint64_t get_time() {
     return time_us_64();
 }
 
 int main() {
     usages_mutex_init();
+    macros_mutex_init();
     extra_init();
     parse_our_descriptor();
     load_config(FLASH_CONFIG_IN_MEMORY);

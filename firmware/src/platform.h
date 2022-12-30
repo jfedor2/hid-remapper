@@ -14,6 +14,10 @@ void usages_mutex_init();
 void usages_mutex_enter();
 void usages_mutex_exit();
 
+void macros_mutex_init();
+void macros_mutex_enter();
+void macros_mutex_exit();
+
 uint64_t get_time();
 
 #endif

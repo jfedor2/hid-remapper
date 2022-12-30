@@ -97,6 +97,10 @@
             </div>
         </div>
 
+        <div class="accordion mb-2 mt-3" id="macros_container">
+
+        </div>
+
         <div class="row mt-4">
             <div class="col-auto">
                 <button id="download_json" type="button" class="btn btn-primary">Export JSON</button>
@@ -167,6 +171,42 @@
 
     <template id="example_template">
         <a class="text-reset" href="javascript:void(0);"></a>
+    </template>
+
+    <template id="macro_template">
+        <div class="accordion-item" id="macro_N">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_X">
+                    <span class="macro_name flex-shrink-0">Macro N</span>
+                    <span class="macro_preview text-muted px-3 flex-fill text-truncate"></span>
+                </button>
+            </h2>
+            <div id="collapse_X" class="accordion-collapse collapse" data-bs-parent="#macros_container">
+                <div class="accordion-body">
+                    <div class="macro_entries">
+                    </div>
+                    <div class="mt-1">
+                        <button type="button" class="add_macro_entry btn btn-outline-primary">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="macro_entry_template">
+        <div class="macro_entry row g-1 mt-1">
+
+            <div class="add_item_container col-auto">
+                <button type="button" class="add_macro_item btn btn-outline-primary">+</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="macro_item_template">
+        <div class="btn-group macro_item col-auto">
+            <button type="button" class="delete_macro_item btn btn-primary">×</button>
+            <button type="button" class="macro_item_usage btn btn-primary" data-hid-usage="0x00000000">Nothing</button>
+        </div>
     </template>
 
     <div id="usage_modal" class="modal fade" tabindex="-1">

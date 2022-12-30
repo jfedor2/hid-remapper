@@ -19,3 +19,5 @@ uint32_t partial_scroll_timeout = 1000000;
 std::vector<mapping_config_t> config_mappings;
 
 uint8_t resolution_multiplier = 0;
+
+std::vector<std::vector<uint32_t>> macros[NMACROS];

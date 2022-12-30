@@ -1,6 +1,7 @@
 import hid
 import binascii
 import struct
+import itertools
 
 VENDOR_ID = 0xCAFE
 PRODUCT_ID = 0xBAF2
@@ -27,9 +28,15 @@ RESUME = 11
 PAIR_NEW_DEVICE = 12
 CLEAR_BONDS = 13
 FLASH_B_SIDE = 14
+CLEAR_MACROS = 15
+APPEND_TO_MACRO = 16
+GET_MACRO = 17
 
 UNMAPPED_PASSTHROUGH_FLAG = 0x01
 STICKY_FLAG = 0x01
+
+NMACROS = 8
+MACRO_ITEMS_IN_PACKET = 6
 
 
 def check_crc(buf, crc_):
@@ -60,3 +67,13 @@ def mask_to_layer_list(layer_mask):
 
 def layer_list_to_mask(layer_list):
     return sum([(1 << layer) for layer in range(NLAYERS) if layer in layer_list])
+
+
+def batched(iterable, n):
+    "Batch data into tuples of length n. The last batch may be shorter."
+    # batched('ABCDEFG', 3) --> ABC DEF G
+    if n < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(itertools.islice(it, n)):
+        yield batch
