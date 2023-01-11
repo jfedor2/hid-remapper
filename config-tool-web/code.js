@@ -108,6 +108,7 @@ async function open_device() {
             await device.open().catch((err) => { display_error(err + "\nIf you're on Linux, you might need to give yourself permissions to the appropriate /dev/hidraw* device."); });
         }
         success = device.opened;
+        success &&= await check_device_version();
         if (success) {
             await get_usages_from_device();
             setup_usages_modal();
@@ -132,7 +133,7 @@ async function load_from_device() {
         await send_feature_command(GET_CONFIG);
         const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override] =
             await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8]);
-        check_version(config_version);
+        check_received_version(config_version);
 
         config['version'] = config_version;
         config['unmapped_passthrough_layers'] = mask_to_layer_list(flags & ((1 << NLAYERS) - 1));
@@ -249,7 +250,7 @@ async function get_usages_from_device() {
         await send_feature_command(GET_CONFIG);
         const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count] =
             await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32]);
-        check_version(config_version);
+        check_received_version(config_version);
 
         let extra_usage_set = new Set();
 
@@ -427,7 +428,7 @@ function file_uploaded() {
     reader.onload = function (e) {
         try {
             const new_config = JSON.parse(e.target.result);
-            check_version(new_config['version']);
+            check_json_version(new_config['version']);
             config = new_config;
             set_ui_state();
         } catch (e) {
@@ -443,10 +444,10 @@ function file_uploaded() {
     document.getElementById("file_input").value = '';
 }
 
-async function send_feature_command(command, fields = []) {
+async function send_feature_command(command, fields = [], version = CONFIG_VERSION) {
     let buffer = new ArrayBuffer(CONFIG_SIZE);
     let dataview = new DataView(buffer);
-    dataview.setUint8(0, CONFIG_VERSION);
+    dataview.setUint8(0, version);
     dataview.setUint8(1, command);
     let pos = 2;
     for (const [type, value] of fields) {
@@ -504,6 +505,11 @@ function display_error(message) {
     document.getElementById("error").classList.remove("d-none");
 }
 
+function display_error_html(message) {
+    document.getElementById("error").innerHTML = message;
+    document.getElementById("error").classList.remove("d-none");
+}
+
 function check_crc(data) {
     if (data.getUint32(CONFIG_SIZE - 4, true) != crc32(data, CONFIG_SIZE - 4)) {
         throw new Error('CRC error.');
@@ -514,10 +520,39 @@ function add_crc(data) {
     data.setUint32(CONFIG_SIZE - 4, crc32(data, CONFIG_SIZE - 4), true);
 }
 
-function check_version(config_version) {
-    if ((config_version != 3) && (config_version != 4)) {
+function check_json_version(config_version) {
+    if (!([3, 4].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
+}
+
+function check_received_version(config_version) {
+    if (config_version != CONFIG_VERSION) {
+        throw new Error("Incompatible version.");
+    }
+}
+
+async function check_device_version() {
+    // This isn't a reliable way of checking the config version of the device because
+    // it could be version X, ignore our GET_CONFIG call with version Y and just happen
+    // to have Y at the right place in the buffer from some previous call done by some
+    // other software.
+    for (const version of [CONFIG_VERSION, 3, 2]) {
+        await send_feature_command(GET_CONFIG, [], version);
+        const [received_version] = await read_config_feature([UINT8]);
+        if (received_version == version) {
+            if (version == CONFIG_VERSION) {
+                return true;
+            }
+            display_error_html('<p>Incompatible version (' + version + ').</p>' +
+                '<p>Please consider upgrading your HID Remapper firmware to the <a href="https://github.com/jfedor2/hid-remapper/releases/latest">latest version</a>.</p>' +
+                '<p class="mb-0">Alternatively, click <a href="v' + version + '/">here</a> for an older version of the configuration tool that should be compatible with your device.</p>');
+            return false;
+        }
+    }
+
+    display_error_html('<p>Incompatible version.</p><p class="mb-0">Please consider upgrading your HID Remapper firmware to the <a href="https://github.com/jfedor2/hid-remapper/releases/latest">latest version</a>.</p>');
+    return false;
 }
 
 function clear_children(element) {
