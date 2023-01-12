@@ -146,6 +146,10 @@ uint16_t handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) 
         get_feature_t* config_buffer = (get_feature_t*) buffer;
         memset(config_buffer, 0, sizeof(get_feature_t));
         switch (last_config_command) {
+            case ConfigCommand::INVALID_COMMAND: {
+                memset(config_buffer, 0xFF, sizeof(get_feature_t));
+                break;
+            }
             case ConfigCommand::GET_CONFIG: {
                 fill_get_config((get_config_t*) config_buffer);
                 break;
@@ -209,6 +213,7 @@ uint16_t handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) 
                 break;
         }
         config_buffer->crc32 = crc32((uint8_t*) config_buffer, CONFIG_SIZE - 4);
+        last_config_command = ConfigCommand::NO_COMMAND;
         return CONFIG_SIZE;
     }
 
@@ -224,6 +229,8 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
             set_feature_t* config_buffer = (set_feature_t*) buffer;
             last_config_command = config_buffer->command;
             switch (config_buffer->command) {
+                case ConfigCommand::NO_COMMAND:
+                    break;
                 case ConfigCommand::RESET_INTO_BOOTSEL:
                     reset_to_bootloader();
                     break;
@@ -240,6 +247,8 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     set_mapping_from_config();
                     break;
                 }
+                case ConfigCommand::GET_CONFIG:
+                    break;
                 case ConfigCommand::CLEAR_MAPPING:
                     config_mappings.clear();
                     set_mapping_from_config();
@@ -306,8 +315,11 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     break;
                 }
                 default:
+                    last_config_command = ConfigCommand::INVALID_COMMAND;
                     break;
             }
+        } else {
+            last_config_command = ConfigCommand::INVALID_COMMAND;
         }
     }
 }

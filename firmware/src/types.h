@@ -22,6 +22,7 @@ enum class ConfigCommand : int8_t {
     CLEAR_MACROS = 15,
     APPEND_TO_MACRO = 16,
     GET_MACRO = 17,
+    INVALID_COMMAND = 18,
 };
 
 struct usage_def_t {
