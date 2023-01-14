@@ -117,14 +117,14 @@ const examples = [
                 {
                     "source_usage": "0x00010031",
                     "target_usage": "0x00010038",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 10
                 },
                 {
                     "source_usage": "0x00010030",
                     "target_usage": "0x000c0238",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 10
                 }
@@ -149,14 +149,14 @@ const examples = [
                 {
                     "source_usage": "0x00010030",
                     "target_usage": "0x00010030",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 250
                 },
                 {
                     "source_usage": "0x00010031",
                     "target_usage": "0x00010031",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 250
                 }
@@ -245,35 +245,35 @@ const examples = [
                 {
                     "source_usage": "0x00070050",
                     "target_usage": "0x00010030",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": -500
                 },
                 {
                     "source_usage": "0x0007004f",
                     "target_usage": "0x00010030",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 500
                 },
                 {
                     "source_usage": "0x00070052",
                     "target_usage": "0x00010031",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": -500
                 },
                 {
                     "source_usage": "0x00070051",
                     "target_usage": "0x00010031",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 500
                 },
                 {
                     "source_usage": "0x000700e4",
                     "target_usage": "0x00090001",
-                    "layer": "1",
+                    "layer": 1,
                     "sticky": false,
                     "scaling": 1000
                 }
