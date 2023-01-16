@@ -337,10 +337,7 @@ static void gatt_discover(struct bt_conn* conn) {
 static int64_t button_pressed_at;
 
 static void button_cb(const struct device* dev, struct gpio_callback* cb, uint32_t pins) {
-    int button_state;
-    if (CHK(button_state = gpio_pin_get(dev, button.pin))) {
-        return;
-    }
+    int button_state = gpio_pin_get(dev, button.pin);
     if (button_state) {
         button_pressed_at = k_uptime_get();
     } else {
