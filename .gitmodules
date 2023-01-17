@@ -4,3 +4,6 @@
 [submodule "firmware/tinyusb"]
 	path = firmware/tinyusb
 	url = https://github.com/jfedor2/tinyusb
+[submodule "firmware/Pico-PIO-USB"]
+	path = firmware/Pico-PIO-USB
+	url = https://github.com/jfedor2/Pico-PIO-USB

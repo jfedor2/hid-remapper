@@ -6,6 +6,7 @@ add_compile_definitions(PERSISTED_CONFIG_SIZE=4096)
 set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/pico-sdk")
 set(PICO_TINYUSB_PATH "${CMAKE_CURRENT_LIST_DIR}/tinyusb")
 set(OUR_PIO_USB_PATH "${CMAKE_CURRENT_LIST_DIR}/src/pio_usb")
+set(PICO_PIO_USB_PATH "${CMAKE_CURRENT_LIST_DIR}/Pico-PIO-USB")
 set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/boards")
 
 include(pico_sdk_import.cmake)
@@ -13,6 +14,8 @@ include(pico_sdk_import.cmake)
 project(remapper)
 
 pico_sdk_init()
+
+check_and_add_pico_pio_usb_support()
 
 add_compile_options(-Wall)
 
@@ -59,6 +62,46 @@ target_link_libraries(remapper_classic
 
 pico_set_binary_type(remapper_classic copy_to_ram)
 pico_add_extra_outputs(remapper_classic)
+
+
+add_executable(remapper
+    src/main.cc
+    src/remapper.cc
+    src/remapper_single.cc
+    src/crc.cc
+    src/descriptor_parser.cc
+    src/tinyusb_stuff.cc
+    src/our_descriptor.cc
+    src/globals.cc
+    src/config.cc
+    src/quirks.cc
+    src/interval_override.cc
+)
+
+target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
+target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_RX_PIN=17)
+target_compile_definitions(remapper PUBLIC PIO_USB_DP_PIN=0)
+
+target_include_directories(remapper PRIVATE
+    src
+    src/tusb_config_both
+    ${PICO_PIO_USB_PATH}
+)
+
+target_link_libraries(remapper
+    pico_stdlib
+    pico_multicore
+    hardware_pio
+    hardware_dma
+    hardware_flash
+    tinyusb_device
+    tinyusb_host
+    tinyusb_board
+    tinyusb_pico_pio_usb
+)
+
+pico_set_binary_type(remapper copy_to_ram)
+pico_add_extra_outputs(remapper)
 
 
 add_executable(remapper_dual_a
