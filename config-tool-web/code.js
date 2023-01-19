@@ -350,7 +350,7 @@ function set_ui_state() {
             mapping['layers'] = [mapping['layer']];
             delete mapping['layer'];
         }
-        config['macros'] = [ [], [], [], [], [], [], [], [] ];
+        config['macros'] = [[], [], [], [], [], [], [], []];
         config['version'] = CONFIG_VERSION;
     }
 
