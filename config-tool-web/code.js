@@ -384,6 +384,7 @@ function add_mapping(mapping) {
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
     target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
     container.appendChild(clone);
+    set_forced_layers(mapping, clone);
 }
 
 function download_json() {
@@ -571,6 +572,7 @@ function delete_mapping(mapping, element) {
 function sticky_onclick(mapping, element) {
     return function () {
         mapping['sticky'] = element.checked;
+        set_forced_layers(mapping, element.closest(".mapping_container"));
     };
 }
 
@@ -608,21 +610,7 @@ function show_usage_modal(mapping, source_or_target, element) {
                 element.innerText = readable_usage_name(usage);
 
                 if (source_or_target == "target") {
-                    const mapping_container = element.closest(".mapping_container");
-                    for (let i = 0; i < NLAYERS; i++) {
-                        mapping_container.querySelector(".layer_checkbox" + i).disabled = false;
-                    }
-                    const usage_int = parseInt(usage, 16);
-                    if (((usage_int & 0xFFFF0000) >>> 0) == LAYERS_USAGE_PAGE) {
-                        const layer = usage_int & 0xFFFF;
-                        if (!mapping['layers'].includes(layer)) {
-                            mapping['layers'].push(layer)
-                            mapping['layers'].sort();
-                        }
-                        const layer_checkbox = mapping_container.querySelector(".layer_checkbox" + layer);
-                        layer_checkbox.checked = true;
-                        layer_checkbox.disabled = true;
-                    }
+                    set_forced_layers(mapping, element.closest(".mapping_container"));
                 }
 
                 if (source_or_target == "macro_item") {
@@ -834,4 +822,26 @@ function layer_list_to_mask(layers) {
 
 function readable_usage_name(usage) {
     return (usage in usages) ? usages[usage]['name'] : usage;
+}
+
+function set_forced_layers(mapping, mapping_container) {
+    for (let i = 0; i < NLAYERS; i++) {
+        mapping_container.querySelector(".layer_checkbox" + i).disabled = false;
+    }
+    const usage_int = parseInt(mapping['target_usage'], 16);
+    if (((usage_int & 0xFFFF0000) >>> 0) == LAYERS_USAGE_PAGE) {
+        const layer = usage_int & 0xFFFF;
+        const layer_checkbox = mapping_container.querySelector(".layer_checkbox" + layer);
+        if (mapping['sticky']) {
+            mapping['layers'] = mapping['layers'].filter((x) => x != layer);
+            layer_checkbox.checked = false;
+        } else {
+            if (!mapping['layers'].includes(layer)) {
+                mapping['layers'].push(layer)
+                mapping['layers'].sort();
+            }
+            layer_checkbox.checked = true;
+        }
+        layer_checkbox.disabled = true;
+    }
 }

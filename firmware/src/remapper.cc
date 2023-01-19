@@ -37,8 +37,7 @@ std::unordered_map<uint32_t, std::vector<map_source_t>> reverse_mapping;  // tar
 std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
 std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 
-std::vector<uint64_t> layer_triggering_stickies;  // layer_mask << 32 | usage
-std::vector<uint64_t> sticky_usages;              // non-layer triggering, layer_mask << 32 | usage
+std::vector<uint64_t> sticky_usages;  // layer_mask << 32 | usage
 
 // report_id -> ...
 uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
@@ -66,7 +65,6 @@ std::vector<uint32_t> relative_usages;
 std::unordered_set<uint32_t> relative_usage_set;
 
 std::queue<std::vector<uint32_t>> macro_queue;
-std::vector<uint64_t> macro_usages;  // layer_mask << 32 | usage
 
 std::unordered_map<uint32_t, int32_t> accumulated_scroll;
 std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
@@ -142,9 +140,7 @@ bool needs_to_be_sent(uint8_t report_id) {
 }
 
 void set_mapping_from_config() {
-    std::unordered_set<uint64_t> layer_triggering_sticky_set;
-    std::unordered_set<uint64_t> sticky_usage_set;
-    std::unordered_set<uint64_t> macro_usage_set;
+    std::unordered_map<uint32_t, uint8_t> sticky_usage_map;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     reverse_mapping.clear();
@@ -152,8 +148,16 @@ void set_mapping_from_config() {
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
         if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
-            // layer-triggering mappings are forced to be present on the layer they trigger
-            layer_mask |= (1 << (mapping.target_usage & 0xFFFF)) & ((1 << NLAYERS) - 1);
+            uint16_t layer = mapping.target_usage & 0xFFFF;
+            if (mapping.flags & MAPPING_FLAG_STICKY) {
+                // sticky layer-triggering mappings are forces to NOT be present on the layer they trigger
+                layer_mask &= ~(1 << layer);
+                // but for unmapped passthrough purposes we pretend they are
+                mapped_on_layers[mapping.source_usage] |= (1 << layer) & ((1 << NLAYERS) - 1);
+            } else {
+                // non-sticky layer-triggering mappings are forced to BE present on the layer they trigger
+                layer_mask |= (1 << layer) & ((1 << NLAYERS) - 1);
+            }
         }
         reverse_mapping[mapping.target_usage].push_back((map_source_t){
             .usage = mapping.source_usage,
@@ -162,21 +166,18 @@ void set_mapping_from_config() {
             .layer_mask = layer_mask,
         });
         mapped_on_layers[mapping.source_usage] |= layer_mask;
-        if ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE) {
-            macro_usage_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
-        }
-        if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
-            if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
-                layer_triggering_sticky_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
-            } else {
-                sticky_usage_set.insert(((uint64_t) layer_mask << 32) | mapping.source_usage);
-            }
+        if (((mapping.flags & MAPPING_FLAG_STICKY) != 0) ||
+            ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE)) {
+            // usages that trigger macros need their state tracked same as stickies
+            sticky_usage_map[mapping.source_usage] |= layer_mask;
         }
     }
 
-    layer_triggering_stickies.assign(layer_triggering_sticky_set.begin(), layer_triggering_sticky_set.end());
-    sticky_usages.assign(sticky_usage_set.begin(), sticky_usage_set.end());
-    macro_usages.assign(macro_usage_set.begin(), macro_usage_set.end());
+    sticky_usages.clear();
+
+    for (auto const& [usage, layer_mask] : sticky_usage_map) {
+        sticky_usages.push_back(((uint64_t) layer_mask << 32) | usage);
+    }
 
     if (unmapped_passthrough_layer_mask) {
         for (auto const& [usage, usage_def] : our_usages_flat) {
@@ -231,23 +232,36 @@ void process_mapping(bool auto_repeat) {
         return;
     }
 
-    for (auto const& layer_usage : layer_triggering_stickies) {
+    for (auto const& layer_usage : sticky_usages) {
         uint32_t usage = layer_usage & 0xFFFFFFFF;
         uint32_t layer_mask = layer_usage >> 32;
-        if ((layer_mask & layer_state_mask) &&
-            (prev_input_state[usage] == 0) && (input_state[usage] != 0)) {
-            sticky_state[usage] = !sticky_state[usage];
+        if ((layer_state_mask & layer_mask) &&
+            ((prev_input_state[usage] == 0) && (input_state[usage] != 0))) {
+            sticky_state[usage] ^= (layer_state_mask & layer_mask);
         }
-        prev_input_state[usage] = input_state[usage];
     }
 
     uint8_t new_layer_state_mask = 0;
     for (int i = 1; i < NLAYERS; i++) {
         for (auto const& map_source : reverse_mapping[LAYERS_USAGE_PAGE | i]) {
-            if ((map_source.layer_mask & layer_state_mask) &&
-                (map_source.sticky ? sticky_state[map_source.usage] : input_state[map_source.usage])) {
-                new_layer_state_mask |= 1 << i;
-                break;
+            if (!map_source.sticky) {
+                if ((map_source.layer_mask & layer_state_mask) && input_state[map_source.usage]) {
+                    new_layer_state_mask |= 1 << i;
+                }
+            } else {  // is sticky
+                // This part is responsible for deactivating a layer if it was activated
+                // by a sticky mapping and the user pressed the button again.
+                // There must be a better way of handling this.
+                if ((prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0) &&
+                    (sticky_state[map_source.usage] & map_source.layer_mask) &&
+                    (layer_state_mask & (1 << i))) {
+                    sticky_state[map_source.usage] &= ~map_source.layer_mask;
+                }
+
+                // Sticky mapping works even if it's not present on the currently active layers.
+                if (sticky_state[map_source.usage] & map_source.layer_mask) {
+                    new_layer_state_mask |= 1 << i;
+                }
             }
         }
     }
@@ -259,14 +273,26 @@ void process_mapping(bool auto_repeat) {
 
     layer_state_mask = new_layer_state_mask;
 
-    for (auto const& layer_usage : sticky_usages) {
-        uint32_t usage = layer_usage & 0xFFFFFFFF;
-        uint32_t layer_mask = layer_usage >> 32;
-        if ((layer_state_mask & layer_mask) &&
-            ((prev_input_state[usage] == 0) && (input_state[usage] != 0))) {
-            sticky_state[usage] ^= (layer_state_mask & layer_mask);
+    // queue triggered macros
+    for (int macro = 0; macro < NMACROS; macro++) {
+        auto search = reverse_mapping.find(MACRO_USAGE_PAGE | (macro + 1));
+        if (search == reverse_mapping.end()) {
+            continue;
+        }
+        auto const& sources = search->second;
+
+        for (auto const& map_source : sources) {
+            if ((layer_state_mask & map_source.layer_mask) &&
+                ((prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0))) {
+                macros_mutex_enter();
+                for (auto const& usages : macros[macro]) {
+                    macro_queue.push(usages);
+                }
+                macros_mutex_exit();
+            }
         }
     }
+
     for (auto const& layer_usage : sticky_usages) {
         uint32_t usage = layer_usage & 0xFFFFFFFF;
         prev_input_state[usage] = input_state[usage];
@@ -322,32 +348,6 @@ void process_mapping(bool auto_repeat) {
                 put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, value);
             }
         }
-    }
-
-    // queue triggered macros
-    for (int macro = 0; macro < NMACROS; macro++) {
-        auto search = reverse_mapping.find(MACRO_USAGE_PAGE | (macro + 1));
-        if (search == reverse_mapping.end()) {
-            continue;
-        }
-        auto const& sources = search->second;
-
-        for (auto const& map_source : sources) {
-            if ((layer_state_mask & map_source.layer_mask) &&
-                ((prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0))) {
-                macros_mutex_enter();
-                for (auto const& usages : macros[macro]) {
-                    printf("8==D %d\n", usages.size());
-                    macro_queue.push(usages);
-                }
-                macros_mutex_exit();
-            }
-        }
-    }
-
-    for (auto const& layer_usage : macro_usages) {
-        uint32_t usage = layer_usage & 0xFFFFFFFF;
-        prev_input_state[usage] = input_state[usage];
     }
 
     // execute queued macros

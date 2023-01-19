@@ -369,6 +369,86 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'middle button cycles DPI',
+        'config': {
+            "version": 4,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
+            "mappings": [
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0xfff10001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": true,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0xfff10002",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": true,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010030",
+                    "target_usage": "0x00010030",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "scaling": 500
+                },
+                {
+                    "source_usage": "0x00010031",
+                    "target_usage": "0x00010031",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "scaling": 500
+                },
+                {
+                    "source_usage": "0x00010030",
+                    "target_usage": "0x00010030",
+                    "layers": [
+                        2
+                    ],
+                    "sticky": false,
+                    "scaling": 250
+                },
+                {
+                    "source_usage": "0x00010031",
+                    "target_usage": "0x00010031",
+                    "layers": [
+                        2
+                    ],
+                    "sticky": false,
+                    "scaling": 250
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ]
+        }
+    },
 ];
 
 export default examples;
