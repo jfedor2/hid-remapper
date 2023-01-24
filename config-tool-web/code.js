@@ -3,12 +3,15 @@ import usages from './usages.js';
 import examples from './examples.js';
 
 const REPORT_ID_CONFIG = 100;
-const STICKY_FLAG = 0x01;
+const STICKY_FLAG = 1 << 0;
+const TAP_FLAG = 1 << 1;
+const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 4;
+const CONFIG_VERSION = 5;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
+const DEFAULT_TAP_HOLD_THRESHOLD = 200000;
 const DEFAULT_SCALING = 1000;
 
 const NLAYERS = 4;
@@ -46,12 +49,15 @@ let config = {
     'version': CONFIG_VERSION,
     'unmapped_passthrough_layers': [0, 1, 2, 3],
     'partial_scroll_timeout': DEFAULT_PARTIAL_SCROLL_TIMEOUT,
+    'tap_hold_threshold': DEFAULT_TAP_HOLD_THRESHOLD,
     'interval_override': 0,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
         'layers': [0],
         'sticky': false,
+        'tap': false,
+        'hold': false,
         'scaling': DEFAULT_SCALING,
     }],
     macros: [
@@ -77,6 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
     device_buttons_set_disabled_state(true);
 
     document.getElementById("partial_scroll_timeout_input").addEventListener("change", partial_scroll_timeout_onchange);
+    document.getElementById("tap_hold_threshold_input").addEventListener("change", tap_hold_threshold_onchange);
     for (let i = 0; i < NLAYERS; i++) {
         document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
     }
@@ -131,13 +138,14 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32]);
         check_received_version(config_version);
 
         config['version'] = config_version;
         config['unmapped_passthrough_layers'] = mask_to_layer_list(flags & ((1 << NLAYERS) - 1));
         config['partial_scroll_timeout'] = partial_scroll_timeout;
+        config['tap_hold_threshold'] = tap_hold_threshold;
         config['interval_override'] = interval_override;
         config['mappings'] = [];
 
@@ -151,6 +159,8 @@ async function load_from_device() {
                 'scaling': scaling,
                 'layers': mask_to_layer_list(layer_mask),
                 'sticky': (mapping_flags & STICKY_FLAG) != 0,
+                'tap': (mapping_flags & TAP_FLAG) != 0,
+                'hold': (mapping_flags & HOLD_FLAG) != 0,
             });
         }
 
@@ -202,6 +212,7 @@ async function save_to_device() {
             [UINT8, layer_list_to_mask(config['unmapped_passthrough_layers'])],
             [UINT32, config['partial_scroll_timeout']],
             [UINT8, config['interval_override']],
+            [UINT32, config['tap_hold_threshold']],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -211,7 +222,9 @@ async function save_to_device() {
                 [UINT32, parseInt(mapping['source_usage'], 16)],
                 [INT32, mapping['scaling']],
                 [UINT8, layer_list_to_mask(mapping['layers'])],
-                [UINT8, mapping['sticky'] ? STICKY_FLAG : 0],
+                [UINT8, (mapping['sticky'] ? STICKY_FLAG : 0)
+                    | (mapping['tap'] ? TAP_FLAG : 0)
+                    | (mapping['hold'] ? HOLD_FLAG : 0)]
             ]);
         }
 
@@ -248,8 +261,8 @@ async function save_to_device() {
 async function get_usages_from_device() {
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32]);
         check_received_version(config_version);
 
         let extra_usage_set = new Set();
@@ -289,6 +302,7 @@ async function get_usages_from_device() {
 
 function set_config_ui_state() {
     document.getElementById('partial_scroll_timeout_input').value = Math.round(config['partial_scroll_timeout'] / 1000);
+    document.getElementById('tap_hold_threshold_input').value = Math.round(config['tap_hold_threshold'] / 1000);
     for (let i = 0; i < NLAYERS; i++) {
         document.getElementById('unmapped_passthrough_checkbox' + i).checked =
             config['unmapped_passthrough_layers'].includes(i);
@@ -351,6 +365,13 @@ function set_ui_state() {
             delete mapping['layer'];
         }
         config['macros'] = [[], [], [], [], [], [], [], []];
+    }
+    if (config['version'] < 5) {
+        for (const mapping of config['mappings']) {
+            mapping['tap'] = false;
+            mapping['hold'] = false;
+        }
+        config['tap_hold_threshold'] = DEFAULT_TAP_HOLD_THRESHOLD;
         config['version'] = CONFIG_VERSION;
     }
 
@@ -367,6 +388,12 @@ function add_mapping(mapping) {
     const sticky_checkbox = clone.querySelector(".sticky_checkbox");
     sticky_checkbox.checked = mapping['sticky'];
     sticky_checkbox.addEventListener("change", sticky_onclick(mapping, sticky_checkbox));
+    const tap_checkbox = clone.querySelector(".tap_checkbox");
+    tap_checkbox.checked = mapping['tap'];
+    tap_checkbox.addEventListener("change", tap_onclick(mapping, tap_checkbox));
+    const hold_checkbox = clone.querySelector(".hold_checkbox");
+    hold_checkbox.checked = mapping['hold'];
+    hold_checkbox.addEventListener("change", hold_onclick(mapping, hold_checkbox));
     const scaling_input = clone.querySelector(".scaling_input");
     scaling_input.value = mapping['scaling'] / 1000;
     scaling_input.addEventListener("input", scaling_onchange(mapping, scaling_input));
@@ -522,7 +549,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4].includes(config_version))) {
+    if (!([3, 4, 5].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -534,11 +561,11 @@ function check_received_version(config_version) {
 }
 
 async function check_device_version() {
-    // This isn't a reliable way of checking the config version of the device because
-    // it could be version X, ignore our GET_CONFIG call with version Y and just happen
-    // to have Y at the right place in the buffer from some previous call done by some
-    // other software.
-    for (const version of [CONFIG_VERSION, 3, 2]) {
+    // For versions <=3, this isn't a reliable way of checking the config version of the
+    // device because it could be version X, ignore our GET_CONFIG call with version Y and
+    // just happen to have Y at the right place in the buffer from some previous call done
+    // by some other software.
+    for (const version of [CONFIG_VERSION, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -573,6 +600,18 @@ function sticky_onclick(mapping, element) {
     return function () {
         mapping['sticky'] = element.checked;
         set_forced_layers(mapping, element.closest(".mapping_container"));
+    };
+}
+
+function tap_onclick(mapping, element) {
+    return function () {
+        mapping['tap'] = element.checked;
+    };
+}
+
+function hold_onclick(mapping, element) {
+    return function () {
+        mapping['hold'] = element.checked;
     };
 }
 
@@ -631,6 +670,8 @@ function add_mapping_onclick() {
         'target_usage': '0x00000000',
         'layers': [0],
         'sticky': false,
+        'tap': false,
+        'hold': false,
         'scaling': DEFAULT_SCALING
     };
     config['mappings'].push(new_mapping);
@@ -743,6 +784,16 @@ function partial_scroll_timeout_onchange() {
         value = Math.round(value * 1000);
     }
     config['partial_scroll_timeout'] = value;
+}
+
+function tap_hold_threshold_onchange() {
+    let value = document.getElementById('tap_hold_threshold_input').value;
+    if (value === '') {
+        value = DEFAULT_TAP_HOLD_THRESHOLD;
+    } else {
+        value = Math.round(value * 1000);
+    }
+    config['tap_hold_threshold'] = value;
 }
 
 function unmapped_passthrough_onchange() {

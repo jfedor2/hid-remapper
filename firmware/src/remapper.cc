@@ -16,7 +16,9 @@
 
 #define MAX_REPORT_SIZE 64
 
-const uint8_t MAPPING_FLAG_STICKY = 0x01;
+const uint8_t MAPPING_FLAG_STICKY = 1 << 0;
+const uint8_t MAPPING_FLAG_TAP = 1 << 1;
+const uint8_t MAPPING_FLAG_HOLD = 1 << 2;
 
 const uint8_t V_RESOLUTION_BITMASK = (1 << 0);
 const uint8_t H_RESOLUTION_BITMASK = (1 << 2);
@@ -37,7 +39,11 @@ std::unordered_map<uint32_t, std::vector<map_source_t>> reverse_mapping;  // tar
 std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
 std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 
-std::vector<uint64_t> sticky_usages;  // layer_mask << 32 | usage
+// XXX any reason these are int64 and not a struct?
+std::vector<uint64_t> sticky_usages;      // layer_mask << 32 | usage
+std::vector<uint64_t> tap_sticky_usages;  // layer_mask << 32 | usage
+std::vector<uint32_t> tap_hold_usages;
+std::vector<uint32_t> macro_usages;
 
 // report_id -> ...
 uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
@@ -58,7 +64,10 @@ std::vector<uint8_t> report_ids;
 std::unordered_map<uint32_t, int32_t> input_state;
 std::unordered_map<uint32_t, int32_t> prev_input_state;
 std::unordered_map<uint32_t, int8_t> sticky_state;  // usage -> state per layer (mask)
+std::unordered_map<uint32_t, int8_t> tap_state;
+std::unordered_map<uint32_t, int8_t> hold_state;
 std::unordered_map<uint32_t, int32_t> accumulated;  // * 1000
+std::unordered_map<uint32_t, uint64_t> pressed_at;  // usage -> timestamp
 uint8_t layer_state_mask = 1;
 
 std::vector<uint32_t> relative_usages;
@@ -141,6 +150,9 @@ bool needs_to_be_sent(uint8_t report_id) {
 
 void set_mapping_from_config() {
     std::unordered_map<uint32_t, uint8_t> sticky_usage_map;
+    std::unordered_map<uint32_t, uint8_t> tap_sticky_usage_map;
+    std::unordered_set<uint32_t> tap_hold_usage_set;
+    std::unordered_set<uint32_t> macro_usage_set;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     reverse_mapping.clear();
@@ -164,19 +176,45 @@ void set_mapping_from_config() {
             .scaling = mapping.scaling,
             .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
             .layer_mask = layer_mask,
+            .tap = (mapping.flags & MAPPING_FLAG_TAP) != 0,
+            .hold = (mapping.flags & MAPPING_FLAG_HOLD) != 0,
         });
         mapped_on_layers[mapping.source_usage] |= layer_mask;
-        if (((mapping.flags & MAPPING_FLAG_STICKY) != 0) ||
-            ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE)) {
-            // usages that trigger macros need their state tracked same as stickies
-            sticky_usage_map[mapping.source_usage] |= layer_mask;
+        if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
+            if (mapping.flags & MAPPING_FLAG_TAP) {
+                tap_sticky_usage_map[mapping.source_usage] |= layer_mask;
+            } else {
+                sticky_usage_map[mapping.source_usage] |= layer_mask;
+            }
+        }
+        if (((mapping.flags & MAPPING_FLAG_TAP) != 0) ||
+            ((mapping.flags & MAPPING_FLAG_HOLD) != 0)) {
+            tap_hold_usage_set.insert(mapping.source_usage);
+        }
+        if ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE) {
+            macro_usage_set.insert(mapping.source_usage);
         }
     }
 
     sticky_usages.clear();
+    tap_hold_usages.clear();
+    tap_sticky_usages.clear();
+    macro_usages.clear();
 
     for (auto const& [usage, layer_mask] : sticky_usage_map) {
         sticky_usages.push_back(((uint64_t) layer_mask << 32) | usage);
+    }
+
+    for (auto const& [usage, layer_mask] : tap_sticky_usage_map) {
+        tap_sticky_usages.push_back(((uint64_t) layer_mask << 32) | usage);
+    }
+
+    for (auto const usage : tap_hold_usage_set) {
+        tap_hold_usages.push_back(usage);
+    }
+
+    for (auto const usage : macro_usage_set) {
+        macro_usages.push_back(usage);
     }
 
     if (unmapped_passthrough_layer_mask) {
@@ -232,6 +270,20 @@ void process_mapping(bool auto_repeat) {
         return;
     }
 
+    uint64_t now = get_time();
+
+    for (auto const usage : tap_hold_usages) {
+        tap_state[usage] =
+            (input_state[usage] == 0) && (prev_input_state[usage] != 0) &&
+            (now - pressed_at[usage] < tap_hold_threshold);
+        hold_state[usage] =
+            (input_state[usage] != 0) && (prev_input_state[usage] != 0) &&
+            (now - pressed_at[usage] >= tap_hold_threshold);
+        if ((input_state[usage] != 0) && (prev_input_state[usage] == 0)) {
+            pressed_at[usage] = now;
+        }
+    }
+
     for (auto const& layer_usage : sticky_usages) {
         uint32_t usage = layer_usage & 0xFFFFFFFF;
         uint32_t layer_mask = layer_usage >> 32;
@@ -241,18 +293,30 @@ void process_mapping(bool auto_repeat) {
         }
     }
 
+    for (auto const& layer_usage : tap_sticky_usages) {
+        uint32_t usage = layer_usage & 0xFFFFFFFF;
+        uint32_t layer_mask = layer_usage >> 32;
+        if ((layer_state_mask & layer_mask) && tap_state[usage]) {
+            sticky_state[usage] ^= (layer_state_mask & layer_mask);
+        }
+    }
+
     uint8_t new_layer_state_mask = 0;
     for (int i = 1; i < NLAYERS; i++) {
         for (auto const& map_source : reverse_mapping[LAYERS_USAGE_PAGE | i]) {
             if (!map_source.sticky) {
-                if ((map_source.layer_mask & layer_state_mask) && input_state[map_source.usage]) {
+                if ((map_source.layer_mask & layer_state_mask) &&
+                    (map_source.hold
+                            ? hold_state[map_source.usage]
+                            : input_state[map_source.usage])) {
                     new_layer_state_mask |= 1 << i;
                 }
             } else {  // is sticky
                 // This part is responsible for deactivating a layer if it was activated
                 // by a sticky mapping and the user pressed the button again.
                 // There must be a better way of handling this.
-                if ((prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0) &&
+                if (((!map_source.tap && (prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0)) ||
+                        (map_source.tap && tap_state[map_source.usage])) &&
                     (sticky_state[map_source.usage] & map_source.layer_mask) &&
                     (layer_state_mask & (1 << i))) {
                     sticky_state[map_source.usage] &= ~map_source.layer_mask;
@@ -283,7 +347,8 @@ void process_mapping(bool auto_repeat) {
 
         for (auto const& map_source : sources) {
             if ((layer_state_mask & map_source.layer_mask) &&
-                ((prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0))) {
+                ((!map_source.tap && (prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0)) ||
+                    (map_source.tap && tap_state[map_source.usage]))) {
                 macros_mutex_enter();
                 for (auto const& usages : macros[macro]) {
                     macro_queue.push(usages);
@@ -295,6 +360,14 @@ void process_mapping(bool auto_repeat) {
 
     for (auto const& layer_usage : sticky_usages) {
         uint32_t usage = layer_usage & 0xFFFFFFFF;
+        prev_input_state[usage] = input_state[usage];
+    }
+
+    for (auto const usage : tap_hold_usages) {
+        prev_input_state[usage] = input_state[usage];
+    }
+
+    for (auto const usage : macro_usages) {
         prev_input_state[usage] = input_state[usage];
     }
 
@@ -312,11 +385,9 @@ void process_mapping(bool auto_repeat) {
                     if (map_source.sticky) {
                         value = !!(sticky_state[map_source.usage] & map_source.layer_mask) * map_source.scaling;
                     } else {
+                        int32_t state = map_source.hold ? hold_state[map_source.usage] : input_state[map_source.usage];
                         if (layer_state_mask & map_source.layer_mask) {
-                            value = (source_is_relative
-                                            ? input_state[map_source.usage]
-                                            : !!input_state[map_source.usage]) *
-                                    map_source.scaling;
+                            value = (source_is_relative ? state : !!state) * map_source.scaling;
                         }
                     }
                     if (value != 0) {
@@ -328,7 +399,7 @@ void process_mapping(bool auto_repeat) {
                     }
                 }
             }
-        } else {
+        } else {  // our_usage is absolute
             int32_t value = 0;
             for (auto const& map_source : sources) {
                 if (map_source.sticky) {
@@ -336,11 +407,17 @@ void process_mapping(bool auto_repeat) {
                         value = 1;
                     }
                 } else {
-                    if ((layer_state_mask & map_source.layer_mask) &&
-                        (relative_usage_set.count(map_source.usage)
-                                ? (input_state[map_source.usage] * map_source.scaling > 0)
-                                : input_state[map_source.usage])) {
-                        value = 1;
+                    if ((layer_state_mask & map_source.layer_mask)) {
+                        if ((map_source.tap && tap_state[map_source.usage]) ||
+                            (map_source.hold && hold_state[map_source.usage])) {
+                            value = 1;
+                        }
+                        if ((!map_source.tap && !map_source.hold) &&
+                            (relative_usage_set.count(map_source.usage)
+                                    ? (input_state[map_source.usage] * map_source.scaling > 0)
+                                    : input_state[map_source.usage])) {
+                            value = 1;
+                        }
                     }
                 }
             }

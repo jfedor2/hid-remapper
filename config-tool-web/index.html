@@ -32,14 +32,18 @@
         <div id="error" class="alert alert-danger d-none"></div>
 
         <div class="row pb-2" style="overflow-x: auto;">
-            <div style="min-width: 600px; width: 100%;">
-                <div class="row my-2">
-                    <div class="col-1 text-center"></div>
+            <div style="min-width: 720px; width: 100%;">
+                <div class="row my-2 align-items-end">
+                    <div class="col-1"></div>
                     <div class="col-3 text-center">Input</div>
                     <div class="col-3 text-center">Output</div>
-                    <div class="col-2 text-center">Layer</div>
+                    <div class="col-3">
+                        <div class="d-flex align-items-end">
+                            <div class="flex-fill text-center">Layer</div>
+                            <div class="text-start pt-1" style="writing-mode: vertical-rl; transform: rotate(180deg); line-height: 1.2em;">Sticky<br>Tap<br>Hold</div>
+                        </div>
+                    </div>
                     <div class="col-2 text-center">Scaling</div>
-                    <div class="col-1 text-center">Sticky</div>
                 </div>
 
                 <div id="mappings">
@@ -71,18 +75,29 @@
             </div>
         </div>
         <div class="row mb-2">
-            <div class="col-auto">
+            <div class="col-4 text-end">
                 <label for="partial_scroll_timeout_input" class="col-form-label">Partial scroll timeout</label>
             </div>
             <div class="col-auto">
                 <div class="input-group">
-                    <input type="number" id="partial_scroll_timeout_input" class="form-control" style="max-width: 100px;">
+                    <input type="number" id="partial_scroll_timeout_input" class="form-control text-end" style="max-width: 100px;">
                     <span class="input-group-text">ms</span>
                 </div>
             </div>
         </div>
         <div class="row mb-2">
+            <div class="col-4 text-end">
+                <label for="tap_hold_threshold_input" class="col-form-label">Tap-hold threshold</label>
+            </div>
             <div class="col-auto">
+                <div class="input-group">
+                    <input type="number" id="tap_hold_threshold_input" class="form-control text-end" style="max-width: 100px;">
+                    <span class="input-group-text">ms</span>
+                </div>
+            </div>
+        </div>
+        <div class="row mb-2">
+            <div class="col-4 text-end">
                 <label for="interval_override_dropdown" class="col-form-label">Override polling rate</label>
             </div>
             <div class="col-auto">
@@ -140,28 +155,43 @@
             <div class="col-1"><button type="button" class="btn btn-primary delete_button">×</button></div>
             <div class="col-3"><button type="button" class="btn btn-primary w-100 source_button">source</button></div>
             <div class="col-3"><button type="button" class="btn btn-primary w-100 target_button">target</button></div>
-            <div class="col-2">
-                <div class="row justify-content-center gx-1 lh-1 text-center">
-                    <div class="col-auto">
-                        <input class="form-check-input layer_checkbox0 mt-1" type="checkbox" value="">
-                        <br><span class="text-muted small">0</span>
+            <div class="col-3">
+                <div class="d-flex lh-1 text-center">
+                    <div class="flex-fill row gx-1 justify-content-center">
+                        <div class="col-auto">
+                            <input class="form-check-input layer_checkbox0" type="checkbox" value="">
+                            <br><span class="text-muted small">0</span>
+                        </div>
+                        <div class="col-auto">
+                            <input class="form-check-input layer_checkbox1" type="checkbox" value="">
+                            <br><span class="text-muted small">1</span>
+                        </div>
+                        <div class="col-auto">
+                            <input class="form-check-input layer_checkbox2" type="checkbox" value="">
+                            <br><span class="text-muted small">2</span>
+                        </div>
+                        <div class="col-auto">
+                            <input class="form-check-input layer_checkbox3" type="checkbox" value="">
+                            <br><span class="text-muted small">3</span>
+                        </div>
                     </div>
-                    <div class="col-auto">
-                        <input class="form-check-input layer_checkbox1 mt-1" type="checkbox" value="">
-                        <br><span class="text-muted small">1</span>
-                    </div>
-                    <div class="col-auto">
-                        <input class="form-check-input layer_checkbox2 mt-1" type="checkbox" value="">
-                        <br><span class="text-muted small">2</span>
-                    </div>
-                    <div class="col-auto">
-                        <input class="form-check-input layer_checkbox3 mt-1" type="checkbox" value="">
-                        <br><span class="text-muted small">3</span>
+                    <div class="row gx-1">
+                        <div class="col-auto ms-1" title="Sticky">
+                            <input class="form-check-input sticky_checkbox" type="checkbox" value="">
+                            <br><span class="text-muted small">S</span>
+                        </div>
+                        <div class="col-auto" title="Tap">
+                            <input class="form-check-input tap_checkbox" type="checkbox" value="">
+                            <br><span class="text-muted small">T</span>
+                        </div>
+                        <div class="col-auto" title="Hold">
+                            <input class="form-check-input hold_checkbox" type="checkbox" value="">
+                            <br><span class="text-muted small">H</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-2"><input class="form-control scaling_input" type="number"></div>
-            <div class="col-1 d-flex justify-content-center"><input class="form-check-input sticky_checkbox mt-2" type="checkbox" value=""></div>
+            <div class="col-2"><input class="form-control scaling_input text-end" type="number"></div>
         </div>
     </template>
 

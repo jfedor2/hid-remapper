@@ -42,6 +42,8 @@ struct map_source_t {
     int32_t scaling = 1000;  // * 1000
     bool sticky = false;
     uint8_t layer_mask = 1;
+    bool tap = false;
+    bool hold = false;
 };
 
 struct usage_rle_t {
@@ -69,13 +71,28 @@ struct __attribute__((packed)) mapping_config_t {
     uint8_t flags;
 };
 
-struct __attribute__((packed)) persist_config_t {
+struct __attribute__((packed)) config_version_t {
+    uint8_t version;
+};
+
+struct __attribute__((packed)) persist_config_v4_t {
     uint8_t version;
     uint8_t flags;
     uint32_t partial_scroll_timeout;
     uint32_t mapping_count;
     uint8_t interval_override;
 };
+
+struct __attribute__((packed)) persist_config_v5_t {
+    uint8_t version;
+    uint8_t flags;
+    uint32_t partial_scroll_timeout;
+    uint32_t mapping_count;
+    uint8_t interval_override;
+    uint32_t tap_hold_threshold;
+};
+
+typedef persist_config_v5_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
     uint8_t version;
@@ -85,12 +102,14 @@ struct __attribute__((packed)) get_config_t {
     uint32_t our_usage_count;
     uint32_t their_usage_count;
     uint8_t interval_override;
+    uint32_t tap_hold_threshold;
 };
 
 struct __attribute__((packed)) set_config_t {
     uint8_t flags;
     uint32_t partial_scroll_timeout;
     uint8_t interval_override;
+    uint32_t tap_hold_threshold;
 };
 
 struct __attribute__((packed)) get_indexed_t {

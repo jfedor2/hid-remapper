@@ -21,9 +21,10 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     our_usage_count,
     their_usage_count,
     interval_override,
+    tap_hold_threshold,
     *_,
     crc,
-) = struct.unpack("<BBBLLLLB9BL", data)
+) = struct.unpack("<BBBLLLLBL5BL", data)
 check_crc(data, crc)
 
 config = {
@@ -31,6 +32,7 @@ config = {
     "unmapped_passthrough_layers": mask_to_layer_list(flags & ((1 << NLAYERS) - 1)),
     "partial_scroll_timeout": partial_scroll_timeout,
     "interval_override": interval_override,
+    "tap_hold_threshold": tap_hold_threshold,
     "mappings": [],
     "macros": [],
 }
@@ -58,7 +60,9 @@ for i in range(mapping_count):
             "source_usage": "{0:#010x}".format(source_usage),
             "scaling": scaling,
             "layers": mask_to_layer_list(layer_mask),
-            "sticky": (flags & 0x01) != 0,
+            "sticky": (flags & STICKY_FLAG) != 0,
+            "tap": (flags & TAP_FLAG) != 0,
+            "hold": (flags & HOLD_FLAG) != 0,
         }
     )
 

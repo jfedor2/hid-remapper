@@ -9,7 +9,7 @@
 #include "platform.h"
 #include "remapper.h"
 
-const uint8_t CONFIG_VERSION = 4;
+const uint8_t CONFIG_VERSION = 5;
 
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH = 0x01;
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK = 0b00001111;
@@ -24,8 +24,8 @@ bool checksum_ok(const uint8_t* buffer, uint16_t data_size) {
 }
 
 bool persisted_version_ok(const uint8_t* buffer) {
-    uint8_t version = ((set_feature_t*) buffer)->version;
-    return (version == 3) || (version == 4);
+    uint8_t version = ((config_version_t*) buffer)->version;
+    return (version == 3) || (version == 4) || (version == 5);
 }
 
 bool command_version_ok(const uint8_t* buffer) {
@@ -33,48 +33,90 @@ bool command_version_ok(const uint8_t* buffer) {
     return version == CONFIG_VERSION;
 }
 
-void load_config(const uint8_t* persisted_config) {
-    if (checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) && persisted_version_ok(persisted_config)) {
-        persist_config_t* config = (persist_config_t*) persisted_config;
+void load_config_v3_v4(const uint8_t* persisted_config) {
+    persist_config_v4_t* config = (persist_config_v4_t*) persisted_config;
+    if (config->version == 3) {
+        unmapped_passthrough_layer_mask = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) ? 1 : 0;
+    }
+    if (config->version >= 4) {
+        unmapped_passthrough_layer_mask =
+            (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
+    }
+    partial_scroll_timeout = config->partial_scroll_timeout;
+    interval_override = config->interval_override;
+    mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_v4_t));
+    for (uint32_t i = 0; i < config->mapping_count; i++) {
+        config_mappings.push_back(buffer_mappings[i]);
         if (config->version == 3) {
-            unmapped_passthrough_layer_mask = (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH) ? 1 : 0;
-        }
-        if (config->version >= 4) {
-            unmapped_passthrough_layer_mask =
-                (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
-        }
-        partial_scroll_timeout = config->partial_scroll_timeout;
-        interval_override = config->interval_override;
-        mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_t));
-        for (uint32_t i = 0; i < config->mapping_count; i++) {
-            config_mappings.push_back(buffer_mappings[i]);
-            if (config->version == 3) {
-                config_mappings.back().layer_mask = 1 << config_mappings.back().layer_mask;
-            }
-        }
-
-        if (config->version >= 4) {
-            const uint8_t* macros_config_ptr = (persisted_config + sizeof(persist_config_t) + config->mapping_count * sizeof(mapping_config_t));
-            macros_mutex_enter();
-            for (int i = 0; i < NMACROS; i++) {
-                macros[i].clear();
-                uint8_t macro_len = *macros_config_ptr;
-                macros_config_ptr++;
-                macros[i].reserve(macro_len);
-                for (int j = 0; j < macro_len; j++) {
-                    uint8_t entry_len = *macros_config_ptr;
-                    macros_config_ptr++;
-                    macros[i].push_back({});
-                    macros[i].back().reserve(entry_len);
-                    for (int k = 0; k < entry_len; k++) {
-                        macros[i].back().push_back(((macro_item_t*) macros_config_ptr)->usage);
-                        macros_config_ptr += sizeof(macro_item_t);
-                    }
-                }
-            }
-            macros_mutex_exit();
+            config_mappings.back().layer_mask = 1 << config_mappings.back().layer_mask;
         }
     }
+
+    if (config->version >= 4) {
+        const uint8_t* macros_config_ptr = (persisted_config + sizeof(persist_config_v4_t) + config->mapping_count * sizeof(mapping_config_t));
+        macros_mutex_enter();
+        for (int i = 0; i < NMACROS; i++) {
+            macros[i].clear();
+            uint8_t macro_len = *macros_config_ptr;
+            macros_config_ptr++;
+            macros[i].reserve(macro_len);
+            for (int j = 0; j < macro_len; j++) {
+                uint8_t entry_len = *macros_config_ptr;
+                macros_config_ptr++;
+                macros[i].push_back({});
+                macros[i].back().reserve(entry_len);
+                for (int k = 0; k < entry_len; k++) {
+                    macros[i].back().push_back(((macro_item_t*) macros_config_ptr)->usage);
+                    macros_config_ptr += sizeof(macro_item_t);
+                }
+            }
+        }
+        macros_mutex_exit();
+    }
+}
+
+void load_config(const uint8_t* persisted_config) {
+    if (!checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) || !persisted_version_ok(persisted_config)) {
+        return;
+    }
+
+    uint8_t version = ((config_version_t*) persisted_config)->version;
+
+    if ((version == 3) || (version == 4)) {
+        load_config_v3_v4(persisted_config);
+        return;
+    }
+
+    persist_config_v5_t* config = (persist_config_v5_t*) persisted_config;
+    unmapped_passthrough_layer_mask =
+        (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
+    partial_scroll_timeout = config->partial_scroll_timeout;
+    tap_hold_threshold = config->tap_hold_threshold;
+    interval_override = config->interval_override;
+    mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_v5_t));
+    for (uint32_t i = 0; i < config->mapping_count; i++) {
+        config_mappings.push_back(buffer_mappings[i]);
+    }
+
+    const uint8_t* macros_config_ptr = (persisted_config + sizeof(persist_config_v5_t) + config->mapping_count * sizeof(mapping_config_t));
+    macros_mutex_enter();
+    for (int i = 0; i < NMACROS; i++) {
+        macros[i].clear();
+        uint8_t macro_len = *macros_config_ptr;
+        macros_config_ptr++;
+        macros[i].reserve(macro_len);
+        for (int j = 0; j < macro_len; j++) {
+            uint8_t entry_len = *macros_config_ptr;
+            macros_config_ptr++;
+            macros[i].push_back({});
+            macros[i].back().reserve(entry_len);
+            for (int k = 0; k < entry_len; k++) {
+                macros[i].back().push_back(((macro_item_t*) macros_config_ptr)->usage);
+                macros_config_ptr += sizeof(macro_item_t);
+            }
+        }
+    }
+    macros_mutex_exit();
 }
 
 void fill_get_config(get_config_t* config) {
@@ -83,6 +125,7 @@ void fill_get_config(get_config_t* config) {
     config->flags |=
         (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->partial_scroll_timeout = partial_scroll_timeout;
+    config->tap_hold_threshold = tap_hold_threshold;
     config->mapping_count = config_mappings.size();
     config->our_usage_count = our_usages_rle.size();
     config->their_usage_count = their_usages_rle.size();
@@ -95,6 +138,7 @@ void fill_persist_config(persist_config_t* config) {
     config->flags |=
         (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->partial_scroll_timeout = partial_scroll_timeout;
+    config->tap_hold_threshold = tap_hold_threshold;
     config->mapping_count = config_mappings.size();
     config->interval_override = interval_override;
 }
@@ -239,6 +283,7 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     unmapped_passthrough_layer_mask =
                         (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
                     partial_scroll_timeout = config->partial_scroll_timeout;
+                    tap_hold_threshold = config->tap_hold_threshold;
                     uint8_t prev_interval_override = interval_override;
                     interval_override = config->interval_override;
                     if (prev_interval_override != interval_override) {
