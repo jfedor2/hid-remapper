@@ -80,19 +80,12 @@ for macro_index, macro in enumerate(config.get("macros", [])):
     flat_zero_separated = [
         int(item, 16) for entry in macro for item in entry + ["0x00"]
     ][:-1]
-    print("flat_zero_separated", flat_zero_separated)
     for chunk in batched(flat_zero_separated, MACRO_ITEMS_IN_PACKET):
-        print("chunk", chunk)
         data = struct.pack(
             "<BBBBB6L",
             REPORT_ID_CONFIG,
             CONFIG_VERSION,
             APPEND_TO_MACRO,
-            macro_index,
-            len(chunk),
-            *(chunk + (0,) * (MACRO_ITEMS_IN_PACKET - len(chunk)))
-        )
-        print(
             macro_index,
             len(chunk),
             *(chunk + (0,) * (MACRO_ITEMS_IN_PACKET - len(chunk)))
