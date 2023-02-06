@@ -524,10 +524,14 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
     if (their_usage.is_relative) {
         input_state[source_usage] = value;
     } else {
-        if (value) {
-            input_state[source_usage] |= 1 << interface_index[interface];
+        if (their_usage.size == 1) {
+            if (value) {
+                input_state[source_usage] |= 1 << interface_index[interface];
+            } else {
+                input_state[source_usage] &= ~(1 << interface_index[interface]);
+            }
         } else {
-            input_state[source_usage] &= ~(1 << interface_index[interface]);
+            input_state[source_usage] = value;
         }
     }
 }
