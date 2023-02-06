@@ -1,4 +1,6 @@
+#include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <queue>
 #include <set>
@@ -28,6 +30,9 @@ const uint32_t H_SCROLL_USAGE = 0x000C0238;
 const uint8_t NLAYERS = 4;
 const uint32_t LAYERS_USAGE_PAGE = 0xFFF10000;
 const uint32_t MACRO_USAGE_PAGE = 0xFFF20000;
+const uint32_t EXPR_USAGE_PAGE = 0xFFF30000;
+
+const uint16_t STACK_SIZE = 16;
 
 const std::unordered_map<uint32_t, uint8_t> resolution_multiplier_masks = {
     { V_SCROLL_USAGE, V_RESOLUTION_BITMASK },
@@ -80,6 +85,8 @@ std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
 
 uint32_t reports_received;
 uint32_t reports_sent;
+
+bool expression_valid[NEXPRESSIONS] = { false };
 
 int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
     int32_t ret = 0;
@@ -148,12 +155,85 @@ bool needs_to_be_sent(uint8_t report_id) {
     return false;
 }
 
+bool is_expr_valid(uint8_t expr) {
+    int16_t on_stack = 0;
+    for (auto const& elem : expressions[expr]) {
+        // should we have a data structure with each op's input/output instead?
+        switch (elem.op) {
+            case Op::DEBUG:
+                break;
+            case Op::PUSH:
+            case Op::PUSH_USAGE:
+            case Op::AUTO_REPEAT:
+            case Op::TIME:
+            case Op::SCALING:
+            case Op::LAYER_STATE:
+                if (on_stack >= STACK_SIZE) {
+                    return false;
+                }
+                on_stack++;
+                break;
+            case Op::NOT:
+            case Op::INPUT_STATE:
+            case Op::INPUT_STATE_BINARY:
+            case Op::ABS:
+            case Op::SIN:
+            case Op::COS:
+            case Op::RELU:
+            case Op::STICKY_STATE:
+            case Op::TAP_STATE:
+            case Op::HOLD_STATE:
+            case Op::BITWISE_NOT:
+                if (on_stack < 1) {
+                    return false;
+                }
+                break;
+            case Op::DUP:
+                if ((on_stack < 1) || (on_stack >= STACK_SIZE)) {
+                    return false;
+                }
+                on_stack++;
+                break;
+            case Op::ADD:
+            case Op::MUL:
+            case Op::EQ:
+            case Op::GT:
+            case Op::MOD:
+            case Op::BITWISE_OR:
+            case Op::BITWISE_AND:
+                if (on_stack < 2) {
+                    return false;
+                }
+                on_stack--;
+                break;
+            case Op::CLAMP:
+                if (on_stack < 3) {
+                    return false;
+                }
+                on_stack -= 2;
+                break;
+            default:
+                printf("unknown op in expression_valid()\n");
+                return false;
+        }
+    }
+    return true;
+}
+
+void validate_expressions() {
+    for (uint8_t i = 0; i < NEXPRESSIONS; i++) {
+        expression_valid[i] = is_expr_valid(i);
+    }
+}
+
 void set_mapping_from_config() {
     std::unordered_map<uint32_t, uint8_t> sticky_usage_map;
     std::unordered_map<uint32_t, uint8_t> tap_sticky_usage_map;
     std::unordered_set<uint32_t> tap_hold_usage_set;
     std::unordered_set<uint32_t> macro_usage_set;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
+
+    validate_expressions();
 
     reverse_mapping.clear();
 
@@ -179,6 +259,15 @@ void set_mapping_from_config() {
             .tap = (mapping.flags & MAPPING_FLAG_TAP) != 0,
             .hold = (mapping.flags & MAPPING_FLAG_HOLD) != 0,
         });
+        // if a usage appears in an expression, consider it mapped
+        if ((mapping.source_usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
+            uint8_t expr = (mapping.source_usage & 0xFFFF) - 1;
+            for (auto const& elem : expressions[expr]) {
+                if (elem.op == Op::PUSH_USAGE) {
+                    mapped_on_layers[elem.val] |= layer_mask;
+                }
+            }
+        }
         mapped_on_layers[mapping.source_usage] |= layer_mask;
         if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
             if (mapping.flags & MAPPING_FLAG_TAP) {
@@ -263,6 +352,132 @@ void aggregate_relative(uint8_t* prev_report, const uint8_t* report, uint8_t rep
             }
         }
     }
+}
+
+int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat) {
+    static int32_t stack[STACK_SIZE];
+    bool debug = false;
+    int16_t ptr = -1;
+    uint8_t expr = (map_source.usage & 0xFFFFF) - 1;
+    if (expr >= NEXPRESSIONS) {
+        return 0;
+    }
+    if (!expression_valid[expr]) {
+        return 0;
+    }
+    for (auto const& elem : expressions[expr]) {
+        switch (elem.op) {
+            case Op::PUSH:
+            case Op::PUSH_USAGE:
+                stack[++ptr] = elem.val;
+                break;
+            case Op::INPUT_STATE:
+                stack[ptr] = input_state[stack[ptr]] * 1000;
+                break;
+            case Op::ADD:
+                stack[ptr - 1] = stack[ptr - 1] + stack[ptr];
+                ptr--;
+                break;
+            case Op::MUL:
+                stack[ptr - 1] = stack[ptr - 1] * stack[ptr] / 1000;
+                ptr--;
+                break;
+            case Op::EQ:
+                stack[ptr - 1] = (stack[ptr - 1] == stack[ptr]) * 1000;
+                ptr--;
+                break;
+            case Op::TIME:
+                stack[++ptr] = now & 0x7fffffff;
+                break;
+            case Op::MOD:
+                stack[ptr - 1] = stack[ptr - 1] % stack[ptr];
+                ptr--;
+                break;
+            case Op::GT:
+                stack[ptr - 1] = (stack[ptr - 1] > stack[ptr]) * 1000;
+                ptr--;
+                break;
+            case Op::NOT:
+                stack[ptr] = (!stack[ptr]) * 1000;
+                break;
+            case Op::INPUT_STATE_BINARY:
+                stack[ptr] = (!!input_state[stack[ptr]]) * 1000;
+                break;
+            case Op::ABS:
+                stack[ptr] = labs(stack[ptr]);
+                break;
+            case Op::DUP:
+                stack[ptr + 1] = stack[ptr];
+                ptr++;
+                break;
+            case Op::SIN:
+                stack[ptr] = sinf((float) stack[ptr] * 3.14159265f / 180000.0f) * 1000;
+                break;
+            case Op::COS:
+                stack[ptr] = cosf((float) stack[ptr] * 3.14159265f / 180000.0f) * 1000;
+                break;
+            case Op::DEBUG:
+                debug = true;
+                printf("\nexpr %d\n", expr + 1);
+                break;
+            case Op::AUTO_REPEAT:
+                stack[++ptr] = auto_repeat ? 1000 : 0;
+                break;
+            case Op::RELU:
+                if (stack[ptr] < 0) {
+                    stack[ptr] = 0;
+                }
+                break;
+            case Op::SCALING:
+                stack[++ptr] = map_source.scaling;
+                break;
+            case Op::CLAMP:
+                if (stack[ptr - 2] < stack[ptr - 1]) {
+                    stack[ptr - 2] = stack[ptr - 1];
+                }
+                if (stack[ptr - 2] > stack[ptr]) {
+                    stack[ptr - 2] = stack[ptr];
+                }
+                ptr -= 2;
+                break;
+            case Op::LAYER_STATE:
+                stack[++ptr] = layer_state_mask;
+                break;
+            case Op::STICKY_STATE:
+                stack[ptr] = sticky_state[stack[ptr]];
+                break;
+            case Op::TAP_STATE:
+                stack[ptr] = tap_state[stack[ptr]] * 1000;
+                break;
+            case Op::HOLD_STATE:
+                stack[ptr] = hold_state[stack[ptr]] * 1000;
+                break;
+            case Op::BITWISE_OR:
+                stack[ptr - 1] = stack[ptr - 1] | stack[ptr];
+                ptr--;
+                break;
+            case Op::BITWISE_AND:
+                stack[ptr - 1] = stack[ptr - 1] & stack[ptr];
+                ptr--;
+                break;
+            case Op::BITWISE_NOT:
+                stack[ptr] = ~stack[ptr];
+                break;
+            default:
+                printf("unknown op!\n");
+                return 0;
+        }
+        if (debug) {
+            for (int i = 0; i <= ptr; i++) {
+                printf("0x%08lx ", stack[i]);
+            }
+            printf("\n");
+        }
+    }
+    if (ptr >= 0) {
+        return stack[ptr];
+    }
+    return 0;
 }
 
 void process_mapping(bool auto_repeat) {
@@ -379,44 +594,56 @@ void process_mapping(bool auto_repeat) {
         const usage_def_t& our_usage = search->second;
         if (our_usage.is_relative) {
             for (auto const& map_source : sources) {
-                bool source_is_relative = relative_usage_set.count(map_source.usage);
-                if (auto_repeat || source_is_relative) {
-                    int32_t value = 0;
-                    if (map_source.sticky) {
-                        value = !!(sticky_state[map_source.usage] & map_source.layer_mask) * map_source.scaling;
-                    } else {
-                        int32_t state = map_source.hold ? hold_state[map_source.usage] : input_state[map_source.usage];
-                        if (layer_state_mask & map_source.layer_mask) {
-                            value = (source_is_relative ? state : !!state) * map_source.scaling;
+                int32_t value = 0;
+                if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
+                    if (layer_state_mask & map_source.layer_mask) {
+                        value = eval_expr(map_source, now, auto_repeat);
+                    }
+                } else {
+                    bool source_is_relative = relative_usage_set.count(map_source.usage);
+                    if (auto_repeat || source_is_relative) {
+                        if (map_source.sticky) {
+                            value = !!(sticky_state[map_source.usage] & map_source.layer_mask) * map_source.scaling;
+                        } else {
+                            if (layer_state_mask & map_source.layer_mask) {
+                                int32_t state = map_source.hold ? hold_state[map_source.usage] : input_state[map_source.usage];
+                                value = (source_is_relative ? state : !!state) * map_source.scaling;
+                            }
                         }
                     }
-                    if (value != 0) {
-                        if (target == V_SCROLL_USAGE || target == H_SCROLL_USAGE) {
-                            accumulated[target] += handle_scroll(map_source.usage, target, value * RESOLUTION_MULTIPLIER);
-                        } else {
-                            accumulated[target] += value;
-                        }
+                }
+                if (value != 0) {
+                    if (target == V_SCROLL_USAGE || target == H_SCROLL_USAGE) {
+                        accumulated[target] += handle_scroll(map_source.usage, target, value * RESOLUTION_MULTIPLIER);
+                    } else {
+                        accumulated[target] += value;
                     }
                 }
             }
         } else {  // our_usage is absolute
             int32_t value = 0;
             for (auto const& map_source : sources) {
-                if (map_source.sticky) {
-                    if (sticky_state[map_source.usage] & map_source.layer_mask) {
-                        value = 1;
+                if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
+                    if (layer_state_mask & map_source.layer_mask) {
+                        value = eval_expr(map_source, now, auto_repeat) / 1000;
                     }
                 } else {
-                    if ((layer_state_mask & map_source.layer_mask)) {
-                        if ((map_source.tap && tap_state[map_source.usage]) ||
-                            (map_source.hold && hold_state[map_source.usage])) {
+                    if (map_source.sticky) {
+                        if (sticky_state[map_source.usage] & map_source.layer_mask) {
                             value = 1;
                         }
-                        if ((!map_source.tap && !map_source.hold) &&
-                            (relative_usage_set.count(map_source.usage)
-                                    ? (input_state[map_source.usage] * map_source.scaling > 0)
-                                    : input_state[map_source.usage])) {
-                            value = 1;
+                    } else {
+                        if ((layer_state_mask & map_source.layer_mask)) {
+                            if ((map_source.tap && tap_state[map_source.usage]) ||
+                                (map_source.hold && hold_state[map_source.usage])) {
+                                value = 1;
+                            }
+                            if ((!map_source.tap && !map_source.hold) &&
+                                (relative_usage_set.count(map_source.usage)
+                                        ? (input_state[map_source.usage] * map_source.scaling > 0)
+                                        : input_state[map_source.usage])) {
+                                value = 1;
+                            }
                         }
                     }
                 }

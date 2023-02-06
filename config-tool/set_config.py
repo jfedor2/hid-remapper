@@ -101,6 +101,50 @@ for macro_index, macro in enumerate(config.get("macros", [])):
         device.send_feature_report(add_crc(data))
 
 data = struct.pack(
+    "<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, CLEAR_EXPRESSIONS, *([0] * 26)
+)
+device.send_feature_report(add_crc(data))
+
+for expr_index, expr in enumerate(config.get("expressions", [])):
+    if expr_index >= NEXPRESSIONS:
+        break
+    elems = expr_to_elems(expr)
+    while elems:
+        bytes_left = 24
+        pack_string = ""
+        pack_items = []
+        nelems = 0
+        while elems and (bytes_left > 0):
+            elem = elems[0]
+            if elem[0] in (ops["PUSH"], ops["PUSH_USAGE"]):
+                if bytes_left >= 5:
+                    pack_string += "BL"
+                    pack_items.append(elem[0])
+                    pack_items.append(elem[1] & 0xFFFFFFFF)
+                    bytes_left -= 5
+                    nelems += 1
+                    elems = elems[1:]
+                else:
+                    break
+            else:
+                pack_string += "B"
+                pack_items.append(elem[0])
+                bytes_left -= 1
+                nelems += 1
+                elems = elems[1:]
+        data = struct.pack(
+            "<BBBBB" + pack_string + ("B" * bytes_left),
+            REPORT_ID_CONFIG,
+            CONFIG_VERSION,
+            APPEND_TO_EXPRESSION,
+            expr_index,
+            nelems,
+            *(pack_items + [0] * bytes_left)
+        )
+        device.send_feature_report(add_crc(data))
+
+
+data = struct.pack(
     "<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, PERSIST_CONFIG, *([0] * 26)
 )
 device.send_feature_report(add_crc(data))

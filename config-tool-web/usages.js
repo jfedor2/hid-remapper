@@ -161,6 +161,14 @@ const usages = {
     "0xfff20006": { 'name': 'Macro 6', 'class': 'other' },
     "0xfff20007": { 'name': 'Macro 7', 'class': 'other' },
     "0xfff20008": { 'name': 'Macro 8', 'class': 'other' },
+    "0xfff30001": { 'name': 'Expression 1', 'class': 'other' },
+    "0xfff30002": { 'name': 'Expression 2', 'class': 'other' },
+    "0xfff30003": { 'name': 'Expression 3', 'class': 'other' },
+    "0xfff30004": { 'name': 'Expression 4', 'class': 'other' },
+    "0xfff30005": { 'name': 'Expression 5', 'class': 'other' },
+    "0xfff30006": { 'name': 'Expression 6', 'class': 'other' },
+    "0xfff30007": { 'name': 'Expression 7', 'class': 'other' },
+    "0xfff30008": { 'name': 'Expression 8', 'class': 'other' },
 };
 
 export default usages;

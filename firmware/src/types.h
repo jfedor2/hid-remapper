@@ -23,6 +23,9 @@ enum class ConfigCommand : int8_t {
     APPEND_TO_MACRO = 16,
     GET_MACRO = 17,
     INVALID_COMMAND = 18,
+    CLEAR_EXPRESSIONS = 19,
+    APPEND_TO_EXPRESSION = 20,
+    GET_EXPRESSION = 21,
 };
 
 struct usage_def_t {
@@ -35,6 +38,41 @@ struct usage_def_t {
     uint32_t index = 0;      // for arrays
     uint32_t count = 0;      // for arrays
     uint32_t usage_maximum;  // effective, for arrays/usage ranges
+};
+
+enum class Op : int8_t {
+    PUSH = 0,
+    PUSH_USAGE = 1,
+    INPUT_STATE = 2,
+    ADD = 3,
+    MUL = 4,
+    EQ = 5,
+    TIME = 6,
+    MOD = 7,
+    GT = 8,
+    NOT = 9,
+    INPUT_STATE_BINARY = 10,
+    ABS = 11,
+    DUP = 12,
+    SIN = 13,
+    COS = 14,
+    DEBUG = 15,
+    AUTO_REPEAT = 16,
+    RELU = 17,
+    CLAMP = 18,
+    SCALING = 19,
+    LAYER_STATE = 20,
+    STICKY_STATE = 21,
+    TAP_STATE = 22,
+    HOLD_STATE = 23,
+    BITWISE_OR = 24,
+    BITWISE_AND = 25,
+    BITWISE_NOT = 26,
+};
+
+struct expr_elem_t {
+    Op op;
+    uint32_t val = 0;
 };
 
 struct map_source_t {
@@ -92,6 +130,7 @@ struct __attribute__((packed)) persist_config_v5_t {
     uint32_t tap_hold_threshold;
 };
 
+typedef persist_config_v5_t persist_config_v6_t;
 typedef persist_config_v5_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
@@ -153,6 +192,26 @@ enum class MutexId : int8_t {
     MACROS,
     EXPRESSIONS,
     N
+};
+
+struct __attribute__((packed)) expr_val_t {
+    uint32_t val;
+};
+
+struct __attribute__((packed)) get_expr_t {
+    uint32_t requested_expr;
+    uint32_t requested_expr_elem;
+};
+
+struct __attribute__((packed)) append_to_expr_t {
+    uint8_t expr;
+    uint8_t nelems;
+    uint8_t elem_data[24];
+};
+
+struct __attribute__((packed)) get_expr_response_t {
+    uint8_t nelems;
+    uint8_t elem_data[27];
 };
 
 #endif

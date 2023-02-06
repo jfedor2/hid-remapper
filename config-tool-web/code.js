@@ -7,7 +7,7 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 5;
+const CONFIG_VERSION = 6;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -16,9 +16,11 @@ const DEFAULT_SCALING = 1000;
 
 const NLAYERS = 4;
 const NMACROS = 8;
+const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
 
 const LAYERS_USAGE_PAGE = 0xFFF10000;
+const EXPR_USAGE_PAGE = 0xFFF30000;
 
 const RESET_INTO_BOOTSEL = 1;
 const SET_CONFIG = 2;
@@ -37,6 +39,42 @@ const FLASH_B_SIDE = 14;
 const CLEAR_MACROS = 15;
 const APPEND_TO_MACRO = 16;
 const GET_MACRO = 17;
+const INVALID_COMMAND = 18;
+const CLEAR_EXPRESSIONS = 19;
+const APPEND_TO_EXPRESSION = 20;
+const GET_EXPRESSION = 21;
+
+const ops = {
+    "PUSH": 0,
+    "PUSH_USAGE": 1,
+    "INPUT_STATE": 2,
+    "ADD": 3,
+    "MUL": 4,
+    "EQ": 5,
+    "TIME": 6,
+    "MOD": 7,
+    "GT": 8,
+    "NOT": 9,
+    "INPUT_STATE_BINARY": 10,
+    "ABS": 11,
+    "DUP": 12,
+    "SIN": 13,
+    "COS": 14,
+    "DEBUG": 15,
+    "AUTO_REPEAT": 16,
+    "RELU": 17,
+    "CLAMP": 18,
+    "SCALING": 19,
+    "LAYER_STATE": 20,
+    "STICKY_STATE": 21,
+    "TAP_STATE": 22,
+    "HOLD_STATE": 23,
+    "BITWISE_OR": 24,
+    "BITWISE_AND": 25,
+    "BITWISE_NOT": 26,
+}
+
+const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
 
 const UINT8 = Symbol('uint8');
 const UINT32 = Symbol('uint32');
@@ -62,6 +100,9 @@ let config = {
     }],
     macros: [
         [], [], [], [], [], [], [], []
+    ],
+    expressions: [
+        '', '', '', '', '', '', '', ''
     ],
 };
 const ignored_usages = new Set([
@@ -99,6 +140,7 @@ document.addEventListener("DOMContentLoaded", function () {
     modal = new bootstrap.Modal(document.getElementById('usage_modal'), {});
     setup_usages_modal();
     setup_macros();
+    setup_expressions();
     set_ui_state();
 });
 
@@ -194,6 +236,40 @@ async function load_from_device() {
             config['macros'].push(macro);
         }
 
+        config['expressions'] = [];
+
+        for (let expr_i = 0; expr_i < NEXPRESSIONS; expr_i++) {
+            let expression = [];
+            let i = 0;
+            while (true) {
+                await send_feature_command(GET_EXPRESSION, [[UINT32, expr_i], [UINT32, i]]);
+                const fields = await read_config_feature([UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8, UINT8]);
+                const nelems = fields[0];
+                if (nelems == 0) {
+                    break;
+                }
+                let elems = fields.slice(1);
+                for (let j = 0; j < nelems; j++) {
+                    const elem = elems[0];
+                    elems = elems.slice(1);
+                    if ([ops['PUSH'], ops['PUSH_USAGE']].includes(elem)) {
+                        const val = elems[3] << 24 | elems[2] << 16 | elems[1] << 8 | elems[0];
+                        elems = elems.slice(4);
+                        if (elem == ops['PUSH']) {
+                            expression.push(val.toString());
+                        } else {
+                            expression.push('0x' + val.toString(16).padStart(8, '0'));
+                        }
+                    } else {
+                        expression.push(opcodes[elem].toLowerCase());
+                    }
+                }
+                i += nelems;
+            }
+
+            config['expressions'].push(expression.join(' '));
+        }
+
         set_ui_state();
     } catch (e) {
         display_error(e);
@@ -249,6 +325,44 @@ async function save_to_device() {
             }
 
             macro_i++;
+        }
+
+        await send_feature_command(CLEAR_EXPRESSIONS);
+        let expr_i = 0;
+        for (const expr of config['expressions']) {
+            if (expr_i >= NEXPRESSIONS) {
+                break;
+            }
+
+            let elems = expr_to_elems(expr);
+            while (elems.length > 0) {
+                let bytes_left = 24;
+                let items_to_send = [];
+                let nelems = 0;
+                while ((elems.length > 0) && (bytes_left > 0)) {
+                    const elem = elems[0];
+                    if ([ops["PUSH"], ops["PUSH_USAGE"]].includes(elem[0])) {
+                        if (bytes_left >= 5) {
+                            items_to_send.push([UINT8, elem[0]]);
+                            items_to_send.push([UINT32, elem[1] >>> 0]);
+                            bytes_left -= 5;
+                            nelems++;
+                            elems = elems.slice(1);
+                        } else {
+                            break
+                        }
+                    } else {
+                        items_to_send.push([UINT8, elem[0]]);
+                        bytes_left--;
+                        nelems++;
+                        elems = elems.slice(1);
+                    }
+                }
+                await send_feature_command(APPEND_TO_EXPRESSION,
+                    [[UINT8, expr_i], [UINT8, nelems]].concat(items_to_send));
+            }
+
+            expr_i++;
         }
 
         await send_feature_command(PERSIST_CONFIG);
@@ -356,6 +470,30 @@ function set_macro_previews() {
     }
 }
 
+function set_expressions_ui_state() {
+    const json_to_ui = function (op) {
+        if (op.toLowerCase().startsWith('0x')) {
+            return op;
+        }
+        if (/^[0-9-]/.test(op)) {
+            return (parseInt(op, 10) / 1000).toString();
+        }
+        return op;
+    }
+
+    let expr_i = 0;
+    for (const expr of config['expressions']) {
+        if (expr_i >= NEXPRESSIONS) {
+            break;
+        }
+
+        document.getElementById('expression_' + expr_i).querySelector('.expression_input').value =
+            expr.split(/\s+/).map(json_to_ui).join(' ');
+
+        expr_i++;
+    }
+}
+
 function set_ui_state() {
     if (config['version'] == 3) {
         config['unmapped_passthrough_layers'] = config['unmapped_passthrough'] ? [0] : [];
@@ -372,12 +510,16 @@ function set_ui_state() {
             mapping['hold'] = false;
         }
         config['tap_hold_threshold'] = DEFAULT_TAP_HOLD_THRESHOLD;
+    }
+    if (config['version'] < 6) {
+        config['expressions'] = ['', '', '', '', '', '', '', ''];
         config['version'] = CONFIG_VERSION;
     }
 
     set_config_ui_state();
     set_mappings_ui_state();
     set_macros_ui_state();
+    set_expressions_ui_state();
 }
 
 function add_mapping(mapping) {
@@ -412,6 +554,7 @@ function add_mapping(mapping) {
     target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
     container.appendChild(clone);
     set_forced_layers(mapping, clone);
+    set_forced_flags(mapping, clone);
 }
 
 function download_json() {
@@ -459,6 +602,7 @@ function file_uploaded() {
             check_json_version(new_config['version']);
             config = new_config;
             set_ui_state();
+            validate_ui_expressions();
             switch_to_mappings_tab();
         } catch (e) {
             display_error(e);
@@ -550,7 +694,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5].includes(config_version))) {
+    if (!([3, 4, 5, 6].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -566,7 +710,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -635,6 +779,40 @@ function layer_checkbox_onchange(mapping, element, layer) {
     };
 }
 
+function expression_onchange(i) {
+    const ui_to_json = function (op) {
+        if (op.toLowerCase().startsWith('0x')) {
+            if (isNaN(parseInt(op, 16))) {
+                throw new Error('Invalid expression: "' + op + '"');
+            }
+            return op;
+        }
+        if (/^[0-9-]/.test(op)) {
+            const x = parseFloat(op);
+            if (isNaN(x)) {
+                throw new Error('Invalid expression: "' + op + '"');
+            }
+            return Math.round(x * 1000).toString();
+        }
+        if ((op.toUpperCase() in ops) && !['PUSH', 'PUSH_USAGE'].includes(op.toUpperCase())) {
+            return op.toLowerCase();
+        }
+        throw new Error('Invalid expression: "' + op + '"');
+    }
+
+    return function () {
+        const expr_input = document.getElementById('expression_' + i).querySelector('.expression_input');
+        try {
+            config['expressions'][i] =
+                expr_input.value.split(/\s+/).filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
+            expr_input.classList.remove('is-invalid');
+        } catch (e) {
+            expr_input.classList.add('is-invalid');
+            config['expressions'][i] = '';
+        }
+    }
+}
+
 function show_usage_modal(mapping, source_or_target, element) {
     return function () {
         document.querySelector('.usage_modal_title').innerText = "Select " + (source_or_target == 'source' ? "input" : "output");
@@ -651,6 +829,10 @@ function show_usage_modal(mapping, source_or_target, element) {
 
                 if (source_or_target == "target") {
                     set_forced_layers(mapping, element.closest(".mapping_container"));
+                }
+
+                if (source_or_target == "source") {
+                    set_forced_flags(mapping, element.closest(".mapping_container"));
                 }
 
                 if (source_or_target == "macro_item") {
@@ -777,6 +959,18 @@ function set_macros_config_from_ui_state() {
     set_macro_previews();
 }
 
+function setup_expressions() {
+    const expr_container = document.getElementById('expressions_container');
+    let template = document.getElementById('expression_template');
+    for (let i = 0; i < NEXPRESSIONS; i++) {
+        let clone = template.content.cloneNode(true).firstElementChild;
+        clone.id = 'expression_' + i;
+        clone.querySelector('.expression_label').innerText = 'Expression ' + (i + 1);
+        clone.querySelector('.expression_input').addEventListener("input", expression_onchange(i));
+        expr_container.appendChild(clone);
+    }
+}
+
 function partial_scroll_timeout_onchange() {
     let value = document.getElementById('partial_scroll_timeout_input').value;
     if (value === '') {
@@ -813,6 +1007,7 @@ function interval_override_onchange() {
 function load_example(n) {
     config = structuredClone(examples[n]['config']);
     set_ui_state();
+    validate_ui_expressions();
     switch_to_mappings_tab();
 }
 
@@ -896,6 +1091,47 @@ function set_forced_layers(mapping, mapping_container) {
     }
 }
 
+function set_forced_flags(mapping, mapping_container) {
+    mapping_container.querySelector(".sticky_checkbox").disabled = false;
+    mapping_container.querySelector(".tap_checkbox").disabled = false;
+    mapping_container.querySelector(".hold_checkbox").disabled = false;
+    const usage_int = parseInt(mapping['source_usage'], 16);
+    if (((usage_int & 0xFFFF0000) >>> 0) == EXPR_USAGE_PAGE) {
+        mapping_container.querySelector(".sticky_checkbox").checked = false;
+        mapping_container.querySelector(".tap_checkbox").checked = false;
+        mapping_container.querySelector(".hold_checkbox").checked = false;
+        mapping_container.querySelector(".sticky_checkbox").disabled = true;
+        mapping_container.querySelector(".tap_checkbox").disabled = true;
+        mapping_container.querySelector(".hold_checkbox").disabled = true;
+        mapping['sticky'] = false;
+        mapping['tap'] = false;
+        mapping['hold'] = false;
+    }
+}
+
 function switch_to_mappings_tab() {
     bootstrap.Tab.getOrCreateInstance(document.getElementById("nav-mappings-tab")).show();
+}
+
+function expr_to_elems(expr) {
+    const convert_elem = function (elem) {
+        if (elem.toLowerCase().startsWith('0x')) {
+            return [ops["PUSH_USAGE"], parseInt(elem, 16)];
+        }
+        if (/^[0-9-]/.test(elem)) {
+            return [ops["PUSH"], parseInt(elem, 10)];
+        }
+        if (elem.toUpperCase() in ops) {
+            return [ops[elem.toUpperCase()]];
+        }
+        throw new Error('Invalid expression: "' + elem + '"');
+    }
+
+    return expr.split(/\s+/).filter((x) => (x.length > 0)).map(convert_elem);
+}
+
+function validate_ui_expressions() {
+    for (let i = 0; i < NEXPRESSIONS; i++) {
+        expression_onchange(i)();
+    }
 }

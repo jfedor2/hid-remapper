@@ -35,6 +35,7 @@
             <button class="nav-link active" id="nav-mappings-tab" data-bs-toggle="tab" data-bs-target="#nav-mappings" type="button" role="tab">Mappings</button>
             <button class="nav-link" id="nav-settings-tab" data-bs-toggle="tab" data-bs-target="#nav-settings" type="button" role="tab">Settings</button>
             <button class="nav-link" id="nav-macros-tab" data-bs-toggle="tab" data-bs-target="#nav-macros" type="button" role="tab">Macros</button>
+            <button class="nav-link" id="nav-expressions-tab" data-bs-toggle="tab" data-bs-target="#nav-expressions" type="button" role="tab">Expressions</button>
             <button class="nav-link" id="nav-actions-tab" data-bs-toggle="tab" data-bs-target="#nav-actions" type="button" role="tab">Actions</button>
             <button class="nav-link" id="nav-examples-tab" data-bs-toggle="tab" data-bs-target="#nav-examples" type="button" role="tab">Examples</button>
         </div>
@@ -133,6 +134,14 @@
             <div class="tab-pane" id="nav-macros" role="tabpanel" tabindex="0">
 
                 <div class="accordion mt-4" id="macros_container">
+
+                </div>
+
+            </div>
+
+            <div class="tab-pane" id="nav-expressions" role="tabpanel" tabindex="0">
+
+                <div class="mt-4" id="expressions_container">
 
                 </div>
 
@@ -271,6 +280,13 @@
         <div class="btn-group macro_item col-auto">
             <button type="button" class="delete_macro_item btn btn-primary">×</button>
             <button type="button" class="macro_item_usage btn btn-primary" data-hid-usage="0x00000000">Nothing</button>
+        </div>
+    </template>
+
+    <template id="expression_template">
+        <div class="mb-3">
+            <label class="form-label expression_label">Expression</label>
+            <textarea type="text" class="form-control expression_input font-monospace" rows="1" spellcheck="false"></textarea>
         </div>
     </template>
 

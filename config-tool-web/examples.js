@@ -693,6 +693,196 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'expressions: gamepad-to-mouse adapter',
+        'config': {
+            "version": 6,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
+            "tap_hold_threshold": 200000,
+            "mappings": [
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x00090002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x00090003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010038",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010038",
+                    "source_usage": "0xfff30004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state -128000 add dup abs 10000 gt mul 25 mul auto_repeat mul",
+                "0x00010031 input_state -128000 add dup abs 10000 gt mul 25 mul auto_repeat mul",
+                "0x00010033 input_state 1 mul 0x00010034 input_state -1 mul add 250 mul auto_repeat mul",
+                "0x00010035 input_state -128000 add dup abs 10000 gt mul -1 mul 250 mul auto_repeat mul",
+                "0x00010039 input_state 7000 gt not 0x00010039 input_state 45000 mul sin 1000 mul mul auto_repeat mul",
+                "0x00010039 input_state 7000 gt not 0x00010039 input_state 45000 mul cos -1000 mul mul auto_repeat mul",
+                "",
+                ""
+            ]
+        }
+    },
+    {
+        'description': 'expressions: middle button enables mouse jiggler',
+        'config': {
+            "version": 6,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
+            "tap_hold_threshold": 200000,
+            "mappings": [
+                {
+                    "target_usage": "0xfff10001",
+                    "source_usage": "0x00090003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": true,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "time 2000000 mod 500000 gt not time 500000 mod 720 mul cos mul auto_repeat mul",
+                "time 2000000 mod 500000 gt not time 500000 mod 720 mul sin -1000 mul mul auto_repeat mul",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        }
+    },
 ];
 
 export default examples;

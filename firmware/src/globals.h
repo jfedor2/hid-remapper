@@ -30,4 +30,7 @@ extern uint8_t resolution_multiplier;
 #define NMACROS 8
 extern std::vector<std::vector<uint32_t>> macros[NMACROS];
 
+#define NEXPRESSIONS 8
+extern std::vector<expr_elem_t> expressions[NEXPRESSIONS];
+
 #endif

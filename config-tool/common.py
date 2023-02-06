@@ -8,7 +8,7 @@ PRODUCT_ID = 0xBAF2
 
 CONFIG_USAGE_PAGE = 0xFF00
 
-CONFIG_VERSION = 5
+CONFIG_VERSION = 6
 CONFIG_SIZE = 32
 REPORT_ID_CONFIG = 100
 
@@ -35,6 +35,11 @@ FLASH_B_SIDE = 14
 CLEAR_MACROS = 15
 APPEND_TO_MACRO = 16
 GET_MACRO = 17
+INVALID_COMMAND = 18
+CLEAR_EXPRESSIONS = 19
+APPEND_TO_EXPRESSION = 20
+GET_EXPRESSION = 21
+
 
 UNMAPPED_PASSTHROUGH_FLAG = 0x01
 STICKY_FLAG = 1 << 0
@@ -42,7 +47,40 @@ TAP_FLAG = 1 << 1
 HOLD_FLAG = 1 << 2
 
 NMACROS = 8
+NEXPRESSIONS = 8
 MACRO_ITEMS_IN_PACKET = 6
+
+ops = {
+    "PUSH": 0,
+    "PUSH_USAGE": 1,
+    "INPUT_STATE": 2,
+    "ADD": 3,
+    "MUL": 4,
+    "EQ": 5,
+    "TIME": 6,
+    "MOD": 7,
+    "GT": 8,
+    "NOT": 9,
+    "INPUT_STATE_BINARY": 10,
+    "ABS": 11,
+    "DUP": 12,
+    "SIN": 13,
+    "COS": 14,
+    "DEBUG": 15,
+    "AUTO_REPEAT": 16,
+    "RELU": 17,
+    "CLAMP": 18,
+    "SCALING": 19,
+    "LAYER_STATE": 20,
+    "STICKY_STATE": 21,
+    "TAP_STATE": 22,
+    "HOLD_STATE": 23,
+    "BITWISE_OR": 24,
+    "BITWISE_AND": 25,
+    "BITWISE_NOT": 26,
+}
+
+opcodes = {v: k for k, v in ops.items()}
 
 
 def check_crc(buf, crc_):
@@ -83,3 +121,17 @@ def batched(iterable, n):
     it = iter(iterable)
     while batch := tuple(itertools.islice(it, n)):
         yield batch
+
+
+def convert_elem(elem):
+    if elem[0:2].lower() == "0x":
+        return (ops["PUSH_USAGE"], int(elem, 16))
+    if elem[0] in ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-"):
+        return (ops["PUSH"], int(elem))
+    if elem.upper() in ops:
+        return (ops[elem.upper()],)
+    raise Exception("Invalid expression: '{}'".format(elem))
+
+
+def expr_to_elems(expr):
+    return [convert_elem(x) for x in expr.split()]

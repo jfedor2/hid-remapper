@@ -22,3 +22,5 @@ std::vector<mapping_config_t> config_mappings;
 uint8_t resolution_multiplier = 0;
 
 std::vector<std::vector<uint32_t>> macros[NMACROS];
+
+std::vector<expr_elem_t> expressions[NEXPRESSIONS];

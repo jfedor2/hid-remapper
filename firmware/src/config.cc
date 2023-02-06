@@ -9,7 +9,7 @@
 #include "platform.h"
 #include "remapper.h"
 
-const uint8_t CONFIG_VERSION = 5;
+const uint8_t CONFIG_VERSION = 6;
 
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH = 0x01;
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK = 0b00001111;
@@ -25,7 +25,7 @@ bool checksum_ok(const uint8_t* buffer, uint16_t data_size) {
 
 bool persisted_version_ok(const uint8_t* buffer) {
     uint8_t version = ((config_version_t*) buffer)->version;
-    return (version == 3) || (version == 4) || (version == 5);
+    return (version == 3) || (version == 4) || (version == 5) || (version == 6);
 }
 
 bool command_version_ok(const uint8_t* buffer) {
@@ -75,18 +75,7 @@ void load_config_v3_v4(const uint8_t* persisted_config) {
     }
 }
 
-void load_config(const uint8_t* persisted_config) {
-    if (!checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) || !persisted_version_ok(persisted_config)) {
-        return;
-    }
-
-    uint8_t version = ((config_version_t*) persisted_config)->version;
-
-    if ((version == 3) || (version == 4)) {
-        load_config_v3_v4(persisted_config);
-        return;
-    }
-
+void load_config_v5(const uint8_t* persisted_config) {
     persist_config_v5_t* config = (persist_config_v5_t*) persisted_config;
     unmapped_passthrough_layer_mask =
         (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
@@ -117,6 +106,75 @@ void load_config(const uint8_t* persisted_config) {
         }
     }
     my_mutex_exit(MutexId::MACROS);
+}
+
+void load_config(const uint8_t* persisted_config) {
+    if (!checksum_ok(persisted_config, PERSISTED_CONFIG_SIZE) || !persisted_version_ok(persisted_config)) {
+        return;
+    }
+
+    uint8_t version = ((config_version_t*) persisted_config)->version;
+
+    if ((version == 3) || (version == 4)) {
+        load_config_v3_v4(persisted_config);
+        return;
+    }
+
+    if (version == 5) {
+        load_config_v5(persisted_config);
+        return;
+    }
+
+    persist_config_v6_t* config = (persist_config_v6_t*) persisted_config;
+    unmapped_passthrough_layer_mask =
+        (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
+    partial_scroll_timeout = config->partial_scroll_timeout;
+    tap_hold_threshold = config->tap_hold_threshold;
+    interval_override = config->interval_override;
+    mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_v6_t));
+    for (uint32_t i = 0; i < config->mapping_count; i++) {
+        config_mappings.push_back(buffer_mappings[i]);
+    }
+
+    const uint8_t* macros_config_ptr = (persisted_config + sizeof(persist_config_v6_t) + config->mapping_count * sizeof(mapping_config_t));
+    my_mutex_enter(MutexId::MACROS);
+    for (int i = 0; i < NMACROS; i++) {
+        macros[i].clear();
+        uint8_t macro_len = *macros_config_ptr;
+        macros_config_ptr++;
+        macros[i].reserve(macro_len);
+        for (int j = 0; j < macro_len; j++) {
+            uint8_t entry_len = *macros_config_ptr;
+            macros_config_ptr++;
+            macros[i].push_back({});
+            macros[i].back().reserve(entry_len);
+            for (int k = 0; k < entry_len; k++) {
+                macros[i].back().push_back(((macro_item_t*) macros_config_ptr)->usage);
+                macros_config_ptr += sizeof(macro_item_t);
+            }
+        }
+    }
+    my_mutex_exit(MutexId::MACROS);
+
+    const uint8_t* expr_config_ptr = macros_config_ptr;
+    my_mutex_enter(MutexId::EXPRESSIONS);
+    for (int i = 0; i < NEXPRESSIONS; i++) {
+        expressions[i].clear();
+        uint8_t expr_len = *expr_config_ptr;
+        expr_config_ptr++;
+        expressions[i].reserve(expr_len);
+        for (int j = 0; j < expr_len; j++) {
+            uint8_t op = *expr_config_ptr;
+            expr_config_ptr++;
+            uint32_t val = 0;
+            if ((op == (uint8_t) Op::PUSH) || (op == (uint8_t) Op::PUSH_USAGE)) {
+                val = ((expr_val_t*) expr_config_ptr)->val;
+                expr_config_ptr += sizeof(expr_val_t);
+            }
+            expressions[i].push_back((expr_elem_t){ .op = (Op) op, .val = val });
+        }
+    }
+    my_mutex_exit(MutexId::EXPRESSIONS);
 }
 
 void fill_get_config(get_config_t* config) {
@@ -170,6 +228,22 @@ void persist_config() {
         }
     }
     my_mutex_exit(MutexId::MACROS);
+
+    uint8_t* expr_config_ptr = macros_config_ptr;
+    my_mutex_enter(MutexId::EXPRESSIONS);
+    for (int i = 0; i < NEXPRESSIONS; i++) {
+        *expr_config_ptr = expressions[i].size();
+        expr_config_ptr++;
+        for (auto const& elem : expressions[i]) {
+            *expr_config_ptr = (uint8_t) elem.op;
+            expr_config_ptr++;
+            if ((elem.op == Op::PUSH) || (elem.op == Op::PUSH_USAGE)) {
+                ((expr_val_t*) expr_config_ptr)->val = elem.val;
+                expr_config_ptr += sizeof(expr_val_t);
+            }
+        }
+    }
+    my_mutex_exit(MutexId::EXPRESSIONS);
 
     ((crc32_t*) (buffer + PERSISTED_CONFIG_SIZE - 4))->crc32 = crc32(buffer, PERSISTED_CONFIG_SIZE - 4);
 
@@ -250,6 +324,38 @@ uint16_t handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) 
                         ret_idx--;
                     }
                     returned->nitems = ret_idx;
+                }
+                break;
+            }
+            case ConfigCommand::GET_EXPRESSION: {
+                if (requested_index >= NEXPRESSIONS) {
+                    break;
+                }
+                get_expr_response_t* returned = (get_expr_response_t*) config_buffer;
+                uint8_t* ptr = returned->elem_data;
+                uint8_t i = 0;
+                for (auto const& elem : expressions[requested_index]) {
+                    if (i >= requested_secondary_index) {
+                        if ((elem.op == Op::PUSH) || (elem.op == Op::PUSH_USAGE)) {
+                            if (ptr <= returned->elem_data + sizeof(returned->elem_data) - 5) {
+                                *ptr = (uint8_t) elem.op;
+                                ptr++;
+                                ((expr_val_t*) ptr)->val = elem.val;
+                                ptr += sizeof(expr_val_t);
+                                returned->nelems++;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            *ptr = (uint8_t) elem.op;
+                            ptr++;
+                            returned->nelems++;
+                        }
+                    }
+                    if (ptr > returned->elem_data + sizeof(returned->elem_data) - 1) {
+                        break;
+                    }
+                    i++;
                 }
                 break;
             }
@@ -357,6 +463,49 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     get_macro_t* get_macro = (get_macro_t*) config_buffer->data;
                     requested_index = get_macro->requested_macro;
                     requested_secondary_index = get_macro->requested_macro_item;
+                    break;
+                }
+                case ConfigCommand::CLEAR_EXPRESSIONS:
+                    my_mutex_enter(MutexId::EXPRESSIONS);
+                    for (int i = 0; i < NEXPRESSIONS; i++) {
+                        expressions[i].clear();
+                    }
+                    my_mutex_exit(MutexId::EXPRESSIONS);
+                    break;
+                case ConfigCommand::APPEND_TO_EXPRESSION: {
+                    append_to_expr_t* append_to_expr = (append_to_expr_t*) config_buffer->data;
+                    if (append_to_expr->expr >= NEXPRESSIONS) {
+                        break;
+                    }
+                    my_mutex_enter(MutexId::EXPRESSIONS);
+                    uint8_t* ptr = append_to_expr->elem_data;
+                    for (int i = 0; i < append_to_expr->nelems; i++) {
+                        if (ptr > append_to_expr->elem_data + sizeof(append_to_expr->elem_data) - 1) {
+                            break;
+                        }
+                        Op op = (Op) *ptr;
+                        ptr++;
+                        if ((op == Op::PUSH) || (op == Op::PUSH_USAGE)) {
+                            if (ptr > append_to_expr->elem_data + sizeof(append_to_expr->elem_data) - sizeof(uint32_t)) {
+                                break;
+                            }
+                            uint32_t val = ((expr_val_t*) ptr)->val;
+                            ptr += sizeof(expr_val_t);
+                            expressions[append_to_expr->expr].push_back((expr_elem_t){
+                                .op = op,
+                                .val = val });
+                        } else {
+                            expressions[append_to_expr->expr].push_back((expr_elem_t){ .op = op });
+                        }
+                    }
+                    my_mutex_exit(MutexId::EXPRESSIONS);
+                    set_mapping_from_config();
+                    break;
+                }
+                case ConfigCommand::GET_EXPRESSION: {
+                    get_expr_t* get_expr = (get_expr_t*) config_buffer->data;
+                    requested_index = get_expr->requested_expr;
+                    requested_secondary_index = get_expr->requested_expr_elem;
                     break;
                 }
                 default:

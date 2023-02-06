@@ -35,6 +35,7 @@ config = {
     "tap_hold_threshold": tap_hold_threshold,
     "mappings": [],
     "macros": [],
+    "expressions": [],
 }
 
 for i in range(mapping_count):
@@ -100,5 +101,46 @@ for macro_i in range(NMACROS):
                 macro[-1].append("{0:#010x}".format(usage))
         i += MACRO_ITEMS_IN_PACKET
     config["macros"].append(macro)
+
+for expression_i in range(NEXPRESSIONS):
+    expression = []
+    i = 0
+    while True:
+        data = struct.pack(
+            "<BBBLL18B",
+            REPORT_ID_CONFIG,
+            CONFIG_VERSION,
+            GET_EXPRESSION,
+            expression_i,
+            i,
+            *([0] * 18)
+        )
+        device.send_feature_report(add_crc(data))
+        data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
+        (
+            report_id,
+            nelems,
+            *elems,
+            crc,
+        ) = struct.unpack("<BB27BL", data)
+        check_crc(data, crc)
+        if nelems == 0:
+            break
+        for _ in range(nelems):
+            elem = elems[0]
+            elems = elems[1:]
+            if elem in (ops["PUSH"], ops["PUSH_USAGE"]):
+                val = elems[3] << 24 | elems[2] << 16 | elems[1] << 8 | elems[0]
+                elems = elems[4:]
+                if elem == ops["PUSH"]:
+                    val -= (val & (1 << 31)) << 1
+                    expression.append(str(val))
+                else:
+                    expression.append("0x{:08x}".format(val))
+            else:
+                expression.append(opcodes[elem].lower())
+        i += nelems
+
+    config["expressions"].append(" ".join(expression))
 
 print(json.dumps(config, indent=4))
