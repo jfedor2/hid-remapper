@@ -51,11 +51,11 @@ void assign_interface_index(uint16_t interface) {
 }
 
 void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
-    usages_mutex_enter();
+    my_mutex_enter(MutexId::THEIR_USAGES);
     parse_descriptor(their_usages[interface], has_report_id_theirs[interface], report_descriptor, len);
     apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len);
     assign_interface_index(interface);
-    usages_mutex_exit();
+    my_mutex_exit(MutexId::THEIR_USAGES);
     their_descriptor_updated = true;
 }
 
@@ -194,7 +194,7 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
 }
 
 void clear_descriptor_data(uint8_t dev_addr) {
-    usages_mutex_enter();
+    my_mutex_enter(MutexId::THEIR_USAGES);
     for (auto it = their_usages.cbegin(); it != their_usages.cend();) {
         uint16_t dev_addr_interface = it->first;
         if (dev_addr_interface >> 8 == dev_addr) {
@@ -209,6 +209,6 @@ void clear_descriptor_data(uint8_t dev_addr) {
             it++;
         }
     }
-    usages_mutex_exit();
+    my_mutex_exit(MutexId::THEIR_USAGES);
     their_descriptor_updated = true;
 }

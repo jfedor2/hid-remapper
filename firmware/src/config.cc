@@ -54,7 +54,7 @@ void load_config_v3_v4(const uint8_t* persisted_config) {
 
     if (config->version >= 4) {
         const uint8_t* macros_config_ptr = (persisted_config + sizeof(persist_config_v4_t) + config->mapping_count * sizeof(mapping_config_t));
-        macros_mutex_enter();
+        my_mutex_enter(MutexId::MACROS);
         for (int i = 0; i < NMACROS; i++) {
             macros[i].clear();
             uint8_t macro_len = *macros_config_ptr;
@@ -71,7 +71,7 @@ void load_config_v3_v4(const uint8_t* persisted_config) {
                 }
             }
         }
-        macros_mutex_exit();
+        my_mutex_exit(MutexId::MACROS);
     }
 }
 
@@ -99,7 +99,7 @@ void load_config(const uint8_t* persisted_config) {
     }
 
     const uint8_t* macros_config_ptr = (persisted_config + sizeof(persist_config_v5_t) + config->mapping_count * sizeof(mapping_config_t));
-    macros_mutex_enter();
+    my_mutex_enter(MutexId::MACROS);
     for (int i = 0; i < NMACROS; i++) {
         macros[i].clear();
         uint8_t macro_len = *macros_config_ptr;
@@ -116,7 +116,7 @@ void load_config(const uint8_t* persisted_config) {
             }
         }
     }
-    macros_mutex_exit();
+    my_mutex_exit(MutexId::MACROS);
 }
 
 void fill_get_config(get_config_t* config) {
@@ -156,7 +156,7 @@ void persist_config() {
     }
 
     uint8_t* macros_config_ptr = (buffer + sizeof(persist_config_t) + config->mapping_count * sizeof(mapping_config_t));
-    macros_mutex_enter();
+    my_mutex_enter(MutexId::MACROS);
     for (int i = 0; i < NMACROS; i++) {
         *macros_config_ptr = macros[i].size();
         macros_config_ptr++;
@@ -169,7 +169,7 @@ void persist_config() {
             }
         }
     }
-    macros_mutex_exit();
+    my_mutex_exit(MutexId::MACROS);
 
     ((crc32_t*) (buffer + PERSISTED_CONFIG_SIZE - 4))->crc32 = crc32(buffer, PERSISTED_CONFIG_SIZE - 4);
 
@@ -225,7 +225,7 @@ uint16_t handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) 
                     uint16_t i = 0;
                     uint8_t ret_idx = 0;
                     bool exhausted = true;
-                    macros_mutex_enter();
+                    my_mutex_enter(MutexId::MACROS);
                     for (auto const& entries : macros[requested_index]) {
                         if (ret_idx >= MACRO_ITEMS_IN_PACKET) {
                             exhausted = false;
@@ -245,7 +245,7 @@ uint16_t handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) 
                         }
                         i++;
                     }
-                    macros_mutex_exit();
+                    my_mutex_exit(MutexId::MACROS);
                     if (exhausted && (ret_idx > 0)) {
                         ret_idx--;
                     }
@@ -331,15 +331,15 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     flash_b_side();
                     break;
                 case ConfigCommand::CLEAR_MACROS:
-                    macros_mutex_enter();
+                    my_mutex_enter(MutexId::MACROS);
                     for (int i = 0; i < NMACROS; i++) {
                         macros[i].clear();
                     }
-                    macros_mutex_exit();
+                    my_mutex_exit(MutexId::MACROS);
                     break;
                 case ConfigCommand::APPEND_TO_MACRO: {
                     append_to_macro_t* append_to_macro = (append_to_macro_t*) config_buffer->data;
-                    macros_mutex_enter();
+                    my_mutex_enter(MutexId::MACROS);
                     if (macros[append_to_macro->macro].empty()) {
                         macros[append_to_macro->macro].push_back({});
                     }
@@ -350,7 +350,7 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                             macros[append_to_macro->macro].back().push_back(append_to_macro->usages[i]);
                         }
                     }
-                    macros_mutex_exit();
+                    my_mutex_exit(MutexId::MACROS);
                     break;
                 }
                 case ConfigCommand::GET_MACRO: {

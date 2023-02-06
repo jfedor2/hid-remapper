@@ -349,11 +349,11 @@ void process_mapping(bool auto_repeat) {
             if ((layer_state_mask & map_source.layer_mask) &&
                 ((!map_source.tap && (prev_input_state[map_source.usage] == 0) && (input_state[map_source.usage] != 0)) ||
                     (map_source.tap && tap_state[map_source.usage]))) {
-                macros_mutex_enter();
+                my_mutex_enter(MutexId::MACROS);
                 for (auto const& usages : macros[macro]) {
                     macro_queue.push(usages);
                 }
-                macros_mutex_exit();
+                my_mutex_exit(MutexId::MACROS);
             }
         }
     }
@@ -555,7 +555,7 @@ inline void read_input_range(const uint8_t* report, int len, uint32_t source_usa
 void handle_received_report(const uint8_t* report, int len, uint16_t interface) {
     reports_received++;
 
-    usages_mutex_enter();
+    my_mutex_enter(MutexId::THEIR_USAGES);
 
     uint8_t report_id = 0;
     if (has_report_id_theirs[interface]) {
@@ -572,7 +572,7 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface) 
         }
     }
 
-    usages_mutex_exit();
+    my_mutex_exit(MutexId::THEIR_USAGES);
 }
 
 void rlencode(const std::set<uint64_t>& usage_ranges, std::vector<usage_rle_t>& output) {

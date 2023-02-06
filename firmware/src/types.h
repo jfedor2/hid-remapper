@@ -148,4 +148,11 @@ struct __attribute__((packed)) usages_list_t {
     usage_rle_t usages[NUSAGES_IN_PACKET];
 };
 
+enum class MutexId : int8_t {
+    THEIR_USAGES,
+    MACROS,
+    EXPRESSIONS,
+    N
+};
+
 #endif

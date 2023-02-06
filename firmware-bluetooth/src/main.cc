@@ -43,10 +43,7 @@ static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
 
 static K_SEM_DEFINE(usb_sem, 1, 1);
 
-// we don't really need the mutex if we're parsing both the reports and the descriptors in the main loop
-K_MUTEX_DEFINE(their_usages_mutex);
-
-K_MUTEX_DEFINE(macros_mutex);
+static struct k_mutex mutexes[(uint8_t) MutexId::N];
 
 static const struct device* hid_dev0;
 static const struct device* hid_dev1;  // config interface
@@ -731,26 +728,18 @@ void clear_bonds() {
     k_work_submit(&clear_bonds_work);
 }
 
-void usages_mutex_init() {
+void my_mutexes_init() {
+    for (int i = 0; i < (int8_t) MutexId::N; i++) {
+        k_mutex_init(&mutexes[i]);
+    }
 }
 
-void usages_mutex_enter() {
-    k_mutex_lock(&their_usages_mutex, K_FOREVER);
+void my_mutex_enter(MutexId id) {
+    k_mutex_lock(&mutexes[(uint8_t) id], K_FOREVER);
 }
 
-void usages_mutex_exit() {
-    k_mutex_unlock(&their_usages_mutex);
-}
-
-void macros_mutex_init() {
-}
-
-void macros_mutex_enter() {
-    k_mutex_lock(&macros_mutex, K_FOREVER);
-}
-
-void macros_mutex_exit() {
-    k_mutex_unlock(&macros_mutex);
+void my_mutex_exit(MutexId id) {
+    k_mutex_unlock(&mutexes[(uint8_t) id]);
 }
 
 uint64_t get_time() {
@@ -763,6 +752,7 @@ void interval_override_updated() {
 int main() {
     LOG_INF("HID Remapper Bluetooth");
 
+    my_mutexes_init();
     button_init();
     leds_init();
     usb_init();

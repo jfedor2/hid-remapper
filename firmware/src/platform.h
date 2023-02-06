@@ -2,6 +2,7 @@
 #define _PLATFORM_H_
 
 #include <stdint.h>
+#include <types.h>
 
 void do_persist_config(uint8_t* buffer);
 
@@ -10,13 +11,9 @@ void pair_new_device();
 void clear_bonds();
 void flash_b_side();
 
-void usages_mutex_init();
-void usages_mutex_enter();
-void usages_mutex_exit();
-
-void macros_mutex_init();
-void macros_mutex_enter();
-void macros_mutex_exit();
+void my_mutexes_init();
+void my_mutex_enter(MutexId id);
+void my_mutex_exit(MutexId id);
 
 uint64_t get_time();
 

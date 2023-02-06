@@ -30,8 +30,7 @@ volatile bool tick_pending;
 
 uint64_t next_print = 0;
 
-mutex_t their_usages_mutex;
-mutex_t macros_mutex;
+mutex_t mutexes[(uint8_t) MutexId::N];
 
 void print_stats_maybe() {
     uint64_t now = time_us_64();
@@ -80,28 +79,18 @@ void pair_new_device() {
 void clear_bonds() {
 }
 
-void usages_mutex_init() {
-    mutex_init(&their_usages_mutex);
+void my_mutexes_init() {
+    for (int i = 0; i < (int8_t) MutexId::N; i++) {
+        mutex_init(&mutexes[i]);
+    }
 }
 
-void usages_mutex_enter() {
-    mutex_enter_blocking(&their_usages_mutex);
+void my_mutex_enter(MutexId id) {
+    mutex_enter_blocking(&mutexes[(uint8_t) id]);
 }
 
-void usages_mutex_exit() {
-    mutex_exit(&their_usages_mutex);
-}
-
-void macros_mutex_init() {
-    mutex_init(&macros_mutex);
-}
-
-void macros_mutex_enter() {
-    mutex_enter_blocking(&macros_mutex);
-}
-
-void macros_mutex_exit() {
-    mutex_exit(&macros_mutex);
+void my_mutex_exit(MutexId id) {
+    mutex_exit(&mutexes[(uint8_t) id]);
 }
 
 uint64_t get_time() {
@@ -109,8 +98,7 @@ uint64_t get_time() {
 }
 
 int main() {
-    usages_mutex_init();
-    macros_mutex_init();
+    my_mutexes_init();
     extra_init();
     parse_our_descriptor();
     load_config(FLASH_CONFIG_IN_MEMORY);
