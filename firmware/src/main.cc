@@ -60,10 +60,14 @@ bool do_send_report(const uint8_t* report_with_id, uint8_t len) {
 }
 
 void do_persist_config(uint8_t* buffer) {
+#if !PICO_COPY_TO_RAM
     uint32_t ints = save_and_disable_interrupts();
+#endif
     flash_range_erase(CONFIG_OFFSET_IN_FLASH, PERSISTED_CONFIG_SIZE);
     flash_range_program(CONFIG_OFFSET_IN_FLASH, buffer, PERSISTED_CONFIG_SIZE);
+#if !PICO_COPY_TO_RAM
     restore_interrupts(ints);
+#endif
 }
 
 void reset_to_bootloader() {
