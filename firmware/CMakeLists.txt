@@ -18,10 +18,10 @@ add_compile_options(-Wall)
 
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
 
-add_executable(remapper
+add_executable(remapper_classic
     src/main.cc
     src/remapper.cc
-    src/remapper_single.cc
+    src/remapper_single_classic.cc
     ${OUR_PIO_USB_PATH}/pio_usb.c
     ${OUR_PIO_USB_PATH}/usb_crc.c
     src/crc.cc
@@ -35,19 +35,19 @@ add_executable(remapper
     src/interval_override.cc
 )
 
-target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
-target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_RX_PIN=17)
+target_compile_definitions(remapper_classic PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
+target_compile_definitions(remapper_classic PUBLIC PICO_DEFAULT_UART_RX_PIN=17)
 
-pico_generate_pio_header(remapper ${OUR_PIO_USB_PATH}/usb_tx.pio)
-pico_generate_pio_header(remapper ${OUR_PIO_USB_PATH}/usb_rx.pio)
+pico_generate_pio_header(remapper_classic ${OUR_PIO_USB_PATH}/usb_tx.pio)
+pico_generate_pio_header(remapper_classic ${OUR_PIO_USB_PATH}/usb_rx.pio)
 
-target_include_directories(remapper PRIVATE
+target_include_directories(remapper_classic PRIVATE
     src
     src/tusb_config_device
     ${OUR_PIO_USB_PATH}
 )
 
-target_link_libraries(remapper
+target_link_libraries(remapper_classic
     pico_stdlib
     pico_multicore
     hardware_pio
@@ -57,8 +57,8 @@ target_link_libraries(remapper
     tinyusb_board
 )
 
-pico_set_binary_type(remapper copy_to_ram)
-pico_add_extra_outputs(remapper)
+pico_set_binary_type(remapper_classic copy_to_ram)
+pico_add_extra_outputs(remapper_classic)
 
 
 add_executable(remapper_dual_a
