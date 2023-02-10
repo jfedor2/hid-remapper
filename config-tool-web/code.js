@@ -459,6 +459,7 @@ function file_uploaded() {
             check_json_version(new_config['version']);
             config = new_config;
             set_ui_state();
+            switch_to_mappings_tab();
         } catch (e) {
             display_error(e);
         }
@@ -812,21 +813,19 @@ function interval_override_onchange() {
 function load_example(n) {
     config = structuredClone(examples[n]['config']);
     set_ui_state();
+    switch_to_mappings_tab();
 }
 
 function setup_examples() {
     const element = document.getElementById("examples");
     const template = document.getElementById("example_template");
     for (let i = 0; i < examples.length; i++) {
-        if (i > 0) {
-            element.appendChild(document.createTextNode(', '));
-        }
         const clone = template.content.cloneNode(true).firstElementChild;
-        clone.innerText = examples[i]['description'];
-        clone.addEventListener("click", () => load_example(i));
+        const link = clone.querySelector('a');
+        link.innerText = examples[i]['description'];
+        link.addEventListener("click", () => load_example(i));
         element.appendChild(clone);
     }
-    element.appendChild(document.createTextNode('.'));
 }
 
 function hid_on_disconnect(event) {
@@ -895,4 +894,8 @@ function set_forced_layers(mapping, mapping_container) {
         }
         layer_checkbox.disabled = true;
     }
+}
+
+function switch_to_mappings_tab() {
+    bootstrap.Tab.getOrCreateInstance(document.getElementById("nav-mappings-tab")).show();
 }

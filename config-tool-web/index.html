@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html style="scrollbar-gutter: stable both-edges;">
 
 <head>
     <meta charset="utf-8">
@@ -13,7 +13,7 @@
 
 <body>
 
-    <div class="container" style="max-width: 720px;">
+    <div class="container d-flex flex-column" style="max-width: 720px; min-height: 100vh;">
 
         <h1 class="mt-sm-5 mt-3">HID Remapper Configuration</h1>
 
@@ -31,122 +31,157 @@
 
         <div id="error" class="alert alert-danger d-none"></div>
 
-        <div class="row pb-2" style="overflow-x: auto;">
-            <div style="min-width: 720px; width: 100%;">
-                <div class="row my-2 align-items-end">
-                    <div class="col-1"></div>
-                    <div class="col-3 text-center">Input</div>
-                    <div class="col-3 text-center">Output</div>
-                    <div class="col-3">
-                        <div class="d-flex align-items-end">
-                            <div class="flex-fill text-center">Layer</div>
-                            <div class="text-start pt-1" style="writing-mode: vertical-rl; transform: rotate(180deg); line-height: 1.2em;">Sticky<br>Tap<br>Hold</div>
+        <div class="nav nav-tabs" id="nav-tab" role="tablist">
+            <button class="nav-link active" id="nav-mappings-tab" data-bs-toggle="tab" data-bs-target="#nav-mappings" type="button" role="tab">Mappings</button>
+            <button class="nav-link" id="nav-settings-tab" data-bs-toggle="tab" data-bs-target="#nav-settings" type="button" role="tab">Settings</button>
+            <button class="nav-link" id="nav-macros-tab" data-bs-toggle="tab" data-bs-target="#nav-macros" type="button" role="tab">Macros</button>
+            <button class="nav-link" id="nav-actions-tab" data-bs-toggle="tab" data-bs-target="#nav-actions" type="button" role="tab">Actions</button>
+            <button class="nav-link" id="nav-examples-tab" data-bs-toggle="tab" data-bs-target="#nav-examples" type="button" role="tab">Examples</button>
+        </div>
+
+        <div class="tab-content flex-grow-1">
+
+            <div class="tab-pane active" id="nav-mappings" role="tabpanel" tabindex="0">
+
+                <div class="row pb-2 mt-3" style="overflow-x: auto;">
+                    <div style="min-width: 720px; width: 100%;">
+                        <div class="row my-2 align-items-end">
+                            <div class="col-1"></div>
+                            <div class="col-3 text-center">Input</div>
+                            <div class="col-3 text-center">Output</div>
+                            <div class="col-3">
+                                <div class="d-flex align-items-end">
+                                    <div class="flex-fill text-center">Layer</div>
+                                    <div class="text-start pt-1" style="writing-mode: vertical-rl; transform: rotate(180deg); line-height: 1.2em;">Sticky<br>Tap<br>Hold</div>
+                                </div>
+                            </div>
+                            <div class="col-2 text-center">Scaling</div>
+                        </div>
+
+                        <div id="mappings">
                         </div>
                     </div>
-                    <div class="col-2 text-center">Scaling</div>
                 </div>
 
-                <div id="mappings">
+                <div class="text-center mt-2 mb-3">
+                    <button id="add_mapping" type="button" class="btn btn-primary">Add mapping</button>
                 </div>
-            </div>
-        </div>
 
-        <div class="text-center mt-2 mb-3">
-            <button id="add_mapping" type="button" class="btn btn-primary">Add mapping</button>
-        </div>
+            </div>
 
-        <div class="mb-2 mt-4">
-            <span class="me-3">Unmapped inputs passthrough on layer:</span>
-            <div class="form-check form-check-inline">
-                <input type="checkbox" id="unmapped_passthrough_checkbox0" class="form-check-input">
-                <label for="unmapped_passthrough_checkbox0" class="form-check-label">0</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input type="checkbox" id="unmapped_passthrough_checkbox1" class="form-check-input">
-                <label for="unmapped_passthrough_checkbox1" class="form-check-label">1</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input type="checkbox" id="unmapped_passthrough_checkbox2" class="form-check-input">
-                <label for="unmapped_passthrough_checkbox2" class="form-check-label">2</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input type="checkbox" id="unmapped_passthrough_checkbox3" class="form-check-input">
-                <label for="unmapped_passthrough_checkbox3" class="form-check-label">3</label>
-            </div>
-        </div>
-        <div class="row mb-2">
-            <div class="col-4 text-end">
-                <label for="partial_scroll_timeout_input" class="col-form-label">Partial scroll timeout</label>
-            </div>
-            <div class="col-auto">
-                <div class="input-group">
-                    <input type="number" id="partial_scroll_timeout_input" class="form-control text-end" style="max-width: 100px;">
-                    <span class="input-group-text">ms</span>
+            <div class="tab-pane" id="nav-settings" role="tabpanel" tabindex="0">
+
+                <div class="mt-4">
+                    <span class="me-3">Unmapped inputs passthrough on layer:</span>
+                    <div class="form-check form-check-inline">
+                        <input type="checkbox" id="unmapped_passthrough_checkbox0" class="form-check-input">
+                        <label for="unmapped_passthrough_checkbox0" class="form-check-label">0</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input type="checkbox" id="unmapped_passthrough_checkbox1" class="form-check-input">
+                        <label for="unmapped_passthrough_checkbox1" class="form-check-label">1</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input type="checkbox" id="unmapped_passthrough_checkbox2" class="form-check-input">
+                        <label for="unmapped_passthrough_checkbox2" class="form-check-label">2</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input type="checkbox" id="unmapped_passthrough_checkbox3" class="form-check-input">
+                        <label for="unmapped_passthrough_checkbox3" class="form-check-label">3</label>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <div class="row mb-2">
-            <div class="col-4 text-end">
-                <label for="tap_hold_threshold_input" class="col-form-label">Tap-hold threshold</label>
-            </div>
-            <div class="col-auto">
-                <div class="input-group">
-                    <input type="number" id="tap_hold_threshold_input" class="form-control text-end" style="max-width: 100px;">
-                    <span class="input-group-text">ms</span>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="partial_scroll_timeout_input" class="col-form-label">Partial scroll timeout</label>
+                    </div>
+                    <div class="col-auto">
+                        <div class="input-group">
+                            <input type="number" id="partial_scroll_timeout_input" class="form-control text-end" style="max-width: 100px;">
+                            <span class="input-group-text">ms</span>
+                        </div>
+                    </div>
                 </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="tap_hold_threshold_input" class="col-form-label">Tap-hold threshold</label>
+                    </div>
+                    <div class="col-auto">
+                        <div class="input-group">
+                            <input type="number" id="tap_hold_threshold_input" class="form-control text-end" style="max-width: 100px;">
+                            <span class="input-group-text">ms</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="interval_override_dropdown" class="col-form-label">Override polling rate</label>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select" id="interval_override_dropdown">
+                            <option value="0">don't override</option>
+                            <option value="16">62.5 Hz</option>
+                            <option value="8">125 Hz</option>
+                            <option value="4">250 Hz</option>
+                            <option value="2">500 Hz</option>
+                            <option value="1">1000 Hz</option>
+                        </select>
+                    </div>
+                </div>
+
             </div>
+
+            <div class="tab-pane" id="nav-macros" role="tabpanel" tabindex="0">
+
+                <div class="accordion mt-4" id="macros_container">
+
+                </div>
+
+            </div>
+
+            <div class="tab-pane" id="nav-actions" role="tabpanel" tabindex="0">
+
+                <div class="row mt-4">
+                    <div class="col-4">
+                        <button id="download_json" type="button" class="btn btn-primary w-100">Export JSON</button>
+                    </div>
+                    <div class="col-4">
+                        <button id="upload_json" type="button" class="btn btn-primary w-100">Import JSON</button>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-4">
+                        <button id="flash_firmware" type="button" class="btn btn-primary w-100">Flash firmware</button>
+                    </div>
+                    <div class="col-4" id="flash_b_side_container">
+                        <button id="flash_b_side" type="button" class="btn btn-primary w-100">Flash B side</button>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-4 d-none" id="pair_new_device_container">
+                        <button id="pair_new_device" type="button" class="btn btn-primary w-100">Pair new device</button>
+                    </div>
+                    <div class="col-4 d-none" id="clear_bonds_container">
+                        <button id="clear_bonds" type="button" class="btn btn-primary w-100">Forget all devices</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="tab-pane" id="nav-examples" role="tabpanel" tabindex="0">
+
+                <ul id="examples" class="mt-4 list-group">
+
+                </ul>
+
+            </div>
+
         </div>
-        <div class="row mb-2">
-            <div class="col-4 text-end">
-                <label for="interval_override_dropdown" class="col-form-label">Override polling rate</label>
-            </div>
-            <div class="col-auto">
-                <select class="form-select" id="interval_override_dropdown">
-                    <option value="0">don't override</option>
-                    <option value="16">62.5 Hz</option>
-                    <option value="8">125 Hz</option>
-                    <option value="4">250 Hz</option>
-                    <option value="2">500 Hz</option>
-                    <option value="1">1000 Hz</option>
-                </select>
-            </div>
-        </div>
 
-        <div class="accordion mb-2 mt-3" id="macros_container">
-
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-auto">
-                <button id="download_json" type="button" class="btn btn-primary">Export JSON</button>
-            </div>
-            <div class="col-auto">
-                <button id="upload_json" type="button" class="btn btn-primary">Import JSON</button>
-            </div>
-        </div>
-
-        <p class="text-muted mt-5" id="examples">
-            Examples:
-        </p>
-
-        <div class="row mt-5">
-            <div class="col-auto">
-                <button id="flash_firmware" type="button" class="btn btn-primary">Flash firmware</button>
-            </div>
-            <div class="col-auto" id="flash_b_side_container">
-                <button id="flash_b_side" type="button" class="btn btn-primary">Flash B side</button>
-            </div>
-            <div class="col-auto d-none" id="pair_new_device_container">
-                <button id="pair_new_device" type="button" class="btn btn-primary">Pair new device</button>
-            </div>
-            <div class="col-auto d-none" id="clear_bonds_container">
-                <button id="clear_bonds" type="button" class="btn btn-primary">Forget all devices</button>
-            </div>
-        </div>
-
-        <p class="text-muted mt-4">
+        <div class="text-center text-muted mt-4 mb-4">
             For more information, see <a class="text-reset" href="https://github.com/jfedor2/hid-remapper">github.com/jfedor2/hid-remapper</a>.
-        </p>
+        </div>
 
     </div>
 
@@ -200,7 +235,7 @@
     </template>
 
     <template id="example_template">
-        <a class="text-reset" href="javascript:void(0);"></a>
+        <li class="list-group-item border border-0"><a class="text-muted" href="javascript:void(0);"></a></li>
     </template>
 
     <template id="macro_template">
