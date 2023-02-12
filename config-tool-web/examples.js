@@ -549,6 +549,150 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'tap-hold: middle button is middle-click when clicked, but switches layer when held',
+        'config': {
+            "version": 5,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "interval_override": 0,
+            "mappings": [
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0x00090003",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": true,
+                    "hold": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0xfff10001",
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": true,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010030",
+                    "target_usage": "0x000c0238",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 10
+                },
+                {
+                    "source_usage": "0x00010031",
+                    "target_usage": "0x00010038",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 10
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ]
+        }
+    },
+    {
+        'description': 'tap-hold: middle button activates layer permanently when tapped, temporarily when held',
+        'config': {
+            "version": 5,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "interval_override": 0,
+            "mappings": [
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0xfff10001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": true,
+                    "tap": true,
+                    "hold": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0xfff10001",
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": true,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010030",
+                    "target_usage": "0x000c0238",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 10
+                },
+                {
+                    "source_usage": "0x00010031",
+                    "target_usage": "0x00010038",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 10
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ]
+        }
+    },
 ];
 
 export default examples;
