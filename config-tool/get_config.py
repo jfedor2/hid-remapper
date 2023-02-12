@@ -101,4 +101,4 @@ for macro_i in range(NMACROS):
         i += MACRO_ITEMS_IN_PACKET
     config["macros"].append(macro)
 
-print(json.dumps(config, indent=2))
+print(json.dumps(config, indent=4))
