@@ -449,6 +449,106 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'macros: double-click and "Hello, world!"',
+        'config': {
+            "version": 5,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "interval_override": 0,
+            "mappings": [
+                {
+                    "source_usage": "0x00090002",
+                    "target_usage": "0xfff20001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0xfff20002",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000
+                }
+            ],
+            "macros": [
+                [
+                    [
+                        "0x00090001"
+                    ],
+                    [],
+                    [
+                        "0x00090001"
+                    ]
+                ],
+                [
+                    [
+                        "0x000700e1",
+                        "0x0007000b"
+                    ],
+                    [
+                        "0x00070008"
+                    ],
+                    [
+                        "0x0007000f"
+                    ],
+                    [],
+                    [
+                        "0x0007000f"
+                    ],
+                    [
+                        "0x00070012"
+                    ],
+                    [
+                        "0x00070036"
+                    ],
+                    [
+                        "0x0007002c"
+                    ],
+                    [
+                        "0x0007001a"
+                    ],
+                    [
+                        "0x00070012"
+                    ],
+                    [
+                        "0x00070015"
+                    ],
+                    [
+                        "0x0007000f"
+                    ],
+                    [
+                        "0x00070007"
+                    ],
+                    [
+                        "0x000700e1",
+                        "0x0007001e"
+                    ]
+                ],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ]
+        }
+    },
 ];
 
 export default examples;
