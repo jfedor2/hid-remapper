@@ -66,7 +66,12 @@ If you can't use the browser-based configuration tool, there's also a [command-l
 
 ## How to compile the firmware
 
+The easiest way to compile the firmware is to let GitHub do it for you. This repository has GitHub Actions that build the firmware, so you can just fork, make your changes, wait for the job to complete, and look for the binaries in the artifacts produced.
+
+To compile the RP2040 firmware on your machine, use the following steps (details may vary depending on your Linux distribution):
+
 ```
+sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib srecord
 git clone https://github.com/jfedor2/hid-remapper.git
 cd hid-remapper
 git submodule update --init
@@ -77,6 +82,12 @@ cmake ..
 # or, to build for the custom boards:
 # PICO_BOARD=remapper cmake ..
 make
+```
+
+To compile the nRF52 firmware, you can either follow [Nordic's setup instructions](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/getting_started/installing.html) and then `west build -b seeed_xiao_nrf52840` to compile the firmware, or you can use Docker with a command like this (start from the top level of the repository or adjust the path accordingly):
+
+```
+docker run --rm -v $(pwd):/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch west build -b seeed_xiao_nrf52840
 ```
 
 ## Future goals
