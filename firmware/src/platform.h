@@ -16,5 +16,6 @@ void my_mutex_enter(MutexId id);
 void my_mutex_exit(MutexId id);
 
 uint64_t get_time();
+uint64_t get_unique_id();
 
 #endif

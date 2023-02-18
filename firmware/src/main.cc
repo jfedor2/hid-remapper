@@ -10,6 +10,7 @@
 #include <pico/bootrom.h>
 #include <pico/mutex.h>
 #include <pico/stdio.h>
+#include <pico/unique_id.h>
 
 #include "config.h"
 #include "crc.h"
@@ -95,6 +96,16 @@ void my_mutex_exit(MutexId id) {
 
 uint64_t get_time() {
     return time_us_64();
+}
+
+uint64_t get_unique_id() {
+    pico_unique_board_id_t unique_id;
+    pico_get_unique_board_id(&unique_id);
+    uint64_t ret = 0;
+    for (int i = 0; i < 8; i++) {
+        ret |= (uint64_t) unique_id.id[i] << (8 * i);
+    }
+    return ret;
 }
 
 int main() {

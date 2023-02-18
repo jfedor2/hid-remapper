@@ -51,6 +51,7 @@ target_include_directories(remapper PRIVATE
 target_link_libraries(remapper
     pico_stdlib
     pico_multicore
+    pico_unique_id
     hardware_pio
     hardware_dma
     hardware_flash
@@ -93,6 +94,7 @@ target_link_libraries(remapper_dual_a
     hardware_pio
     tinyusb_device
     tinyusb_board
+    pico_unique_id
 )
 pico_generate_pio_header(remapper_dual_a ${CMAKE_CURRENT_LIST_DIR}/src/pico_debug/swd.pio)
 pico_add_extra_outputs(remapper_dual_a)
@@ -140,6 +142,7 @@ target_include_directories(remapper_serial PRIVATE
 )
 target_link_libraries(remapper_serial
     pico_stdlib
+    pico_unique_id
     hardware_flash
     tinyusb_device
     tinyusb_board

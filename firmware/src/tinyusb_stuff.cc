@@ -28,6 +28,7 @@
 
 #include "config.h"
 #include "our_descriptor.h"
+#include "platform.h"
 
 // These IDs are bogus. If you want to distribute any hardware using this,
 // you will have to get real ones.
@@ -70,7 +71,7 @@ uint8_t const desc_configuration[] = {
 char const* string_desc_arr[] = {
     (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
     "RP2040",                      // 1: Manufacturer
-    "HID Remapper",                // 2: Product
+    "HID Remapper XXXX",           // 2: Product
 };
 
 // Invoked when received GET DEVICE DESCRIPTOR
@@ -101,6 +102,8 @@ uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
 
 static uint16_t _desc_str[32];
 
+const char id_chars[33] = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+
 // Invoked when received GET STRING DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
@@ -126,6 +129,13 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         // Convert ASCII string into UTF-16
         for (uint8_t i = 0; i < chr_count; i++) {
             _desc_str[1 + i] = str[i];
+        }
+
+        if (index == 2) {
+            uint64_t unique_id = get_unique_id();
+            for (uint8_t i = 0; i < 4; i++) {
+                _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (i * 5)) & 0x1F];
+            }
         }
     }
 
