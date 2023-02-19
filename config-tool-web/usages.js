@@ -193,6 +193,14 @@ const usages = {
     "0xfff30006": { 'name': 'Expression 6', 'class': 'other' },
     "0xfff30007": { 'name': 'Expression 7', 'class': 'other' },
     "0xfff30008": { 'name': 'Expression 8', 'class': 'other' },
+    "0xfff40002": { 'name': 'GPIO 2', 'class': 'other' },
+    "0xfff40003": { 'name': 'GPIO 3', 'class': 'other' },
+    "0xfff40004": { 'name': 'GPIO 4', 'class': 'other' },
+    "0xfff40005": { 'name': 'GPIO 5', 'class': 'other' },
+    "0xfff40006": { 'name': 'GPIO 6', 'class': 'other' },
+    "0xfff40007": { 'name': 'GPIO 7', 'class': 'other' },
+    "0xfff40008": { 'name': 'GPIO 8', 'class': 'other' },
+    "0xfff40009": { 'name': 'GPIO 9', 'class': 'other' },
 };
 
 export default usages;

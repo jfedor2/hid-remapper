@@ -829,6 +829,10 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface) 
     my_mutex_exit(MutexId::THEIR_USAGES);
 }
 
+void set_input_state(uint32_t usage, int32_t state) {
+    input_state[usage] = state;
+}
+
 void rlencode(const std::set<uint64_t>& usage_ranges, std::vector<usage_rle_t>& output) {
     uint32_t start_usage = 0;
     uint32_t count = 0;

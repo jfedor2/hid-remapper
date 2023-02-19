@@ -7,6 +7,7 @@
 #include <tusb.h>
 
 #include <hardware/flash.h>
+#include <hardware/gpio.h>
 #include <pico/bootrom.h>
 #include <pico/mutex.h>
 #include <pico/stdio.h>
@@ -23,6 +24,12 @@
 #define CONFIG_OFFSET_IN_FLASH (PICO_FLASH_SIZE_BYTES - PERSISTED_CONFIG_SIZE)
 #define FLASH_CONFIG_IN_MEMORY (((uint8_t*) XIP_BASE) + CONFIG_OFFSET_IN_FLASH)
 
+#define GPIO_PIN_FIRST 2
+#define GPIO_PIN_LAST 9
+#define GPIO_PIN_MASK ((1 << (GPIO_PIN_LAST + 1)) - (1 << GPIO_PIN_FIRST))
+
+#define GPIO_USAGE_PAGE 0xFFF40000
+
 // We need a certain part of mapping processing (absolute->relative mappings) to
 // happen exactly once per millisecond. This variable keeps track of whether we
 // already did it this time around. It is set to true when we receive
@@ -32,6 +39,8 @@ volatile bool tick_pending;
 uint64_t next_print = 0;
 
 mutex_t mutexes[(uint8_t) MutexId::N];
+
+uint32_t prev_gpio_state = 0;
 
 void print_stats_maybe() {
     uint64_t now = time_us_64();
@@ -57,6 +66,28 @@ void sof_handler(uint32_t frame_count) {
 bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
     tud_hid_n_report(interface, report_with_id[0], report_with_id + 1, len - 1);
     return true;  // XXX?
+}
+
+void gpio_pins_init() {
+    for (uint8_t i = GPIO_PIN_FIRST; i <= GPIO_PIN_LAST; i++) {
+        gpio_init(i);
+        gpio_pull_up(i);
+    }
+}
+
+bool read_gpio() {
+    // XXX debouncing?
+    uint32_t gpio_state = gpio_get_all() & GPIO_PIN_MASK;
+    uint32_t changed = prev_gpio_state ^ gpio_state;
+    if (changed != 0) {
+        for (uint8_t i = GPIO_PIN_FIRST; i <= GPIO_PIN_LAST; i++) {
+            if ((changed >> i) & 0x01) {
+                set_input_state(GPIO_USAGE_PAGE | i, !((gpio_state >> i) & 0x01));  // active low
+            }
+        }
+        prev_gpio_state = gpio_state;
+    }
+    return changed != 0;
 }
 
 void do_persist_config(uint8_t* buffer) {
@@ -110,6 +141,7 @@ uint64_t get_unique_id() {
 
 int main() {
     my_mutexes_init();
+    gpio_pins_init();
     extra_init();
     parse_our_descriptor();
     load_config(FLASH_CONFIG_IN_MEMORY);
@@ -126,7 +158,9 @@ int main() {
     uint64_t turn_led_off_after = 0;
 
     while (true) {
-        if (read_report()) {
+        bool new_report = read_report();
+        bool gpio_state_changed = read_gpio();
+        if (new_report || gpio_state_changed) {
             led_state = true;
             board_led_write(true);
             turn_led_off_after = time_us_64() + 50000;
