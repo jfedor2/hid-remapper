@@ -1,0 +1,23 @@
+name: release
+on:
+  push:
+    branches:
+    - main  
+    tags: 'r*'
+jobs:
+  build-nrf52:
+    uses: ./.github/workflows/build-nrf52.yml
+  build-rp2040:
+    uses: ./.github/workflows/build-rp2040.yml
+  create-release:
+    needs: [ build-nrf52, build-rp2040 ]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: download
+      - uses: softprops/action-gh-release@d4e8205d7e959a9107da6396278b2f1f07af0f9b
+        with:
+          draft: true
+          files: download/*
