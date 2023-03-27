@@ -1,6 +1,8 @@
 name: release
 on:
   push:
+    branches:
+      - main  
     tags: 'r*'
 jobs:
   build-nrf52:
