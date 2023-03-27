@@ -2,7 +2,7 @@ name: build-rp2040
 on:
   push:
     branches:
-     - master
+      - main
     paths:
       - 'firmware/**'
   workflow_call:
