@@ -30,9 +30,15 @@ jobs:
           PICO_BOARD=remapper cmake ..
           make remapper_dual_a
           cd ..
+          mkdir build-feather
+          cd build-feather
+          PICO_BOARD=feather_host cmake ..
+          make remapper
+          cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
           mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board.uf2
+          mv build-feather/remapper.uf2 artifacts/remapper_feather.uf2
         working-directory: ./firmware
       - uses: actions/upload-artifact@v3
         with:

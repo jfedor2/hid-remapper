@@ -79,9 +79,11 @@ add_executable(remapper
     src/interval_override.cc
 )
 
+if(PICO_BOARD STREQUAL "pico")
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_RX_PIN=17)
 target_compile_definitions(remapper PUBLIC PIO_USB_DP_PIN=0)
+endif()
 
 target_include_directories(remapper PRIVATE
     src
