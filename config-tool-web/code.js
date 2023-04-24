@@ -3,6 +3,7 @@ import usages from './usages.js';
 import examples from './examples.js';
 
 const REPORT_ID_CONFIG = 100;
+const REPORT_ID_MONITOR = 101;
 const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
@@ -43,6 +44,7 @@ const INVALID_COMMAND = 18;
 const CLEAR_EXPRESSIONS = 19;
 const APPEND_TO_EXPRESSION = 20;
 const GET_EXPRESSION = 21;
+const SET_MONITOR_ENABLED = 22;
 
 const ops = {
     "PUSH": 0,
@@ -106,6 +108,9 @@ let config = {
         '', '', '', '', '', '', '', ''
     ],
 };
+let monitor_enabled = false;
+let monitor_min_val = {};
+let monitor_max_val = {};
 const ignored_usages = new Set([
 ]);
 
@@ -120,6 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("flash_b_side").addEventListener("click", flash_b_side);
     document.getElementById("pair_new_device").addEventListener("click", pair_new_device);
     document.getElementById("clear_bonds").addEventListener("click", clear_bonds);
+    document.getElementById("monitor_clear").addEventListener("click", monitor_clear);
     document.getElementById("file_input").addEventListener("change", file_uploaded);
 
     device_buttons_set_disabled_state(true);
@@ -130,6 +136,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
     }
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
+
+    document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
+    document.getElementById("nav-monitor-tab").addEventListener("hide.bs.tab", monitor_tab_hide);
 
     if ("hid" in navigator) {
         navigator.hid.addEventListener('disconnect', hid_on_disconnect);
@@ -160,6 +169,8 @@ async function open_device() {
         success = device.opened;
         success &&= await check_device_version();
         if (success) {
+            device.addEventListener('inputreport', input_report_received);
+            await set_monitor_enabled(monitor_enabled);
             await get_usages_from_device();
             setup_usages_modal();
             bluetooth_buttons_set_visibility(device.productName.includes("Bluetooth"));
@@ -1140,4 +1151,69 @@ function validate_ui_expressions() {
     for (let i = 0; i < NEXPRESSIONS; i++) {
         expression_onchange(i)();
     }
+}
+
+function input_report_received(event) {
+    if (event.reportId == REPORT_ID_MONITOR) {
+        document.querySelectorAll('.monitor_row').forEach((element) => {
+            element.classList.remove('bg-light');
+        });
+        for (let i = 0; i < 7; i++) {
+            const usage = "0x" + event.data.getUint32(i * 8, true).toString(16).padStart(8, "0");
+            const value = event.data.getInt32(i * 8 + 4, true);
+            if (usage != 0) {
+                update_monitor_ui(usage, value);
+            }
+        }
+    }
+}
+
+function update_monitor_ui(usage, value) {
+    let element = document.getElementById('monitor_usage_' + usage);
+    if (element == null) {
+        const template = document.getElementById("monitor_template");
+        const container = document.getElementById("monitor_container");
+        element = template.content.cloneNode(true).firstElementChild;
+        element.querySelector('.monitor_usage').innerText = usage;
+        if (usage in usages) {
+            element.querySelector('.monitor_readable_name').innerText = usages[usage]['name'];
+        }
+        element.id = 'monitor_usage_' + usage;
+        container.appendChild(element);
+    }
+
+    document.getElementById('monitor_header').classList.remove('d-none');
+
+    element.querySelector('.monitor_last_value').innerText = value;
+    element.classList.add('bg-light');
+    if (!(usage in monitor_min_val) || (value < monitor_min_val[usage])) {
+        monitor_min_val[usage] = value;
+        element.querySelector('.monitor_min_value').innerText = value;
+    }
+    if (!(usage in monitor_max_val) || (value > monitor_max_val[usage])) {
+        monitor_max_val[usage] = value;
+        element.querySelector('.monitor_max_value').innerText = value;
+    }
+}
+
+function monitor_clear() {
+    clear_children(document.getElementById("monitor_container"));
+    document.getElementById('monitor_header').classList.add('d-none');
+    monitor_min_val = {};
+    monitor_max_val = {};
+}
+
+async function set_monitor_enabled(enabled) {
+    monitor_enabled = enabled;
+    if (device != null) {
+        await send_feature_command(SET_MONITOR_ENABLED, [[UINT8, monitor_enabled ? 1 : 0]]);
+    }
+}
+
+async function monitor_tab_shown(event) {
+    await set_monitor_enabled(true);
+}
+
+async function monitor_tab_hide(event) {
+    await set_monitor_enabled(false);
 }

@@ -26,6 +26,7 @@ enum class ConfigCommand : int8_t {
     CLEAR_EXPRESSIONS = 19,
     APPEND_TO_EXPRESSION = 20,
     GET_EXPRESSION = 21,
+    SET_MONITOR_ENABLED = 22,
 };
 
 struct usage_def_t {
@@ -213,6 +214,20 @@ struct __attribute__((packed)) append_to_expr_t {
 struct __attribute__((packed)) get_expr_response_t {
     uint8_t nelems;
     uint8_t elem_data[27];
+};
+
+struct __attribute__((packed)) monitor_t {
+    uint8_t enabled;
+};
+
+struct __attribute__((packed)) usage_value_t {
+    uint32_t usage;
+    int32_t value;
+};
+
+struct __attribute__((packed)) monitor_report_t {
+    uint8_t report_id;
+    usage_value_t usage_values[7];
 };
 
 #endif

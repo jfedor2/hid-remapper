@@ -53,8 +53,8 @@ void sof_handler(uint32_t frame_count) {
     tick_pending = true;
 }
 
-bool do_send_report(const uint8_t* report_with_id, uint8_t len) {
-    tud_hid_n_report(0, report_with_id[0], report_with_id + 1, len - 1);
+bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
+    tud_hid_n_report(interface, report_with_id[0], report_with_id + 1, len - 1);
     return true;  // XXX?
 }
 
@@ -127,6 +127,9 @@ int main() {
                 process_mapping(true);
             }
             send_report(do_send_report);
+        }
+        if (monitor_enabled && tud_hid_n_ready(1)) {
+            send_monitor_report(do_send_report);
         }
 
         if (their_descriptor_updated) {

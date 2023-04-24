@@ -566,6 +566,11 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     requested_secondary_index = get_expr->requested_expr_elem;
                     break;
                 }
+                case ConfigCommand::SET_MONITOR_ENABLED: {
+                    monitor_t* monitor = (monitor_t*) config_buffer->data;
+                    monitor_enabled = monitor->enabled;
+                    break;
+                }
                 default:
                     last_config_command = ConfigCommand::INVALID_COMMAND;
                     break;

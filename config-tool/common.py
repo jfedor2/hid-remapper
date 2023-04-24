@@ -7,6 +7,7 @@ VENDOR_ID = 0xCAFE
 PRODUCT_ID = 0xBAF2
 
 CONFIG_USAGE_PAGE = 0xFF00
+CONFIG_USAGE = 0x0020
 
 CONFIG_VERSION = 7
 CONFIG_SIZE = 32
@@ -39,6 +40,7 @@ INVALID_COMMAND = 18
 CLEAR_EXPRESSIONS = 19
 APPEND_TO_EXPRESSION = 20
 GET_EXPRESSION = 21
+SET_MONITOR_ENABLED = 22
 
 
 UNMAPPED_PASSTHROUGH_FLAG = 0x01
@@ -96,7 +98,7 @@ def get_device():
     devices = [
         d
         for d in hid.enumerate(VENDOR_ID, PRODUCT_ID)
-        if d["usage_page"] == CONFIG_USAGE_PAGE
+        if d["usage_page"] == CONFIG_USAGE_PAGE and d["usage"] == CONFIG_USAGE
     ]
     if len(devices) == 0:
         raise Exception("No HID Remapper devices found.")

@@ -136,6 +136,15 @@ const uint8_t config_report_descriptor[] = {
     0x95, CONFIG_SIZE,       //   Report Count (CONFIG_SIZE)
     0xB1, 0x02,              //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
     0xC0,                    // End Collection
+
+    0x09, 0x21,               // Usage (0x21)
+    0xA1, 0x01,               // Collection (Application)
+    0x09, 0x21,               //   Usage (0x21)
+    0x85, REPORT_ID_MONITOR,  //   Report ID (REPORT_ID_MONITOR)
+    0x75, 0x08,               //   Report Size (8)
+    0x95, 0x38,               //   Report Count (56)
+    0x81, 0x02,               //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,                     // End Collection
 };
 
 const uint32_t config_report_descriptor_length = sizeof(config_report_descriptor);

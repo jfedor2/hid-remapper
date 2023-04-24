@@ -34,4 +34,6 @@ extern std::vector<std::vector<uint32_t>> macros[NMACROS];
 #define NEXPRESSIONS 8
 extern std::vector<expr_elem_t> expressions[NEXPRESSIONS];
 
+extern bool monitor_enabled;
+
 #endif

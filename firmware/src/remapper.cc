@@ -88,6 +88,9 @@ uint32_t reports_sent;
 
 bool expression_valid[NEXPRESSIONS] = { false };
 
+uint8_t monitor_usages_queued = 0;
+monitor_report_t monitor_report = { .report_id = REPORT_ID_MONITOR };
+
 int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
     int32_t ret = 0;
     if (resolution_multiplier & resolution_multiplier_masks.at(target_usage)) {  // hi-res
@@ -719,7 +722,7 @@ bool send_report(send_report_t do_send_report) {
 
     uint8_t report_id = outgoing_reports[or_head][0];
 
-    bool sent = do_send_report(outgoing_reports[or_head], report_sizes[report_id] + 1);
+    bool sent = do_send_report(0, outgoing_reports[or_head], report_sizes[report_id] + 1);
 
     // XXX even if not sent?
     or_head = (or_head + 1) % OR_BUFSIZE;
@@ -728,6 +731,17 @@ bool send_report(send_report_t do_send_report) {
     reports_sent++;
 
     return sent;
+}
+
+void send_monitor_report(send_report_t do_send_report) {
+    if ((monitor_usages_queued == 0) || suspended) {
+        return;
+    }
+
+    do_send_report(1, (uint8_t*) &monitor_report, sizeof(monitor_report));
+
+    memset(&(monitor_report.usage_values), 0, sizeof(monitor_report.usage_values));
+    monitor_usages_queued = 0;
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint16_t interface) {
@@ -750,14 +764,23 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
 
     if (their_usage.is_relative) {
         input_state[source_usage] = value;
+        if (monitor_enabled && (value != 0)) {
+            monitor_usage(source_usage, value);
+        }
     } else {
         if (their_usage.size == 1) {
+            if (monitor_enabled && (value != (1 & (input_state[source_usage] >> interface_index[interface])))) {
+                monitor_usage(source_usage, value);
+            }
             if (value) {
                 input_state[source_usage] |= 1 << interface_index[interface];
             } else {
                 input_state[source_usage] &= ~(1 << interface_index[interface]);
             }
         } else {
+            if (monitor_enabled && (value != input_state[source_usage])) {
+                monitor_usage(source_usage, value);
+            }
             input_state[source_usage] = value;
         }
     }
@@ -775,6 +798,10 @@ inline void read_input_range(const uint8_t* report, int len, uint32_t source_usa
             (bits <= their_usage.logical_minimum + their_usage.usage_maximum - source_usage)) {
             uint32_t actual_usage = source_usage + bits - their_usage.logical_minimum;
             input_state[actual_usage] |= 1 << interface_index[interface];
+            // for array inputs, "key-up" events (value=0) don't show up in the monitor
+            if (monitor_enabled && ((actual_usage & 0xFFFF) != 0)) {
+                monitor_usage(actual_usage, 1);
+            }
         }
     }
 }
@@ -888,4 +915,11 @@ void print_stats() {
     printf("%lu %lu\n", reports_received, reports_sent);
     reports_received = 0;
     reports_sent = 0;
+}
+
+void monitor_usage(uint32_t usage, int32_t value) {
+    if (monitor_usages_queued == sizeof(monitor_report.usage_values) / sizeof(monitor_report.usage_values[0])) {
+        return;
+    }
+    monitor_report.usage_values[monitor_usages_queued++] = { .usage = usage, .value = value };
 }
