@@ -53,8 +53,26 @@
 
 // --- PIO USB ---
 
-#ifndef PIO_USB_DP_PIN
-#define PIO_USB_DP_PIN 16
+// these are currently the defaults in tinyusb, but it has changed in the past
+
+#ifndef PICO_DEFAULT_PIO_USB_DP_PIN
+#define PICO_DEFAULT_PIO_USB_DP_PIN 16
 #endif
+
+#ifndef PICO_DEFAULT_PIO_USB_VBUSEN_PIN
+#define PICO_DEFAULT_PIO_USB_VBUSEN_PIN 18
+#endif
+
+// note that tinyusb defines PICO_DEFAULT_PIO_USB_VBUSEN_STATE in board.h,
+// but uses PIO_USB_VBUSEN_STATE in family.c
+
+#ifndef PIO_USB_VBUSEN_STATE
+#define PIO_USB_VBUSEN_STATE 1
+#endif
+
+// note that tinyusb uses PICO_DEFAULT_PIO_USB_VBUSEN_PIN for the pin number,
+// but PIO_USB_VBUSEN_PIN to decide whether to use it or not
+
+#define PIO_USB_VBUSEN_PIN
 
 #endif
