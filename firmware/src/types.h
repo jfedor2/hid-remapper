@@ -131,6 +131,7 @@ struct __attribute__((packed)) persist_config_v5_t {
 };
 
 typedef persist_config_v5_t persist_config_v6_t;
+typedef persist_config_v5_t persist_config_v7_t;
 typedef persist_config_v5_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {

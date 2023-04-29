@@ -27,7 +27,8 @@ extern std::vector<mapping_config_t> config_mappings;
 
 extern uint8_t resolution_multiplier;
 
-#define NMACROS 8
+#define NMACROS_8 8
+#define NMACROS 32
 extern std::vector<std::vector<uint32_t>> macros[NMACROS];
 
 #define NEXPRESSIONS 8

@@ -7,7 +7,7 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 6;
+const CONFIG_VERSION = 7;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -15,7 +15,7 @@ const DEFAULT_TAP_HOLD_THRESHOLD = 200000;
 const DEFAULT_SCALING = 1000;
 
 const NLAYERS = 4;
-const NMACROS = 8;
+const NMACROS = 32;
 const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
 
@@ -99,7 +99,8 @@ let config = {
         'scaling': DEFAULT_SCALING,
     }],
     macros: [
-        [], [], [], [], [], [], [], []
+        [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+        [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
     ],
     expressions: [
         '', '', '', '', '', '', '', ''
@@ -513,6 +514,11 @@ function set_ui_state() {
     }
     if (config['version'] < 6) {
         config['expressions'] = ['', '', '', '', '', '', '', ''];
+    }
+    if (config['version'] < 7) {
+        while (config['macros'].length < NMACROS) {
+            config['macros'].push([]);
+        }
         config['version'] = CONFIG_VERSION;
     }
 
@@ -694,7 +700,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5, 6].includes(config_version))) {
+    if (!([3, 4, 5, 6, 7].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -710,7 +716,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 5, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 6, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
