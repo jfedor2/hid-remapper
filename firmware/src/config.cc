@@ -568,7 +568,7 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                 }
                 case ConfigCommand::SET_MONITOR_ENABLED: {
                     monitor_t* monitor = (monitor_t*) config_buffer->data;
-                    monitor_enabled = monitor->enabled;
+                    set_monitor_enabled(monitor->enabled);
                     break;
                 }
                 default:

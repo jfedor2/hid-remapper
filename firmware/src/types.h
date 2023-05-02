@@ -2,6 +2,7 @@
 #define _TYPES_H_
 
 #include <stdint.h>
+#include <vector>
 
 enum class ConfigCommand : int8_t {
     NO_COMMAND = 0,
@@ -39,6 +40,12 @@ struct usage_def_t {
     uint32_t index = 0;      // for arrays
     uint32_t count = 0;      // for arrays
     uint32_t usage_maximum;  // effective, for arrays/usage ranges
+    int32_t* input_state = NULL;
+};
+
+struct usage_usage_def_t {
+    uint32_t usage;
+    usage_def_t usage_def;
 };
 
 enum class Op : int8_t {
@@ -83,6 +90,30 @@ struct map_source_t {
     uint8_t layer_mask = 1;
     bool tap = false;
     bool hold = false;
+    int32_t* input_state;
+    bool is_relative = false;
+};
+
+struct reverse_mapping_t {
+    uint32_t target;
+    usage_def_t our_usage;
+    std::vector<map_source_t> sources;
+};
+
+struct usage_input_state_t {
+    uint32_t usage;
+    int32_t* input_state;
+};
+
+struct usage_layer_mask_input_state_t {
+    uint32_t usage;
+    int32_t* input_state;
+    uint8_t layer_mask;
+};
+
+struct usage_layer_mask_t {
+    uint32_t usage;
+    uint8_t layer_mask;
 };
 
 struct usage_rle_t {

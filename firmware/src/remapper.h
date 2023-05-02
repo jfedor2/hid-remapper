@@ -19,6 +19,6 @@ bool send_report(send_report_t do_send_report);
 void send_monitor_report(send_report_t do_send_report);
 void print_stats();
 
-void monitor_usage(uint32_t usage, int32_t value);
+void set_monitor_enabled(bool enabled);
 
 #endif
