@@ -1,8 +1,15 @@
 #include "globals.h"
 
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>> their_usages;
+std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>> their_out_usages;
 
 std::unordered_map<uint16_t, bool> has_report_id_theirs;
+std::unordered_map<uint16_t, bool> has_report_id_theirs_out;
+
+std::unordered_map<uint32_t, uint8_t*> out_reports;
+std::unordered_map<uint32_t, uint8_t*> prev_out_reports;
+std::unordered_map<uint32_t, uint8_t> out_report_sizes;
+std::unordered_map<uint32_t, std::vector<uint32_t>> their_out_usages_flat;
 
 std::unordered_map<uint16_t, uint8_t> interface_index;
 uint32_t interface_index_in_use = 0;

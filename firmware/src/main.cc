@@ -160,6 +160,10 @@ int main() {
     while (true) {
         bool new_report = read_report();
         bool gpio_state_changed = read_gpio();
+        if (their_descriptor_updated) {
+            update_their_descriptor_derivates();
+            their_descriptor_updated = false;
+        }
         if (new_report || gpio_state_changed) {
             led_state = true;
             board_led_write(true);
@@ -176,11 +180,7 @@ int main() {
         if (monitor_enabled && tud_hid_n_ready(1)) {
             send_monitor_report(do_send_report);
         }
-
-        if (their_descriptor_updated) {
-            update_their_descriptor_derivates();
-            their_descriptor_updated = false;
-        }
+        send_out_report();
         if (need_to_persist_config) {
             persist_config();
             need_to_persist_config = false;

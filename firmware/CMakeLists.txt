@@ -34,6 +34,7 @@ add_executable(remapper
     src/config.cc
     src/quirks.cc
     src/interval_override.cc
+    src/out_report.cc
 )
 
 if(PICO_BOARD STREQUAL "pico")
@@ -104,6 +105,7 @@ add_executable(remapper_dual_b
     src/crc.cc
     src/interval_override.cc
     src/serial.cc
+    src/out_report.cc
 )
 target_include_directories(remapper_dual_b PRIVATE
     src

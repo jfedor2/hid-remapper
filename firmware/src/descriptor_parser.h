@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include "types.h"
 
-std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, bool& has_report_id, const uint8_t* report_descriptor, int len);
+std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, bool& has_report_id, const uint8_t* report_descriptor, int len, bool output = false);
 
 extern "C" {
 #endif

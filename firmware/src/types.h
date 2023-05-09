@@ -2,6 +2,7 @@
 #define _TYPES_H_
 
 #include <stdint.h>
+#include <cstddef>
 #include <vector>
 
 enum class ConfigCommand : int8_t {
@@ -94,9 +95,17 @@ struct map_source_t {
     bool is_relative = false;
 };
 
+struct out_usage_def_t {
+    uint8_t* data;
+    uint16_t len;
+    uint8_t size;
+    uint16_t bitpos;
+};
+
 struct reverse_mapping_t {
     uint32_t target;
-    usage_def_t our_usage;
+    bool is_relative = false;
+    std::vector<out_usage_def_t> our_usages;
     std::vector<map_source_t> sources;
 };
 

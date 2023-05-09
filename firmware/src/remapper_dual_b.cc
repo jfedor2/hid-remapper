@@ -7,6 +7,7 @@
 
 #include "dual.h"
 #include "interval_override.h"
+#include "out_report.h"
 #include "serial.h"
 
 bool led_state;
@@ -22,6 +23,11 @@ void serial_callback(const uint8_t* data, uint16_t len) {
         case DualCommand::RESTART:
             watchdog_reboot(0, 0, 0);
             break;
+        case DualCommand::SEND_OUT_REPORT: {
+            send_out_report_t* msg = (send_out_report_t*) data;
+            do_queue_out_report(msg->report, len - sizeof(send_out_report_t), msg->report_id, msg->dev_addr, msg->interface);
+            break;
+        }
         default:
             break;
     }
@@ -47,6 +53,7 @@ int main() {
     while (true) {
         tuh_task();
         serial_read(serial_callback);
+        do_send_out_report();
     }
 
     return 0;

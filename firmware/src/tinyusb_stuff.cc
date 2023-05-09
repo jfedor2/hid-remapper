@@ -29,6 +29,7 @@
 #include "config.h"
 #include "our_descriptor.h"
 #include "platform.h"
+#include "remapper.h"
 
 // These IDs are bogus. If you want to distribute any hardware using this,
 // you will have to get real ones.
@@ -151,6 +152,9 @@ uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t
 }
 
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+    if (report_id == REPORT_ID_LEDS) {
+        handle_received_report(buffer, bufsize, OUR_OUT_INTERFACE, report_id);
+    }
     // we don't pass interface number, but report IDs are unique across interfaces
     handle_set_report(report_id, buffer, bufsize);
 }

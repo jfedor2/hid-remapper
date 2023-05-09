@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 
 #include "descriptor_parser.h"
 #include "dual.h"
@@ -75,4 +76,22 @@ void flash_b_side() {
 
     rp2040_add_flash_bit(0, dual_b_binary, dual_b_binary_length);
     rp2040_add_flash_bit(0xffffffff, NULL, 0);
+}
+
+uint8_t buffer[64 + sizeof(send_out_report_t)];
+
+void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* report, uint8_t len) {
+    // XXX
+    // This is called from process_mapping() so we probably shouldn't be writing directly
+    // to serial here, as it can block.
+    send_out_report_t* msg = (send_out_report_t*) buffer;
+    msg->command = DualCommand::SEND_OUT_REPORT;
+    msg->dev_addr = interface >> 8;
+    msg->interface = interface & 0xFF;
+    msg->report_id = report_id;
+    memcpy(msg->report, report, len);
+    serial_write((uint8_t*) msg, len + sizeof(send_out_report_t));
+}
+
+void send_out_report() {
 }

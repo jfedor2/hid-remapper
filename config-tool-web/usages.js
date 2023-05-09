@@ -139,6 +139,11 @@ const usages = {
     "0x00070088": { 'name': 'Kana', 'class': 'keyboard' },
     "0x00070090": { 'name': 'Kana (Mac)', 'class': 'keyboard' },
     "0x00070091": { 'name': 'Eisū (Mac)', 'class': 'keyboard' },
+    "0x00080001": { 'name': 'Num Lock LED', 'class': 'keyboard' },
+    "0x00080002": { 'name': 'Caps Lock LED', 'class': 'keyboard' },
+    "0x00080003": { 'name': 'Scroll Lock LED', 'class': 'keyboard' },
+    "0x00080004": { 'name': 'Compose LED', 'class': 'keyboard' },
+    "0x00080005": { 'name': 'Kana LED', 'class': 'keyboard' },
 
     "0x000c00e9": { 'name': 'Volume up', 'class': 'media' },
     "0x000c00ea": { 'name': 'Volume down', 'class': 'media' },

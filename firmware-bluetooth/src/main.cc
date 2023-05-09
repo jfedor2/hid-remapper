@@ -754,6 +754,10 @@ uint64_t get_time() {
 void interval_override_updated() {
 }
 
+void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
+    // TODO
+}
+
 int main() {
     LOG_INF("HID Remapper Bluetooth");
 

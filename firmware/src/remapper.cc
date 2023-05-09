@@ -379,24 +379,38 @@ void set_mapping_from_config() {
                 }
             }
         }
+
+        for (auto const& [report_id, usage_map] : their_usages[OUR_OUT_INTERFACE]) {
+            for (auto const& [usage, usage_def] : usage_map) {
+                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
+                if (unmapped_layers) {
+                    assign_state_slot(usage);
+                    reverse_mapping_map[usage].push_back((map_source_t){
+                        .usage = usage,
+                        .layer_mask = unmapped_layers,
+                        .input_state = usage_state_ptr[usage],
+                    });
+                }
+            }
+        }
     }
 
     for (auto const& [target, sources] : reverse_mapping_map) {
-        usage_def_t our_usage;
-        auto search = our_usages_flat.find(target);
-        if (search == our_usages_flat.end()) {
-            if (((target & 0xFFFF0000) != MACRO_USAGE_PAGE) &&
-                ((target & 0xFFFF0000) != LAYERS_USAGE_PAGE)) {
-                continue;
-            }
-        } else {
-            our_usage = search->second;
-        }
         reverse_mapping_t rev_map = {
             .target = target,
-            .our_usage = our_usage,
             .sources = sources,
         };
+        auto search = our_usages_flat.find(target);
+        if (search != our_usages_flat.end()) {
+            const usage_def_t& our_usage = search->second;
+            rev_map.our_usages.push_back((out_usage_def_t){
+                .data = reports[our_usage.report_id],
+                .len = report_sizes[our_usage.report_id],
+                .size = our_usage.size,
+                .bitpos = our_usage.bitpos,
+            });
+            rev_map.is_relative = our_usage.is_relative;
+        }
         if ((target & 0xFFFF0000) == MACRO_USAGE_PAGE) {
             reverse_mapping_macros.push_back(rev_map);
         } else if ((target & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
@@ -666,8 +680,7 @@ void process_mapping(bool auto_repeat) {
 
     for (auto const& rev_map : reverse_mapping) {
         uint32_t target = rev_map.target;
-        const usage_def_t& our_usage = rev_map.our_usage;
-        if (our_usage.is_relative) {
+        if (rev_map.is_relative) {
             for (auto const& map_source : rev_map.sources) {
                 int32_t value = 0;
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
@@ -723,7 +736,9 @@ void process_mapping(bool auto_repeat) {
                 }
             }
             if (value) {
-                put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, value);
+                for (auto const& out_usage_def : rev_map.our_usages) {
+                    put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos, out_usage_def.size, value);
+                }
             }
         }
     }
@@ -783,6 +798,15 @@ void process_mapping(bool auto_repeat) {
             }
         }
         memset(reports[report_id], 0, report_sizes[report_id]);
+    }
+
+    for (auto const [interface_report_id, report] : out_reports) {
+        // XXX we assume everything is absolute
+        if (memcmp(report, prev_out_reports[interface_report_id], out_report_sizes[interface_report_id])) {
+            queue_out_report(interface_report_id >> 16, interface_report_id & 0xFF, report, out_report_sizes[interface_report_id]);
+            memcpy(prev_out_reports[interface_report_id], report, out_report_sizes[interface_report_id]);
+        }
+        memset(report, 0, out_report_sizes[interface_report_id]);
     }
 }
 
@@ -924,16 +948,20 @@ inline void monitor_read_input_range(const uint8_t* report, int len, uint32_t so
     }
 }
 
-void handle_received_report(const uint8_t* report, int len, uint16_t interface) {
+void handle_received_report(const uint8_t* report, int len, uint16_t interface, uint8_t external_report_id) {
     reports_received++;
 
     my_mutex_enter(MutexId::THEIR_USAGES);
 
     uint8_t report_id = 0;
     if (has_report_id_theirs[interface]) {
-        report_id = report[0];
-        report++;
-        len--;
+        if (external_report_id != 0) {
+            report_id = external_report_id;
+        } else {
+            report_id = report[0];
+            report++;
+            len--;
+        }
     }
 
     uint8_t interface_idx = interface_index[interface];
@@ -1052,6 +1080,19 @@ void update_their_descriptor_derivates() {
         for (auto& map_source : rev_map.sources) {
             map_source.is_relative = relative_usage_set.count(map_source.usage) > 0;
         }
+        auto search = their_out_usages_flat.find(rev_map.target);
+        if (search != their_out_usages_flat.end()) {
+            rev_map.our_usages.clear();
+            for (auto dev_addr_int_rep_id : search->second) {
+                auto const& our_usage2 = their_out_usages[dev_addr_int_rep_id >> 16][dev_addr_int_rep_id & 0xFFFF][rev_map.target];
+                rev_map.our_usages.push_back((out_usage_def_t){
+                    .data = out_reports[dev_addr_int_rep_id],
+                    .len = out_report_sizes[dev_addr_int_rep_id],
+                    .size = our_usage2.size,
+                    .bitpos = our_usage2.bitpos,
+                });
+            }
+        }
     }
 }
 
@@ -1087,6 +1128,8 @@ void parse_our_descriptor() {
     }
 
     rlencode(our_usage_ranges_set, our_usages_rle);
+
+    parse_descriptor(their_usages[OUR_OUT_INTERFACE], has_report_id_theirs[OUR_OUT_INTERFACE], our_report_descriptor, our_report_descriptor_length, true);
 }
 
 void print_stats() {

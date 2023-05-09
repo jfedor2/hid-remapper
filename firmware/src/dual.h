@@ -10,6 +10,7 @@ enum class DualCommand : uint8_t {
     REQUEST_B_INIT = 4,
     B_INIT = 5,
     RESTART = 6,
+    SEND_OUT_REPORT = 7,
 };
 
 struct __attribute__((packed)) device_connected_t {
@@ -45,6 +46,14 @@ struct __attribute__((packed)) b_init_t {
 
 struct __attribute__((packed)) restart_t {
     DualCommand command = DualCommand::RESTART;
+};
+
+struct __attribute__((packed)) send_out_report_t {
+    DualCommand command = DualCommand::SEND_OUT_REPORT;
+    uint8_t dev_addr;
+    uint8_t interface;
+    uint8_t report_id;
+    uint8_t report[0];
 };
 
 #endif

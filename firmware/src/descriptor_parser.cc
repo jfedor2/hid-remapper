@@ -1,3 +1,4 @@
+#include <cstring>
 #include <deque>
 
 #include "descriptor_parser.h"
@@ -55,11 +56,26 @@ void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* re
     parse_descriptor(their_usages[interface], has_report_id_theirs[interface], report_descriptor, len);
     apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len);
     assign_interface_index(interface);
+
+    auto their_out_report_sizes_map = parse_descriptor(their_out_usages[interface], has_report_id_theirs_out[interface], report_descriptor, len, true);
+    for (auto const& [report_id, size] : their_out_report_sizes_map) {
+        out_report_sizes[(interface << 16) | report_id] = size;
+        out_reports[(interface << 16) | report_id] = new uint8_t[size];
+        memset(out_reports[(interface << 16) | report_id], 0, size);
+        prev_out_reports[(interface << 16) | report_id] = new uint8_t[size];
+        memset(prev_out_reports[(interface << 16) | report_id], 0, size);
+    }
+    for (auto const& [report_id, usage_map] : their_out_usages[interface]) {
+        for (auto const& [usage, usage_def] : usage_map) {
+            their_out_usages_flat[usage].push_back((interface << 16) | report_id);
+        }
+    }
+
     my_mutex_exit(MutexId::THEIR_USAGES);
     their_descriptor_updated = true;
 }
 
-std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, bool& has_report_id, const uint8_t* report_descriptor, int len) {
+std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, bool& has_report_id, const uint8_t* report_descriptor, int len, bool output) {
     int idx = 0;
 
     uint8_t report_id = 0;
@@ -90,48 +106,51 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
         }
 
         switch (item) {
-            case HID_INPUT: {
-                bool relative = value & (1 << 2);
-                if ((value & 0x03) == 0x02) {  // scalar
-                    if (usage_minimum && usage_maximum) {
-                        uint32_t usage = usage_minimum;
-                        for (uint32_t i = 0; i < report_count; i++) {
-                            mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum);
-                            if (usage < usage_maximum) {
-                                usage++;
+            case HID_INPUT:
+            case HID_OUTPUT: {
+                if ((item != HID_INPUT) == output) {
+                    bool relative = value & (1 << 2);
+                    if ((value & 0x03) == 0x02) {  // scalar
+                        if (usage_minimum && usage_maximum) {
+                            uint32_t usage = usage_minimum;
+                            for (uint32_t i = 0; i < report_count; i++) {
+                                mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum);
+                                if (usage < usage_maximum) {
+                                    usage++;
+                                }
+                                bitpos[report_id] += report_size;
                             }
-                            bitpos[report_id] += report_size;
-                        }
-                    } else if (!usages.empty()) {
-                        uint32_t usage = 0;
-                        for (uint32_t i = 0; i < report_count; i++) {
-                            if (!usages.empty()) {
-                                usage = usages.front();
-                                usages.pop_front();
+                        } else if (!usages.empty()) {
+                            uint32_t usage = 0;
+                            for (uint32_t i = 0; i < report_count; i++) {
+                                if (!usages.empty()) {
+                                    usage = usages.front();
+                                    usages.pop_front();
+                                }
+                                mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum);
+                                bitpos[report_id] += report_size;
                             }
-                            mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum);
-                            bitpos[report_id] += report_size;
+                        } else {
+                            bitpos[report_id] += report_size * report_count;
                         }
-                    } else {
+                    } else if ((value & 0x03) == 0x00) {  // array
+                        if (usage_minimum && usage_maximum) {
+                            uint32_t effective_usage_maximum = std::min(usage_maximum, usage_minimum + logical_maximum - logical_minimum);
+                            mark_usage(usage_map, usage_minimum, report_id, bitpos[report_id], report_size, relative, logical_minimum, true, logical_minimum, report_count, effective_usage_maximum);
+                        } else if (!usages.empty()) {
+                            uint32_t usage = 0;
+                            for (int index = logical_minimum; index <= logical_maximum; index++) {
+                                if (!usages.empty()) {
+                                    usage = usages.front();
+                                    usages.pop_front();
+                                }
+                                mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum, true, index, report_count);
+                            }
+                        }
+                        bitpos[report_id] += report_size * report_count;
+                    } else {  // constant
                         bitpos[report_id] += report_size * report_count;
                     }
-                } else if ((value & 0x03) == 0x00) {  // array
-                    if (usage_minimum && usage_maximum) {
-                        uint32_t effective_usage_maximum = std::min(usage_maximum, usage_minimum + logical_maximum - logical_minimum);
-                        mark_usage(usage_map, usage_minimum, report_id, bitpos[report_id], report_size, relative, logical_minimum, true, logical_minimum, report_count, effective_usage_maximum);
-                    } else if (!usages.empty()) {
-                        uint32_t usage = 0;
-                        for (int index = logical_minimum; index <= logical_maximum; index++) {
-                            if (!usages.empty()) {
-                                usage = usages.front();
-                                usages.pop_front();
-                            }
-                            mark_usage(usage_map, usage, report_id, bitpos[report_id], report_size, relative, logical_minimum, true, index, report_count);
-                        }
-                    }
-                    bitpos[report_id] += report_size * report_count;
-                } else {  // constant
-                    bitpos[report_id] += report_size * report_count;
                 }
 
                 usages.clear();
@@ -140,7 +159,6 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
                 break;
             }
             case HID_COLLECTION:
-            case HID_OUTPUT:
             case HID_FEATURE:
                 usages.clear();
                 usage_minimum = 0;
@@ -195,6 +213,7 @@ std::unordered_map<uint8_t, uint16_t> parse_descriptor(std::unordered_map<uint8_
 
 void clear_descriptor_data(uint8_t dev_addr) {
     my_mutex_enter(MutexId::THEIR_USAGES);
+
     for (auto it = their_usages.cbegin(); it != their_usages.cend();) {
         uint16_t dev_addr_interface = it->first;
         if (dev_addr_interface >> 8 == dev_addr) {
@@ -209,6 +228,40 @@ void clear_descriptor_data(uint8_t dev_addr) {
             it++;
         }
     }
+
+    for (auto it = their_out_usages.cbegin(); it != their_out_usages.cend();) {
+        uint16_t dev_addr_interface = it->first;
+        if (dev_addr_interface >> 8 == dev_addr) {
+            has_report_id_theirs_out.erase(dev_addr_interface);
+            it = their_out_usages.erase(it);
+        } else {
+            it++;
+        }
+    }
+
+    for (auto it = out_reports.cbegin(); it != out_reports.cend();) {
+        uint32_t dev_addr_int_rep_id = it->first;
+        if (dev_addr_int_rep_id >> 24 == dev_addr) {
+            out_report_sizes.erase(dev_addr_int_rep_id);
+            delete[] prev_out_reports[dev_addr_int_rep_id];
+            prev_out_reports.erase(dev_addr_int_rep_id);
+            delete[] out_reports[dev_addr_int_rep_id];
+            it = out_reports.erase(it);
+        } else {
+            it++;
+        }
+    }
+
+    for (auto& [usage, addr_int_rep_id_vector] : their_out_usages_flat) {
+        for (auto it = addr_int_rep_id_vector.cbegin(); it != addr_int_rep_id_vector.cend();) {
+            if ((*it) >> 24 == dev_addr) {
+                it = addr_int_rep_id_vector.erase(it);
+            } else {
+                it++;
+            }
+        }
+    }
+
     my_mutex_exit(MutexId::THEIR_USAGES);
     their_descriptor_updated = true;
 }

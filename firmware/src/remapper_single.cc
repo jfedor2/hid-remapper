@@ -1,6 +1,7 @@
 #include <tusb.h>
 
 #include "descriptor_parser.h"
+#include "out_report.h"
 #include "remapper.h"
 
 void extra_init() {
@@ -45,4 +46,12 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     reports_received = true;
 
     tuh_hid_receive_report(dev_addr, instance);
+}
+
+void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
+    do_queue_out_report(buffer, len, report_id, interface >> 8, interface & 0xFF);
+}
+
+void send_out_report() {
+    do_send_out_report();
 }
