@@ -24,6 +24,8 @@ volatile bool suspended = false;
 uint8_t unmapped_passthrough_layer_mask = 0b00001111;
 uint32_t partial_scroll_timeout = 1000000;
 uint32_t tap_hold_threshold = 200000;
+uint64_t gpio_debounce_time = 5000;
+
 std::vector<mapping_config_t> config_mappings;
 
 uint8_t resolution_multiplier = 0;

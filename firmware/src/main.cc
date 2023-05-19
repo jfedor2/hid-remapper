@@ -41,6 +41,7 @@ uint64_t next_print = 0;
 mutex_t mutexes[(uint8_t) MutexId::N];
 
 uint32_t prev_gpio_state = 0;
+uint64_t last_gpio_change[32] = { 0 };
 
 void print_stats_maybe() {
     uint64_t now = time_us_64();
@@ -75,14 +76,21 @@ void gpio_pins_init() {
     }
 }
 
-bool read_gpio() {
-    // XXX debouncing?
+bool read_gpio(uint64_t now) {
     uint32_t gpio_state = gpio_get_all() & GPIO_PIN_MASK;
     uint32_t changed = prev_gpio_state ^ gpio_state;
     if (changed != 0) {
         for (uint8_t i = GPIO_PIN_FIRST; i <= GPIO_PIN_LAST; i++) {
-            if ((changed >> i) & 0x01) {
-                set_input_state(GPIO_USAGE_PAGE | i, !((gpio_state >> i) & 0x01));  // active low
+            uint32_t bit = 1 << i;
+            if (changed & bit) {
+                if (last_gpio_change[i] + gpio_debounce_time <= now) {
+                    set_input_state(GPIO_USAGE_PAGE | i, !(gpio_state & bit));  // active low
+                    last_gpio_change[i] = now;
+                } else {
+                    // ignore this change
+                    gpio_state ^= bit;
+                    changed ^= bit;
+                }
             }
         }
         prev_gpio_state = gpio_state;
@@ -159,7 +167,7 @@ int main() {
 
     while (true) {
         bool new_report = read_report();
-        bool gpio_state_changed = read_gpio();
+        bool gpio_state_changed = read_gpio(time_us_64());
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
             their_descriptor_updated = false;

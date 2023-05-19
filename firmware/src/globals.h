@@ -32,6 +32,8 @@ extern volatile bool suspended;
 extern uint8_t unmapped_passthrough_layer_mask;
 extern uint32_t partial_scroll_timeout;
 extern uint32_t tap_hold_threshold;
+extern uint64_t gpio_debounce_time;
+
 extern std::vector<mapping_config_t> config_mappings;
 
 extern uint8_t resolution_multiplier;

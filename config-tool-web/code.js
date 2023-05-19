@@ -13,6 +13,7 @@ const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
 const DEFAULT_TAP_HOLD_THRESHOLD = 200000;
+const DEFAULT_GPIO_DEBOUNCE_TIME = 5;
 const DEFAULT_SCALING = 1000;
 
 const NLAYERS = 4;
@@ -90,6 +91,7 @@ let config = {
     'unmapped_passthrough_layers': [0, 1, 2, 3],
     'partial_scroll_timeout': DEFAULT_PARTIAL_SCROLL_TIMEOUT,
     'tap_hold_threshold': DEFAULT_TAP_HOLD_THRESHOLD,
+    'gpio_debounce_time_ms': DEFAULT_GPIO_DEBOUNCE_TIME,
     'interval_override': 0,
     mappings: [{
         'source_usage': '0x00000000',
@@ -132,6 +134,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById("partial_scroll_timeout_input").addEventListener("change", partial_scroll_timeout_onchange);
     document.getElementById("tap_hold_threshold_input").addEventListener("change", tap_hold_threshold_onchange);
+    document.getElementById("gpio_debounce_time_input").addEventListener("change", gpio_debounce_time_onchange);
     for (let i = 0; i < NLAYERS; i++) {
         document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
     }
@@ -192,14 +195,15 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8]);
         check_received_version(config_version);
 
         config['version'] = config_version;
         config['unmapped_passthrough_layers'] = mask_to_layer_list(flags & ((1 << NLAYERS) - 1));
         config['partial_scroll_timeout'] = partial_scroll_timeout;
         config['tap_hold_threshold'] = tap_hold_threshold;
+        config['gpio_debounce_time_ms'] = gpio_debounce_time_ms;
         config['interval_override'] = interval_override;
         config['mappings'] = [];
 
@@ -301,6 +305,7 @@ async function save_to_device() {
             [UINT32, config['partial_scroll_timeout']],
             [UINT8, config['interval_override']],
             [UINT32, config['tap_hold_threshold']],
+            [UINT8, config['gpio_debounce_time_ms']],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -387,8 +392,8 @@ async function save_to_device() {
 async function get_usages_from_device() {
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold, gpio_debounce_time_ms] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT8]);
         check_received_version(config_version);
 
         let extra_usage_set = new Set();
@@ -429,6 +434,7 @@ async function get_usages_from_device() {
 function set_config_ui_state() {
     document.getElementById('partial_scroll_timeout_input').value = Math.round(config['partial_scroll_timeout'] / 1000);
     document.getElementById('tap_hold_threshold_input').value = Math.round(config['tap_hold_threshold'] / 1000);
+    document.getElementById('gpio_debounce_time_input').value = config['gpio_debounce_time_ms'];
     for (let i = 0; i < NLAYERS; i++) {
         document.getElementById('unmapped_passthrough_checkbox' + i).checked =
             config['unmapped_passthrough_layers'].includes(i);
@@ -530,6 +536,7 @@ function set_ui_state() {
         while (config['macros'].length < NMACROS) {
             config['macros'].push([]);
         }
+        config['gpio_debounce_time_ms'] = DEFAULT_GPIO_DEBOUNCE_TIME;
         config['version'] = CONFIG_VERSION;
     }
 
@@ -1006,6 +1013,14 @@ function tap_hold_threshold_onchange() {
         value = Math.round(value * 1000);
     }
     config['tap_hold_threshold'] = value;
+}
+
+function gpio_debounce_time_onchange() {
+    let value = parseInt(document.getElementById('gpio_debounce_time_input').value, 10);
+    if (isNaN(value)) {
+        value = DEFAULT_GPIO_DEBOUNCE_TIME;
+    }
+    config['gpio_debounce_time_ms'] = value;
 }
 
 function unmapped_passthrough_onchange() {

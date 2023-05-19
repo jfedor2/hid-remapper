@@ -188,6 +188,7 @@ void load_config(const uint8_t* persisted_config) {
         (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
     partial_scroll_timeout = config->partial_scroll_timeout;
     tap_hold_threshold = config->tap_hold_threshold;
+    gpio_debounce_time = config->gpio_debounce_time_ms * 1000;
     interval_override = config->interval_override;
     mapping_config_t* buffer_mappings = (mapping_config_t*) (persisted_config + sizeof(persist_config_v7_t));
     for (uint32_t i = 0; i < config->mapping_count; i++) {
@@ -242,6 +243,7 @@ void fill_get_config(get_config_t* config) {
         (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->tap_hold_threshold = tap_hold_threshold;
+    config->gpio_debounce_time_ms = gpio_debounce_time / 1000;
     config->mapping_count = config_mappings.size();
     config->our_usage_count = our_usages_rle.size();
     config->their_usage_count = their_usages_rle.size();
@@ -255,6 +257,7 @@ void fill_persist_config(persist_config_t* config) {
         (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->tap_hold_threshold = tap_hold_threshold;
+    config->gpio_debounce_time_ms = gpio_debounce_time / 1000;
     config->mapping_count = config_mappings.size();
     config->interval_override = interval_override;
 }
@@ -448,6 +451,7 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                         (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
                     partial_scroll_timeout = config->partial_scroll_timeout;
                     tap_hold_threshold = config->tap_hold_threshold;
+                    gpio_debounce_time = config->gpio_debounce_time_ms * 1000;
                     uint8_t prev_interval_override = interval_override;
                     interval_override = config->interval_override;
                     if (prev_interval_override != interval_override) {

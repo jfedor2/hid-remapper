@@ -20,6 +20,7 @@ partial_scroll_timeout = config.get(
     "partial_scroll_timeout", DEFAULT_PARTIAL_SCROLL_TIMEOUT
 )
 tap_hold_threshold = config.get("tap_hold_threshold", DEFAULT_TAP_HOLD_THRESHOLD)
+gpio_debounce_time_ms = config.get("gpio_debounce_time_ms", DEFAULT_GPIO_DEBOUNCE_TIME)
 if version == 3:
     unmapped_passthrough_layer_mask = (
         1 if config.get("unmapped_passthrough", True) else 0
@@ -33,7 +34,7 @@ interval_override = config.get("interval_override", 0)
 flags = unmapped_passthrough_layer_mask
 
 data = struct.pack(
-    "<BBBBLBL16B",
+    "<BBBBLBLB15B",
     REPORT_ID_CONFIG,
     CONFIG_VERSION,
     SET_CONFIG,
@@ -41,7 +42,8 @@ data = struct.pack(
     partial_scroll_timeout,
     interval_override,
     tap_hold_threshold,
-    *([0] * 16)
+    gpio_debounce_time_ms,
+    *([0] * 15)
 )
 device.send_feature_report(add_crc(data))
 

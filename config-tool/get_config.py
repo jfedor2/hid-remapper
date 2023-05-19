@@ -22,9 +22,10 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     their_usage_count,
     interval_override,
     tap_hold_threshold,
+    gpio_debounce_time_ms,
     *_,
     crc,
-) = struct.unpack("<BBBLLLLBL5BL", data)
+) = struct.unpack("<BBBLLLLBLB4BL", data)
 check_crc(data, crc)
 
 config = {
@@ -33,6 +34,7 @@ config = {
     "partial_scroll_timeout": partial_scroll_timeout,
     "interval_override": interval_override,
     "tap_hold_threshold": tap_hold_threshold,
+    "gpio_debounce_time_ms": gpio_debounce_time_ms,
     "mappings": [],
     "macros": [],
     "expressions": [],
