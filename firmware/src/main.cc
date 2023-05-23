@@ -84,7 +84,12 @@ bool read_gpio(uint64_t now) {
             uint32_t bit = 1 << i;
             if (changed & bit) {
                 if (last_gpio_change[i] + gpio_debounce_time <= now) {
-                    set_input_state(GPIO_USAGE_PAGE | i, !(gpio_state & bit));  // active low
+                    uint32_t usage = GPIO_USAGE_PAGE | i;
+                    int32_t state = !(gpio_state & bit);  // active low
+                    set_input_state(usage, state);
+                    if (monitor_enabled) {
+                        monitor_usage(usage, state);
+                    }
                     last_gpio_change[i] = now;
                 } else {
                     // ignore this change
