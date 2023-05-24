@@ -184,6 +184,10 @@ int main() {
             process_mapping(get_and_clear_tick_pending());
         }
         tud_task();
+        if (config_updated) {
+            set_mapping_from_config();
+            config_updated = false;
+        }
         if (tud_hid_n_ready(0)) {
             if (get_and_clear_tick_pending()) {
                 process_mapping(true);

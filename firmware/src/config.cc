@@ -457,19 +457,19 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                     if (prev_interval_override != interval_override) {
                         interval_override_updated();
                     }
-                    set_mapping_from_config();
+                    config_updated = true;
                     break;
                 }
                 case ConfigCommand::GET_CONFIG:
                     break;
                 case ConfigCommand::CLEAR_MAPPING:
                     config_mappings.clear();
-                    set_mapping_from_config();
+                    config_updated = true;
                     break;
                 case ConfigCommand::ADD_MAPPING: {
                     mapping_config_t* mapping_config = (mapping_config_t*) config_buffer->data;
                     config_mappings.push_back(*mapping_config);
-                    set_mapping_from_config();
+                    config_updated = true;
                     break;
                 }
                 case ConfigCommand::GET_MAPPING:
@@ -561,7 +561,7 @@ void handle_set_report(uint8_t report_id, uint8_t const* buffer, uint16_t bufsiz
                         }
                     }
                     my_mutex_exit(MutexId::EXPRESSIONS);
-                    set_mapping_from_config();
+                    config_updated = true;
                     break;
                 }
                 case ConfigCommand::GET_EXPRESSION: {

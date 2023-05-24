@@ -20,6 +20,7 @@ std::vector<usage_rle_t> their_usages_rle;
 volatile bool need_to_persist_config = false;
 volatile bool their_descriptor_updated = false;
 volatile bool suspended = false;
+volatile bool config_updated = false;
 
 uint8_t unmapped_passthrough_layer_mask = 0b00001111;
 uint32_t partial_scroll_timeout = 1000000;

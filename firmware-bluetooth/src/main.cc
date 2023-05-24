@@ -803,6 +803,11 @@ int main() {
             parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8);
         }
 
+        if (config_updated) {
+            set_mapping_from_config();
+            config_updated = false;
+        }
+
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
             their_descriptor_updated = false;
