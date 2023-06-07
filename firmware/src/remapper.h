@@ -26,4 +26,6 @@ void print_stats();
 void set_monitor_enabled(bool enabled);
 void monitor_usage(uint32_t usage, int32_t value);
 
+void sof_callback();
+
 #endif

@@ -1,10 +1,18 @@
 #include <tusb.h>
 
+#include "pio_usb.h"
+
+#include "pico/time.h"
+
 #include "descriptor_parser.h"
 #include "out_report.h"
 #include "remapper.h"
 
 void extra_init() {
+    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
+    pio_cfg.pin_dp = PICO_DEFAULT_PIO_USB_DP_PIN;
+    pio_cfg.skip_alarm_pool = true;
+    tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 }
 
 static bool reports_received = false;
@@ -56,4 +64,13 @@ void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buff
 
 void send_out_report() {
     do_send_out_report();
+}
+
+static int64_t manual_sof(alarm_id_t id, void* user_data) {
+    pio_usb_host_frame();
+    return 0;
+}
+
+void sof_callback() {
+    add_alarm_in_us(150, manual_sof, NULL, true);
 }

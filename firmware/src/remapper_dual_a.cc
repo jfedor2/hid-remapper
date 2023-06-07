@@ -95,3 +95,6 @@ void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* repo
 
 void send_out_report() {
 }
+
+void sof_callback() {
+}

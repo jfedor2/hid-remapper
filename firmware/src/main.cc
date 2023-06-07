@@ -62,6 +62,7 @@ inline bool get_and_clear_tick_pending() {
 
 void sof_handler(uint32_t frame_count) {
     tick_pending = true;
+    sof_callback();
 }
 
 bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
@@ -155,11 +156,11 @@ uint64_t get_unique_id() {
 int main() {
     my_mutexes_init();
     gpio_pins_init();
-    extra_init();
     parse_our_descriptor();
     load_config(FLASH_CONFIG_IN_MEMORY);
     set_mapping_from_config();
     board_init();
+    extra_init();
     tusb_init();
     stdio_init_all();
 
