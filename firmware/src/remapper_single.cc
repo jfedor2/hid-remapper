@@ -41,9 +41,11 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
-    handle_received_report(report, len, (uint16_t) (dev_addr << 8) | instance);
+    if (len > 0) {
+        handle_received_report(report, len, (uint16_t) (dev_addr << 8) | instance);
 
-    reports_received = true;
+        reports_received = true;
+    }
 
     tuh_hid_receive_report(dev_addr, instance);
 }
