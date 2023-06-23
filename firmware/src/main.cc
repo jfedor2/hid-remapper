@@ -20,6 +20,7 @@
 #include "our_descriptor.h"
 #include "platform.h"
 #include "remapper.h"
+#include "tick.h"
 
 #define CONFIG_OFFSET_IN_FLASH (PICO_FLASH_SIZE_BYTES - PERSISTED_CONFIG_SIZE)
 #define FLASH_CONFIG_IN_MEMORY (((uint8_t*) XIP_BASE) + CONFIG_OFFSET_IN_FLASH)
@@ -29,12 +30,6 @@
 #define GPIO_PIN_MASK ((1 << (GPIO_PIN_LAST + 1)) - (1 << GPIO_PIN_FIRST))
 
 #define GPIO_USAGE_PAGE 0xFFF40000
-
-// We need a certain part of mapping processing (absolute->relative mappings) to
-// happen exactly once per millisecond. This variable keeps track of whether we
-// already did it this time around. It is set to true when we receive
-// start-of-frame from USB host.
-volatile bool tick_pending;
 
 uint64_t next_print = 0;
 
@@ -53,15 +48,7 @@ void print_stats_maybe() {
     }
 }
 
-inline bool get_and_clear_tick_pending() {
-    // atomicity not critical
-    uint8_t tmp = tick_pending;
-    tick_pending = false;
-    return tmp;
-}
-
 void sof_handler(uint32_t frame_count) {
-    tick_pending = true;
     sof_callback();
 }
 
@@ -156,6 +143,7 @@ uint64_t get_unique_id() {
 int main() {
     my_mutexes_init();
     gpio_pins_init();
+    tick_init();
     parse_our_descriptor();
     load_config(FLASH_CONFIG_IN_MEMORY);
     set_mapping_from_config();
@@ -172,17 +160,26 @@ int main() {
     uint64_t turn_led_off_after = 0;
 
     while (true) {
-        bool new_report = read_report();
-        bool gpio_state_changed = read_gpio(time_us_64());
+        bool tick;
+        bool new_report;
+        read_report(&new_report, &tick);
+        if (new_report) {
+            led_state = true;
+            board_led_write(true);
+            turn_led_off_after = time_us_64() + 50000;
+        }
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
             their_descriptor_updated = false;
         }
-        if (new_report || gpio_state_changed) {
-            led_state = true;
-            board_led_write(true);
-            turn_led_off_after = time_us_64() + 50000;
-            process_mapping(get_and_clear_tick_pending());
+        if (tick) {
+            bool gpio_state_changed = read_gpio(time_us_64());
+            if (gpio_state_changed) {
+                led_state = true;
+                board_led_write(true);
+                turn_led_off_after = time_us_64() + 50000;
+            }
+            process_mapping(true);
         }
         tud_task();
         if (config_updated) {
@@ -190,9 +187,6 @@ int main() {
             config_updated = false;
         }
         if (tud_hid_n_ready(0)) {
-            if (get_and_clear_tick_pending()) {
-                process_mapping(true);
-            }
             send_report(do_send_report);
         }
         if (monitor_enabled && tud_hid_n_ready(1)) {

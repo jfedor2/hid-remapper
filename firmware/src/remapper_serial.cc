@@ -1,6 +1,7 @@
 #include "descriptor_parser.h"
 #include "interval_override.h"
 #include "remapper.h"
+#include "tick.h"
 
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
@@ -62,9 +63,12 @@ void extra_init() {
     parse_descriptor(FAKE_VID, FAKE_PID, fake_descriptor, sizeof(fake_descriptor), FAKE_INTERFACE);
 }
 
-bool read_report() {
+void read_report(bool* new_report, bool* tick) {
+    *tick = get_and_clear_tick_pending();
+    *new_report = false;
+
     if (!uart_is_readable(SERIAL_MOUSE_UART)) {
-        return false;
+        return;
     }
 
     char c = uart_getc(SERIAL_MOUSE_UART);
@@ -106,11 +110,10 @@ bool read_report() {
             report.dy = dy;
             byte_number = -1;
             handle_received_report((const uint8_t*) &report, sizeof(report), FAKE_INTERFACE);
-            return true;
+            *new_report = true;
+            break;
         }
     }
-
-    return false;
 }
 
 void interval_override_updated() {
@@ -126,4 +129,5 @@ void send_out_report() {
 }
 
 void sof_callback() {
+    set_tick_pending();
 }

@@ -14,7 +14,7 @@ bool led_state;
 uint8_t buffer[SERIAL_MAX_PAYLOAD_SIZE + sizeof(device_connected_t)];
 bool initialized = false;
 
-void serial_callback(const uint8_t* data, uint16_t len) {
+bool serial_callback(const uint8_t* data, uint16_t len) {
     switch ((DualCommand) data[0]) {
         case DualCommand::B_INIT:
             interval_override = ((b_init_t*) data)->interval_override;
@@ -31,6 +31,8 @@ void serial_callback(const uint8_t* data, uint16_t len) {
         default:
             break;
     }
+
+    return false;
 }
 
 void request_b_init() {
@@ -95,5 +97,10 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
     device_disconnected_t msg;
     msg.dev_addr = dev_addr;
     msg.interface = instance;
+    serial_write((uint8_t*) &msg, sizeof(msg));
+}
+
+void tuh_sof_cb() {
+    start_of_frame_t msg;
     serial_write((uint8_t*) &msg, sizeof(msg));
 }

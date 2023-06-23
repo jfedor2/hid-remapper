@@ -1,11 +1,14 @@
 #include <cstdio>
 #include <cstring>
 
+#include "pico/time.h"
+
 #include "descriptor_parser.h"
 #include "dual.h"
 #include "interval_override.h"
 #include "remapper.h"
 #include "serial.h"
+#include "tick.h"
 
 #include "dual_b_binary.h"
 
@@ -21,7 +24,13 @@ void send_b_init() {
     serial_write((uint8_t*) &msg, sizeof(msg));
 }
 
-void serial_callback(const uint8_t* data, uint16_t len) {
+static int64_t tick_timer_callback(alarm_id_t id, void* user_data) {
+    set_tick_pending();
+    return 0;
+}
+
+bool serial_callback(const uint8_t* data, uint16_t len) {
+    bool ret = false;
     switch ((DualCommand) data[0]) {
         case DualCommand::DEVICE_CONNECTED: {
             device_connected_t* msg = (device_connected_t*) data;
@@ -36,22 +45,29 @@ void serial_callback(const uint8_t* data, uint16_t len) {
         case DualCommand::REPORT_RECEIVED: {
             report_received_t* msg = (report_received_t*) data;
             handle_received_report(msg->report, len - sizeof(report_received_t), (uint16_t) (msg->dev_addr << 8) | msg->interface);
+            ret = true;
             break;
         }
         case DualCommand::REQUEST_B_INIT:
             send_b_init();
             break;
+        case DualCommand::START_OF_FRAME:
+            add_alarm_in_us(300, tick_timer_callback, NULL, true);
+            break;
         default:
             break;
     }
+
+    return ret;
 }
 
 void extra_init() {
     serial_init();
 }
 
-bool read_report() {
-    return serial_read(serial_callback);
+void read_report(bool* new_report, bool* tick) {
+    *new_report = serial_read(serial_callback);
+    *tick = get_and_clear_tick_pending();
 }
 
 void interval_override_updated() {

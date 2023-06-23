@@ -10,7 +10,7 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface, 
 void set_input_state(uint32_t usage, int32_t state);
 
 void extra_init();
-bool read_report();
+void read_report(bool* new_report, bool* tick);
 
 void interval_override_updated();
 

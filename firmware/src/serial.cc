@@ -75,9 +75,9 @@ bool serial_read(msg_recv_cb_t callback) {
                             received_crc = (received_crc << 8) | buffer[bytes_read - 1 - i];
                         }
                         if (crc == received_crc) {
-                            callback(buffer, bytes_read - 4);
+                            bool ret = callback(buffer, bytes_read - 4);
                             bytes_read = 0;
-                            return true;
+                            return ret;
                         } else {
                             printf("CRC error\n");
                         }

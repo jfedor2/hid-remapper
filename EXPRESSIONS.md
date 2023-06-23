@@ -37,25 +37,21 @@ Two things remain, first we should scale the output to a reasonable range. Throu
 ```
 0x00010030 input_state -128 add dup abs 10 gt mul 0.025 mul
 ```
-Finally, whenever we map an absolute input like a button or an analog stick to a relative output like a mouse axis, we need to make sure that the output values are produced at the correct rate. We only want this mapping to move the cursor every 1 millisecond and depending on other factors, the expression might be evaluated more often than that. You can take a look at HID Remapper’s source code if you want to know the details, but for now just add this to the end of the expression whenever you map an absolute input to a relative output:
-```
-0x00010030 input_state -128 add dup abs 10 gt mul 0.025 mul auto_repeat mul
-```
 Still with us? Let’s consider another example more briefly. Let’s say we want the D-pad on our game controller to also move the mouse cursor. We happen to know (from the "Monitor" tab) that the D-pad sends the usage code 0x00010039 with values between 0 and 7 when it’s pressed in some direction and a value outside this range (say, 8 or 15) when it’s in the neutral position. Here’s an expression that we could use for the "Cursor X" mapping:
 ```
-0x00010039 input_state 7 gt not 0x00010039 input_state 45 mul sin mul auto_repeat mul
+0x00010039 input_state 7 gt not 0x00010039 input_state 45 mul sin mul
 ```
-`0x00010039 input_state` fetches the input value. `7 gt` checks if it’s outside the valid range. `not` inverts that condition. If at this point we have a `1` on the stack, this means that the D-pad is being pressed in some direction. If we have a `0`, it means that it’s not. Then we fetch the input value again (we could use `dup` before the `7 gt`, but then we’d also need `swap` which we currently don’t have). The D-pad sends a 0 for North, 1 for North-East, 2 for East etc. So to get a value in degrees (0-360), we multiply the received value by 45 (`45 mul`). Trigonometry tells us that to get the horizontal axis part of the movement in a certain direction, we can use the sine function (`sin`). Now the stack is either `1` and a valid sine result or `0` and some garbage value that we’ll disregard by multiplying the two values (`mul`). Again, we add the `auto_repeat mul` because we’re mapping an absolute input to a relative output.
+`0x00010039 input_state` fetches the input value. `7 gt` checks if it’s outside the valid range. `not` inverts that condition. If at this point we have a `1` on the stack, this means that the D-pad is being pressed in some direction. If we have a `0`, it means that it’s not. Then we fetch the input value again (we could use `dup` before the `7 gt`, but then we’d also need `swap` which we currently don’t have). The D-pad sends a 0 for North, 1 for North-East, 2 for East etc. So to get a value in degrees (0-360), we multiply the received value by 45 (`45 mul`). Trigonometry tells us that to get the horizontal axis part of the movement in a certain direction, we can use the sine function (`sin`). Now the stack is either `1` and a valid sine result or `0` and some garbage value that we’ll disregard by multiplying the two values (`mul`).
 
 For the vertical axis the expression is almost the same, we just need to use cosine instead of sine and negate its output value:
 ```
-0x00010039 input_state 7 gt not 0x00010039 input_state 45 mul cos -1 mul mul auto_repeat mul
+0x00010039 input_state 7 gt not 0x00010039 input_state 45 mul cos -1 mul mul
 ```
 In this case we don’t do additional scaling because we’re happy with the way it is, but we could of course do that if we wanted to.
 
 The two examples above already show us how we can do things that weren’t previously possible with the existing mapping mechanism, but let’s go further. As you’ve noticed we can fetch the state of some input more than once in an expression. What we can also do is fetch the state of multiple different inputs and do some calculations on them to produce an output. When would we want to do that? We could for example check if some button is pressed and apply some part of the calculation only if it is, emulating the layer mechanism in a more flexible way. Or let’s say that we have a joystick, like the ones used for flight simulators, that has a stick and a throttle lever. Here’s an expression that makes the stick move the mouse cursor, but with the speed controlled by the throttle lever!
 ```
-0x00010030 input_state -128 add dup abs 10 gt mul 0.025 mul 0x00010036 input_state -1 mul 255 add 0.007 mul mul auto_repeat mul
+0x00010030 input_state -128 add dup abs 10 gt mul 0.025 mul 0x00010036 input_state -1 mul 255 add 0.007 mul mul
 ```
 Our joystick sends the 0x00010030 usage code (range 0-255) for the X axis of the stick and the 0x00010036 usage code (also 0-255, but with 0 being the maximum speed and 255 the minimum) for the throttle lever. We fetch the state of the stick (`0x00010030 input_state`), re-center it around zero (`-128 add`), apply the dead zone (`dup abs 10 gt mul`), apply a scaling (`0.025 mul`), fetch the state of the throttle lever (`0x00010036 input_state`), invert it so that zero corresponds to the state we want to be the minimum speed (`-1 mul 255 add`), scale it (`0.007 mul`), and finally multiply the stick value by the throttle value (`mul`).
 
@@ -76,8 +72,6 @@ Currently the set of operations that you can perform in expressions is fairly li
 ## Tips and tricks
 
 Use `input_state` to fetch the state of relative usages like a mouse axis and non-binary absolute usages like a D-pad or an analog stick or trigger. Use `input_state_binary` to fetch the state of binary absolute usages (buttons).
-
-When writing an expression that maps an absolute input like a button to a relative input like a mouse axis, put `auto_repeat mul` at the end for consistent speed of movement.
 
 The values stored on the stack are 32-bit integers that are multiplied by 1000 to simulate fractional values. Therefore it is impossible to put 0.0001 on the stack. If you want to multiply a value by 0.0001, first multiply it by 0.001 and then by 0.1.
 
@@ -114,7 +108,6 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `bitwise_and` | _x_, _y_ | _x & y_ | |
 | `bitwise_not` | _x_ | _~x_ | |
 | `time` | | current time | In milliseconds, starting at some arbitrary point. |
-| `auto_repeat` | | _auto\_repeat_ | 1 if mappings from absolute to relative usages should product output. |
 | `scaling` | | _scaling_ | Value as defined in the mapping. Useful for quick parameterization. |
 | `layer_state` | | _layer\_state_ | Bit mask of currently active layers. |
 | `sticky_state` | _usage_ | _sticky\_state(usage)_ | Bit mask of layers on which given usage is in sticky state. |

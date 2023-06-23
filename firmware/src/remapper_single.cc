@@ -7,6 +7,7 @@
 #include "descriptor_parser.h"
 #include "out_report.h"
 #include "remapper.h"
+#include "tick.h"
 
 void extra_init() {
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
@@ -15,14 +16,14 @@ void extra_init() {
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 }
 
-static bool reports_received = false;
+static bool reports_received;
 
-bool read_report() {
-    tuh_task();
+void read_report(bool* new_report, bool* tick) {
+    *tick = get_and_clear_tick_pending();
 
-    bool ret = reports_received;
     reports_received = false;
-    return ret;
+    tuh_task();
+    *new_report = reports_received;
 }
 
 void interval_override_updated() {
@@ -68,6 +69,7 @@ void send_out_report() {
 
 static int64_t manual_sof(alarm_id_t id, void* user_data) {
     pio_usb_host_frame();
+    set_tick_pending();
     return 0;
 }
 

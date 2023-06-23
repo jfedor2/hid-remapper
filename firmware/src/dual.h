@@ -11,6 +11,7 @@ enum class DualCommand : uint8_t {
     B_INIT = 5,
     RESTART = 6,
     SEND_OUT_REPORT = 7,
+    START_OF_FRAME = 8,
 };
 
 struct __attribute__((packed)) device_connected_t {
@@ -54,6 +55,10 @@ struct __attribute__((packed)) send_out_report_t {
     uint8_t interface;
     uint8_t report_id;
     uint8_t report[0];
+};
+
+struct __attribute__((packed)) start_of_frame_t {
+    DualCommand command = DualCommand::START_OF_FRAME;
 };
 
 #endif

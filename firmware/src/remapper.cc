@@ -864,14 +864,18 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
         }
     }
 
-    if (!their_usage.is_relative && (their_usage.size == 1)) {
-        if (value) {
-            *(their_usage.input_state) |= 1 << interface_idx;
-        } else {
-            *(their_usage.input_state) &= ~(1 << interface_idx);
-        }
+    if (their_usage.is_relative) {
+        *(their_usage.input_state) += value;
     } else {
-        *(their_usage.input_state) = value;
+        if (their_usage.size == 1) {
+            if (value) {
+                *(their_usage.input_state) |= 1 << interface_idx;
+            } else {
+                *(their_usage.input_state) &= ~(1 << interface_idx);
+            }
+        } else {
+            *(their_usage.input_state) = value;
+        }
     }
 }
 

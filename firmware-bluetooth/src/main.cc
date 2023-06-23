@@ -780,14 +780,13 @@ int main() {
     struct disconnected_type disconnected_item;
 
     while (true) {
-        if (!k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
+        while (!k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
             handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.conn_idx << 8);
-            process_mapping(atomic_test_and_clear_bit(tick_pending, 0));
+        }
+        if (atomic_test_and_clear_bit(tick_pending, 0)) {
+            process_mapping(true);
         }
         if (!k_sem_take(&usb_sem, K_NO_WAIT)) {
-            if (atomic_test_and_clear_bit(tick_pending, 0)) {
-                process_mapping(true);
-            }
             if (!send_report(do_send_report)) {
                 k_sem_give(&usb_sem);
             }
