@@ -36,6 +36,7 @@ add_executable(remapper
     src/interval_override.cc
     src/out_report.cc
     src/tick.cc
+    src/activity_led.cc
 )
 
 if(PICO_BOARD STREQUAL "pico")
@@ -81,6 +82,7 @@ add_executable(remapper_dual_a
     src/interval_override.cc
     src/serial.cc
     src/tick.cc
+    src/activity_led.cc
     src/pico_debug/swd.c
     src/pico_debug/flash.c
     src/pico_debug/adi.c
@@ -108,6 +110,7 @@ add_executable(remapper_dual_b
     src/interval_override.cc
     src/serial.cc
     src/out_report.cc
+    src/activity_led.cc
 )
 target_include_directories(remapper_dual_b PRIVATE
     src
@@ -140,6 +143,7 @@ add_executable(remapper_serial
     src/quirks.cc
     src/interval_override.cc
     src/tick.cc
+    src/activity_led.cc
 )
 target_include_directories(remapper_serial PRIVATE
     src

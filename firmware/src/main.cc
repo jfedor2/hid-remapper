@@ -13,6 +13,7 @@
 #include <pico/stdio.h>
 #include <pico/unique_id.h>
 
+#include "activity_led.h"
 #include "config.h"
 #include "crc.h"
 #include "descriptor_parser.h"
@@ -156,17 +157,12 @@ int main() {
 
     next_print = time_us_64() + 1000000;
 
-    bool led_state = false;
-    uint64_t turn_led_off_after = 0;
-
     while (true) {
         bool tick;
         bool new_report;
         read_report(&new_report, &tick);
         if (new_report) {
-            led_state = true;
-            board_led_write(true);
-            turn_led_off_after = time_us_64() + 50000;
+            activity_led_on();
         }
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
@@ -175,9 +171,7 @@ int main() {
         if (tick) {
             bool gpio_state_changed = read_gpio(time_us_64());
             if (gpio_state_changed) {
-                led_state = true;
-                board_led_write(true);
-                turn_led_off_after = time_us_64() + 50000;
+                activity_led_on();
             }
             process_mapping(true);
         }
@@ -200,10 +194,7 @@ int main() {
 
         print_stats_maybe();
 
-        if (led_state && (time_us_64() > turn_led_off_after)) {
-            led_state = false;
-            board_led_write(false);
-        }
+        activity_led_off_maybe();
     }
 
     return 0;

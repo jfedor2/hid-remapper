@@ -5,12 +5,12 @@
 #include "pico/stdio.h"
 #include "pico/time.h"
 
+#include "activity_led.h"
 #include "dual.h"
 #include "interval_override.h"
 #include "out_report.h"
 #include "serial.h"
 
-bool led_state;
 uint8_t buffer[SERIAL_MAX_PAYLOAD_SIZE + sizeof(device_connected_t)];
 bool initialized = false;
 
@@ -56,14 +56,14 @@ int main() {
         tuh_task();
         serial_read(serial_callback);
         do_send_out_report();
+        activity_led_off_maybe();
     }
 
     return 0;
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
-    led_state = !led_state;
-    board_led_write(led_state);
+    activity_led_on();
 
     report_received_t* msg = (report_received_t*) buffer;
     msg->command = DualCommand::REPORT_RECEIVED;
