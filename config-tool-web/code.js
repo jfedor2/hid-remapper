@@ -79,6 +79,9 @@ const ops = {
     "PREV_INPUT_STATE_BINARY": 28,
     "STORE": 29,
     "RECALL": 30,
+    "SQRT": 31,
+    "ATAN2": 32,
+    "ROUND": 33,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));

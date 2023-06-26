@@ -103,6 +103,9 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `abs` | _x_ | _abs(x)_ | -x if x < 0, x otherwise. |
 | `sin` | _x_ | _sin(x)_ | Sine function, x in degrees. |
 | `cos` | _x_ | _cos(x)_ | Cosine function, x in degrees. |
+| `atan2` | _x_, _y_ | _atan2(x, y)_ | Two-argument arctangent. |
+| `sqrt` | _x_ | _sqrt(x)_ | Square root. |
+| `round` | _x_ | _round(x)_ | Rounds to nearest integer. |
 | `relu`| _x_ | _relu(x)_ | 0 if x < 0, x otherwise. |
 | `clamp` | _x_, _y_, _z_ | _clamp(x, y, z)_ | y if x < y, z if x > z, x otherwise. |
 | `dup` | _x_ | _x_, _x_ | Duplicates top value on the stack. |

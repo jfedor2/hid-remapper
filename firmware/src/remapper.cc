@@ -202,6 +202,8 @@ bool is_expr_valid(uint8_t expr) {
             case Op::PREV_INPUT_STATE:
             case Op::PREV_INPUT_STATE_BINARY:
             case Op::RECALL:
+            case Op::SQRT:
+            case Op::ROUND:
                 if (on_stack < 1) {
                     return false;
                 }
@@ -219,6 +221,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::MOD:
             case Op::BITWISE_OR:
             case Op::BITWISE_AND:
+            case Op::ATAN2:
                 if (on_stack < 2) {
                     return false;
                 }
@@ -608,6 +611,19 @@ int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat
                 }
                 break;
             }
+            case Op::SQRT:
+                if (stack[ptr] >= 0) {
+                    stack[ptr] = sqrt(stack[ptr]) * 31.622776601683793;
+                }
+                break;
+            case Op::ATAN2:
+                stack[ptr - 1] = atan2(stack[ptr - 1], stack[ptr]) * 57295.779513;  // result in degrees
+                ptr--;
+                break;
+            case Op::ROUND:
+                stack[ptr] += 500;
+                stack[ptr] -= ((stack[ptr] % 1000) + 1000) % 1000;
+                break;
             default:
                 printf("unknown op!\n");
                 return 0;

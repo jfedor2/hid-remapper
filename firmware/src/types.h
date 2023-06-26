@@ -81,6 +81,9 @@ enum class Op : int8_t {
     PREV_INPUT_STATE_BINARY = 28,
     STORE = 29,
     RECALL = 30,
+    SQRT = 31,
+    ATAN2 = 32,
+    ROUND = 33,
 };
 
 struct expr_elem_t {
