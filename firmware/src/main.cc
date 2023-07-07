@@ -147,7 +147,7 @@ uint64_t get_unique_id() {
     pico_get_unique_board_id(&unique_id);
     uint64_t ret = 0;
     for (int i = 0; i < 8; i++) {
-        ret |= (uint64_t) unique_id.id[i] << (8 * i);
+        ret |= (uint64_t) unique_id.id[7 - i] << (8 * i);
     }
     return ret;
 }

@@ -135,7 +135,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         if (index == 2) {
             uint64_t unique_id = get_unique_id();
             for (uint8_t i = 0; i < 4; i++) {
-                _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (i * 5)) & 0x1F];
+                _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
             }
         }
     }
