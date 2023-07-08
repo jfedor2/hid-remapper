@@ -502,7 +502,7 @@ int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat
                 ptr--;
                 break;
             case Op::MUL:
-                stack[ptr - 1] = stack[ptr - 1] * stack[ptr] / 1000;
+                stack[ptr - 1] = (int64_t) stack[ptr - 1] * stack[ptr] / 1000;
                 ptr--;
                 break;
             case Op::EQ:
