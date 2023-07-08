@@ -475,11 +475,10 @@ void aggregate_relative(uint8_t* prev_report, const uint8_t* report, uint8_t rep
     }
 }
 
-int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat) {
+int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
     static int32_t stack[STACK_SIZE];
     bool debug = false;
     int16_t ptr = -1;
-    uint8_t expr = (map_source.usage & 0xFFFFF) - 1;
     if (expr >= NEXPRESSIONS) {
         return 0;
     }
@@ -554,7 +553,7 @@ int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat
                 }
                 break;
             case Op::SCALING:
-                stack[++ptr] = map_source.scaling;
+                stack[++ptr] = 1000;
                 break;
             case Op::CLAMP:
                 if (stack[ptr - 2] < stack[ptr - 1]) {
@@ -713,6 +712,16 @@ void process_mapping(bool auto_repeat) {
 
     layer_state_mask = new_layer_state_mask;
 
+    // evaluate all expressions
+    // XXX should we do this before or after tap-hold/sticky/layer logic?
+    for (uint8_t i = 0; i < NEXPRESSIONS; i++) {
+        int32_t result = eval_expr(i, frame_counter * 1000, auto_repeat);
+        int32_t* state_ptr = get_state_ptr(EXPR_USAGE_PAGE | (i + 1));
+        if (state_ptr != NULL) {
+            *state_ptr = result;
+        }
+    }
+
     // queue triggered macros
     for (auto const& rev_map : reverse_mapping_macros) {
         uint16_t macro = (rev_map.target & 0xFFFF) - 1;
@@ -741,7 +750,7 @@ void process_mapping(bool auto_repeat) {
                 int32_t value = 0;
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
                     if (layer_state_mask & map_source.layer_mask) {
-                        value = eval_expr(map_source, frame_counter * 1000, auto_repeat);
+                        value = *map_source.input_state;
                     }
                 } else {
                     if (auto_repeat || map_source.is_relative) {
@@ -768,7 +777,7 @@ void process_mapping(bool auto_repeat) {
             for (auto const& map_source : rev_map.sources) {
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
                     if (layer_state_mask & map_source.layer_mask) {
-                        value = eval_expr(map_source, frame_counter * 1000, auto_repeat) / 1000;
+                        value = *map_source.input_state / 1000;
                     }
                 } else {
                     if (map_source.sticky) {
