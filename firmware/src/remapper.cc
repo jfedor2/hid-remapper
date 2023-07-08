@@ -103,6 +103,8 @@ monitor_report_t monitor_report = { .report_id = REPORT_ID_MONITOR };
 #define NREGISTERS 32
 int32_t registers[NREGISTERS] = { 0 };
 
+uint64_t frame_counter = 0;
+
 int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
     int32_t ret = 0;
     if (resolution_multiplier & resolution_multiplier_masks.at(target_usage)) {  // hi-res
@@ -647,6 +649,7 @@ void process_mapping(bool auto_repeat) {
     }
 
     uint64_t now = get_time();
+    frame_counter++;
 
     for (auto const tap_hold : tap_hold_usages) {
         tap_state[tap_hold.usage] =
@@ -738,7 +741,7 @@ void process_mapping(bool auto_repeat) {
                 int32_t value = 0;
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
                     if (layer_state_mask & map_source.layer_mask) {
-                        value = eval_expr(map_source, now, auto_repeat);
+                        value = eval_expr(map_source, frame_counter * 1000, auto_repeat);
                     }
                 } else {
                     if (auto_repeat || map_source.is_relative) {
@@ -765,7 +768,7 @@ void process_mapping(bool auto_repeat) {
             for (auto const& map_source : rev_map.sources) {
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
                     if (layer_state_mask & map_source.layer_mask) {
-                        value = eval_expr(map_source, now, auto_repeat) / 1000;
+                        value = eval_expr(map_source, frame_counter * 1000, auto_repeat) / 1000;
                     }
                 } else {
                     if (map_source.sticky) {
