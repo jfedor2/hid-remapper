@@ -196,6 +196,8 @@ bool is_expr_valid(uint8_t expr) {
             case Op::TAP_STATE:
             case Op::HOLD_STATE:
             case Op::BITWISE_NOT:
+            case Op::PREV_INPUT_STATE:
+            case Op::PREV_INPUT_STATE_BINARY:
                 if (on_stack < 1) {
                     return false;
                 }
@@ -571,6 +573,16 @@ int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat
             case Op::BITWISE_NOT:
                 stack[ptr] = ~stack[ptr];
                 break;
+            case Op::PREV_INPUT_STATE: {
+                int32_t* state_ptr = get_state_ptr(stack[ptr]);
+                stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
+                break;
+            }
+            case Op::PREV_INPUT_STATE_BINARY: {
+                int32_t* state_ptr = get_state_ptr(stack[ptr]);
+                stack[ptr] = (state_ptr != NULL) ? !!(*(state_ptr + PREV_STATE_OFFSET)) * 1000 : 0;
+                break;
+            }
             default:
                 printf("unknown op!\n");
                 return 0;

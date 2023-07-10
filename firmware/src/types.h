@@ -77,6 +77,8 @@ enum class Op : int8_t {
     BITWISE_OR = 24,
     BITWISE_AND = 25,
     BITWISE_NOT = 26,
+    PREV_INPUT_STATE = 27,
+    PREV_INPUT_STATE_BINARY = 28,
 };
 
 struct expr_elem_t {

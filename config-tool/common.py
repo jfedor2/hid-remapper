@@ -81,6 +81,8 @@ ops = {
     "BITWISE_OR": 24,
     "BITWISE_AND": 25,
     "BITWISE_NOT": 26,
+    "PREV_INPUT_STATE": 27,
+    "PREV_INPUT_STATE_BINARY": 28,
 }
 
 opcodes = {v: k for k, v in ops.items()}

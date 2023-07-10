@@ -92,6 +92,8 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `0x00120034` | | 0x00120034 | Puts the value on the stack. Use for usage codes. |
 | `input_state` | _usage_ | state of _usage_ input | |
 | `input_state_binary` | _usage_ | state of _usage_ input | Use for buttons. |
+| `prev_input_state` | _usage_ | previous state of _usage_ input | |
+| `prev_input_state_binary` | _usage_ | previous state of _usage_ input | Use for buttons. |
 | `add` | _x_, _y_ | _x + y_ | |
 | `mul` | _x_, _y_ | _x * y_ | |
 | `eq` | _x_, _y_ | _x == y_ | 1 if equal, 0 otherwise. |
