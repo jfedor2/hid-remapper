@@ -109,6 +109,8 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `bitwise_or` | _x_, _y_ | _x \| y_ | |
 | `bitwise_and` | _x_, _y_ | _x & y_ | |
 | `bitwise_not` | _x_ | _~x_ | |
+| `store` | _x_, _n_ | | Puts x in register n |
+| `recall` | _n_ | register n contents | |
 | `time` | | current time | In milliseconds, starting at some arbitrary point. |
 | `scaling` | | _scaling_ | Value as defined in the mapping. Useful for quick parameterization. |
 | `layer_state` | | _layer\_state_ | Bit mask of currently active layers. |

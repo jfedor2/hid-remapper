@@ -100,6 +100,9 @@ std::unordered_map<uint32_t, int32_t> monitor_input_state;
 uint8_t monitor_usages_queued = 0;
 monitor_report_t monitor_report = { .report_id = REPORT_ID_MONITOR };
 
+#define NREGISTERS 32
+int32_t registers[NREGISTERS] = { 0 };
+
 int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
     int32_t ret = 0;
     if (resolution_multiplier & resolution_multiplier_masks.at(target_usage)) {  // hi-res
@@ -198,6 +201,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::BITWISE_NOT:
             case Op::PREV_INPUT_STATE:
             case Op::PREV_INPUT_STATE_BINARY:
+            case Op::RECALL:
                 if (on_stack < 1) {
                     return false;
                 }
@@ -222,6 +226,12 @@ bool is_expr_valid(uint8_t expr) {
                 break;
             case Op::CLAMP:
                 if (on_stack < 3) {
+                    return false;
+                }
+                on_stack -= 2;
+                break;
+            case Op::STORE:
+                if (on_stack < 2) {
                     return false;
                 }
                 on_stack -= 2;
@@ -581,6 +591,21 @@ int32_t eval_expr(const map_source_t& map_source, uint64_t now, bool auto_repeat
             case Op::PREV_INPUT_STATE_BINARY: {
                 int32_t* state_ptr = get_state_ptr(stack[ptr]);
                 stack[ptr] = (state_ptr != NULL) ? !!(*(state_ptr + PREV_STATE_OFFSET)) * 1000 : 0;
+                break;
+            }
+            case Op::STORE: {
+                int32_t reg_number = stack[ptr] / 1000 - 1;
+                if ((reg_number >= 0) && (reg_number < NREGISTERS)) {
+                    registers[reg_number] = stack[ptr - 1];
+                }
+                ptr -= 2;
+                break;
+            }
+            case Op::RECALL: {
+                int32_t reg_number = stack[ptr] / 1000 - 1;
+                if ((reg_number >= 0) && (reg_number < NREGISTERS)) {
+                    stack[ptr] = registers[reg_number];
+                }
                 break;
             }
             default:
