@@ -1125,6 +1125,79 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'expressions: auto-click left mouse button when cursor stops moving',
+        'config': {
+            "version": 8,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff30003",
+                    "target_usage": "0x00090001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state dup mul 0x00010031 input_state dup mul add sqrt dup 1000 store 3000 recall add 3000 store",
+                "2000 recall 1000 add 1000 recall 0 eq mul 2000 store",
+                "2000 recall 500000 gt 2000 recall 600000 gt not mul 3000 recall 200000 gt mul 2000 recall 600000 gt not 3000 recall mul 3000 store",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        }
+    },
 ];
 
 export default examples;
