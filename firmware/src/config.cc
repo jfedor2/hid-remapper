@@ -9,7 +9,7 @@
 #include "platform.h"
 #include "remapper.h"
 
-const uint8_t CONFIG_VERSION = 7;
+const uint8_t CONFIG_VERSION = 8;
 
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH = 0x01;
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK = 0b00001111;
@@ -25,7 +25,7 @@ bool checksum_ok(const uint8_t* buffer, uint16_t data_size) {
 
 bool persisted_version_ok(const uint8_t* buffer) {
     uint8_t version = ((config_version_t*) buffer)->version;
-    return (version == 3) || (version == 4) || (version == 5) || (version == 6) || (version == 7);
+    return (version >= 3) && (version <= CONFIG_VERSION);
 }
 
 bool command_version_ok(const uint8_t* buffer) {
@@ -182,6 +182,8 @@ void load_config(const uint8_t* persisted_config) {
         load_config_v6(persisted_config);
         return;
     }
+
+    // v8 is same as v7, it just introduces some new expression ops
 
     persist_config_v7_t* config = (persist_config_v7_t*) persisted_config;
     unmapped_passthrough_layer_mask =
