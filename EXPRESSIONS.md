@@ -65,15 +65,35 @@ The `time` operation could also be used to make a mouse jiggler (a function that
 
 Looking for more inspiration? Try writing a set of expressions that will press one button when an analog trigger on a game controller is half-pressed and another button when it is fully pressed, like a dual stage trigger on a flight sim joystick.
 
-## Known limitations
+## Registers
 
-Currently the set of operations that you can perform in expressions is fairly limited. There’s no way to store information between subsequent evaluations of the expression and no way to access the previous state of an input. Also expressions don’t really play that well with other features like macros, tap-hold and sticky mappings. Hopefully some of these issues can be addressed in the future.
+For certain behaviors it is necessary not only to be able to define a function that takes current input state and returns an output state, but also to consider previous states of some inputs. HID Remapper has a mechanism to store some value during expression evaluation and recall that value in another expression or in the same expression at a later time.
+
+There are 32 registers, starting at number 1. They are shared between all expressions. To store a value in register 1 we would use something like this (`store` consumes two values from the stack):
+```
+128 1 store
+```
+To recall (put on top of the stack) the contents of a register we would use something like this:
+```
+1 recall
+```
+Expressions don't have conditional execution, but with some clever arithmetic we can achieve similar results. Say we wanted to increase the counter in register 1 when the mouse is moved horizontally by more than 3 units. We could use the following expression:
+```
+0x00010030 input_state abs 3 gt 1 recall add 1 store
+```
+Instead of saying "change the register if something is true", we're saying "unconditionally change the register, but increment it by a value that happens to be zero when a certain condition is not met".
+
+When writing expressions that use registers, it's important to know when and in what order expressions are evaluated.
+
+All expressions are evaluated once per millisecond (technically USB frame), in order, regardless of whether they are used as inputs in mappings. This means that if you use Expression 2 to calculate some value and store it in a register, you will see this new value in Expression 3 in the same iteration of the remapping engine, but Expression 1 would still see the register contents from the previous iteration.
+
+See the "Examples" section in the web configuration tool for some ideas on how registers can be used in practice.
 
 ## Tips and tricks
 
 Use `input_state` to fetch the state of relative usages like a mouse axis and non-binary absolute usages like a D-pad or an analog stick or trigger. Use `input_state_binary` to fetch the state of binary absolute usages (buttons).
 
-The values stored on the stack are 32-bit integers that are multiplied by 1000 to simulate fractional values. Therefore it is impossible to put 0.0001 on the stack. If you want to multiply a value by 0.0001, first multiply it by 0.001 and then by 0.1.
+The values stored on the stack and in registers are 32-bit integers that are multiplied by 1000 to simulate fractional values. Therefore it is impossible to put 0.0001 on the stack. If you want to multiply a value by 0.0001, first multiply it by 0.001 and then by 0.1.
 
 When fetching the currently active layers with `layer_state` (and, similarly, `sticky_state`), the bitmask value is put on the stack as is, without the x1000 scaling just mentioned. Therefore if you want to perform a `bitwise_and` operation on that value, let’s say to check if layer 1 is active, you need to either use 0.002 or 0x02 as the other operand (hex values are passed as is because they’re normally used for HID usage codes). For example:
 ```
@@ -81,6 +101,8 @@ layer_state 0x02 bitwise_and not not 0x00090001 input_state_binary mul
 ```
 
 Currently, the tap-hold and the sticky logic is only triggered for usages that are an input in a mapping with those flags set. Therefore if you want to make use of those states in an expression, you have to add another dummy mapping with the button in question set as input and `Nothing` set as output, with the appropriate tap/hold/sticky flag set.
+
+When you fetch the state of an input in an expression that is used as an input in a mapping, that input is considered to be mapped on the layers the mapping is active on for the purpose of unmapped inputs passthrough.
 
 ## Operation reference
 
