@@ -9,7 +9,7 @@ PRODUCT_ID = 0xBAF2
 CONFIG_USAGE_PAGE = 0xFF00
 CONFIG_USAGE = 0x0020
 
-CONFIG_VERSION = 8
+CONFIG_VERSION = 9
 CONFIG_SIZE = 32
 REPORT_ID_CONFIG = 100
 
@@ -48,6 +48,8 @@ UNMAPPED_PASSTHROUGH_FLAG = 0x01
 STICKY_FLAG = 1 << 0
 TAP_FLAG = 1 << 1
 HOLD_FLAG = 1 << 2
+
+IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4
 
 NMACROS = 32
 NEXPRESSIONS = 8
@@ -105,7 +107,7 @@ def add_crc(buf):
 def get_device():
     devices = [
         d
-        for d in hid.enumerate(VENDOR_ID, PRODUCT_ID)
+        for d in hid.enumerate()
         if d["usage_page"] == CONFIG_USAGE_PAGE and d["usage"] == CONFIG_USAGE
     ]
     if len(devices) == 0:

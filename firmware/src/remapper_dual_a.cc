@@ -35,11 +35,12 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
         case DualCommand::DEVICE_CONNECTED: {
             device_connected_t* msg = (device_connected_t*) data;
             parse_descriptor(msg->vid, msg->pid, msg->report_descriptor, len - sizeof(device_connected_t), (uint16_t) (msg->dev_addr << 8) | msg->interface);
+            device_connected_callback((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->vid, msg->pid);
             break;
         }
         case DualCommand::DEVICE_DISCONNECTED: {
             device_disconnected_t* msg = (device_disconnected_t*) data;
-            clear_descriptor_data(msg->dev_addr);
+            device_disconnected_callback(msg->dev_addr);
             break;
         }
         case DualCommand::REPORT_RECEIVED: {
@@ -54,6 +55,16 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
         case DualCommand::START_OF_FRAME:
             add_alarm_in_us(300, tick_timer_callback, NULL, true);
             break;
+        case DualCommand::GET_FEATURE_RESPONSE: {
+            get_feature_response_t* msg = (get_feature_response_t*) data;
+            handle_get_report_response((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->report_id, msg->report, len - sizeof(get_feature_response_t));
+            break;
+        }
+        case DualCommand::SET_FEATURE_COMPLETE: {
+            set_feature_complete_t* msg = (set_feature_complete_t*) data;
+            handle_set_report_complete((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->report_id);
+            break;
+        }
         default:
             break;
     }
@@ -107,6 +118,26 @@ void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* repo
     msg->report_id = report_id;
     memcpy(msg->report, report, len);
     serial_write((uint8_t*) msg, len + sizeof(send_out_report_t));
+}
+
+void queue_set_feature_report(uint16_t interface, uint8_t report_id, const uint8_t* report, uint8_t len) {
+    set_feature_report_t* msg = (set_feature_report_t*) buffer;
+    msg->command = DualCommand::SET_FEATURE_REPORT;
+    msg->dev_addr = interface >> 8;
+    msg->interface = interface & 0xFF;
+    msg->report_id = report_id;
+    memcpy(msg->report, report, len);
+    serial_write((uint8_t*) msg, len + sizeof(set_feature_report_t));
+}
+
+void queue_get_feature_report(uint16_t interface, uint8_t report_id, uint8_t len) {
+    get_feature_report_t* msg = (get_feature_report_t*) buffer;
+    msg->command = DualCommand::GET_FEATURE_REPORT;
+    msg->dev_addr = interface >> 8;
+    msg->interface = interface & 0xFF;
+    msg->report_id = report_id;
+    msg->len = len;
+    serial_write((uint8_t*) msg, sizeof(get_feature_report_t));
 }
 
 void send_out_report() {

@@ -1040,6 +1040,12 @@ inline void monitor_read_input_range(const uint8_t* report, int len, uint32_t so
 }
 
 void handle_received_report(const uint8_t* report, int len, uint16_t interface, uint8_t external_report_id) {
+    if (our_descriptor->handle_received_report != nullptr) {
+        our_descriptor->handle_received_report(report, len, interface, external_report_id);
+    }
+}
+
+void do_handle_received_report(const uint8_t* report, int len, uint16_t interface, uint8_t external_report_id) {
     reports_received++;
 
     my_mutex_enter(MutexId::THEIR_USAGES);
@@ -1188,9 +1194,17 @@ void update_their_descriptor_derivates() {
 }
 
 void parse_our_descriptor() {
-    bool has_report_id_ours;
-    std::unordered_map<uint8_t, uint16_t> report_sizes_map = parse_descriptor(our_usages, has_report_id_ours, our_report_descriptor, our_report_descriptor_length);
-    for (auto const& [report_id, size] : report_sizes_map) {
+    std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_feature_usages;
+
+    auto report_sizes_map = parse_descriptor(
+        our_usages,
+        their_usages[OUR_OUT_INTERFACE],
+        our_feature_usages,
+        has_report_id_theirs[OUR_OUT_INTERFACE],
+        our_descriptor->descriptor,
+        our_descriptor->descriptor_length);
+
+    for (auto const& [report_id, size] : report_sizes_map[ReportType::INPUT]) {
         report_sizes[report_id] = size;
         reports[report_id] = new uint8_t[size];
         memset(reports[report_id], 0, size);
@@ -1219,8 +1233,6 @@ void parse_our_descriptor() {
     }
 
     rlencode(our_usage_ranges_set, our_usages_rle);
-
-    parse_descriptor(their_usages[OUR_OUT_INTERFACE], has_report_id_theirs[OUR_OUT_INTERFACE], our_report_descriptor, our_report_descriptor_length, true);
 }
 
 void print_stats() {
@@ -1233,5 +1245,43 @@ void set_monitor_enabled(bool enabled) {
     if (monitor_enabled != enabled) {
         monitor_input_state.clear();
         monitor_enabled = enabled;
+    }
+}
+
+void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid) {
+    if (our_descriptor->device_connected != nullptr) {
+        our_descriptor->device_connected(interface, vid, pid);
+    }
+}
+
+void device_disconnected_callback(uint8_t dev_addr) {
+    if (our_descriptor->device_disconnected != nullptr) {
+        our_descriptor->device_disconnected(dev_addr);
+    }
+    clear_descriptor_data(dev_addr);
+}
+
+uint16_t handle_get_report0(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) {
+    if (our_descriptor->handle_get_report != nullptr) {
+        return our_descriptor->handle_get_report(report_id, buffer, reqlen);
+    }
+    return 0;
+}
+
+void handle_set_report0(uint8_t report_id, const uint8_t* buffer, uint16_t reqlen) {
+    if (our_descriptor->handle_set_report != nullptr) {
+        our_descriptor->handle_set_report(report_id, buffer, reqlen);
+    }
+}
+
+void handle_get_report_response(uint16_t interface, uint8_t report_id, uint8_t* report, uint16_t len) {
+    if (our_descriptor->handle_get_report_response != nullptr) {
+        our_descriptor->handle_get_report_response(interface, report_id, report, len);
+    }
+}
+
+void handle_set_report_complete(uint16_t interface, uint8_t report_id) {
+    if (our_descriptor->handle_set_report_complete != nullptr) {
+        our_descriptor->handle_set_report_complete(interface, report_id);
     }
 }

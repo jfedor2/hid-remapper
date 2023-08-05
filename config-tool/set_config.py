@@ -30,11 +30,13 @@ else:
         config.get("unmapped_passthrough_layers", list(range(NLAYERS)))
     )
 interval_override = config.get("interval_override", 0)
+our_descriptor_number = config.get("our_descriptor_number", 0)
+ignore_auth_dev_inputs = config.get("ignore_auth_dev_inputs", False)
 
-flags = unmapped_passthrough_layer_mask
+flags = unmapped_passthrough_layer_mask | (IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0)
 
 data = struct.pack(
-    "<BBBBLBLB15B",
+    "<BBBBLBLBB14B",
     REPORT_ID_CONFIG,
     CONFIG_VERSION,
     SET_CONFIG,
@@ -43,7 +45,8 @@ data = struct.pack(
     interval_override,
     tap_hold_threshold,
     gpio_debounce_time_ms,
-    *([0] * 15)
+    our_descriptor_number,
+    *([0] * 14)
 )
 device.send_feature_report(add_crc(data))
 

@@ -25,7 +25,17 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
             break;
         case DualCommand::SEND_OUT_REPORT: {
             send_out_report_t* msg = (send_out_report_t*) data;
-            do_queue_out_report(msg->report, len - sizeof(send_out_report_t), msg->report_id, msg->dev_addr, msg->interface);
+            do_queue_out_report(msg->report, len - sizeof(send_out_report_t), msg->report_id, msg->dev_addr, msg->interface, OutType::OUTPUT);
+            break;
+        }
+        case DualCommand::SET_FEATURE_REPORT: {
+            set_feature_report_t* msg = (set_feature_report_t*) data;
+            do_queue_out_report(msg->report, len - sizeof(set_feature_report_t), msg->report_id, msg->dev_addr, msg->interface, OutType::SET_FEATURE);
+            break;
+        }
+        case DualCommand::GET_FEATURE_REPORT: {
+            get_feature_report_t* msg = (get_feature_report_t*) data;
+            do_queue_get_report(msg->report_id, msg->dev_addr, msg->interface, msg->len);
             break;
         }
         default:
@@ -103,4 +113,23 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
 void tuh_sof_cb() {
     start_of_frame_t msg;
     serial_write((uint8_t*) &msg, sizeof(msg));
+}
+
+void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
+    get_feature_response_t* msg = (get_feature_response_t*) buffer;
+    msg->command = DualCommand::GET_FEATURE_RESPONSE;
+    msg->dev_addr = dev_addr;
+    msg->interface = interface;
+    msg->report_id = report_id;
+    memcpy(msg->report, report, len);
+    serial_write((uint8_t*) msg, len + sizeof(get_feature_response_t));
+}
+
+void set_report_complete_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id) {
+    set_feature_complete_t* msg = (set_feature_complete_t*) buffer;
+    msg->command = DualCommand::SET_FEATURE_COMPLETE;
+    msg->dev_addr = dev_addr;
+    msg->interface = interface;
+    msg->report_id = report_id;
+    serial_write((uint8_t*) msg, sizeof(set_feature_complete_t));
 }

@@ -27,6 +27,7 @@
 #include <tusb.h>
 
 #include "config.h"
+#include "globals.h"
 #include "our_descriptor.h"
 #include "platform.h"
 #include "remapper.h"
@@ -36,7 +37,7 @@
 #define USB_VID 0xCAFE
 #define USB_PID 0xBAF2
 
-tusb_desc_device_t const desc_device = {
+tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB = 0x0200,
@@ -56,17 +57,12 @@ tusb_desc_device_t const desc_device = {
     .bNumConfigurations = 0x01,
 };
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN)
-#define EPNUM_HID1 0x81
-#define EPNUM_HID2 0x82
-
-uint8_t const desc_configuration[] = {
-    // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, CONFIG_TOTAL_LEN, 0, 100),
-
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, our_report_descriptor_length, EPNUM_HID1, CFG_TUD_HID_EP_BUFSIZE, 1),
-    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, EPNUM_HID2, CFG_TUD_HID_EP_BUFSIZE, 1),
+uint8_t desc_configuration[] = {
+    /* Config number, interface count, string index, total length, attribute, power in mA */
+    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUD_CONFIG_DESC_LEN + TUD_HID_INOUT_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
+    /* Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval */
+    TUD_HID_INOUT_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, /* placeholder */ 0x00, 0x02, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 char const* string_desc_arr[] = {
@@ -78,6 +74,10 @@ char const* string_desc_arr[] = {
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
 uint8_t const* tud_descriptor_device_cb() {
+    if ((our_descriptor->vid != 0) && (our_descriptor->pid != 0)) {
+        desc_device.idVendor = our_descriptor->vid;
+        desc_device.idProduct = our_descriptor->pid;
+    }
     return (uint8_t const*) &desc_device;
 }
 
@@ -85,6 +85,7 @@ uint8_t const* tud_descriptor_device_cb() {
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
+    desc_configuration[25] = our_descriptor->descriptor_length;  // XXX there has to be a better way
     return desc_configuration;
 }
 
@@ -93,7 +94,7 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
     if (itf == 0) {
-        return our_report_descriptor;
+        return our_descriptor->descriptor;
     } else if (itf == 1) {
         return config_report_descriptor;
     }
@@ -147,16 +148,23 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 }
 
 uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
-    // we don't pass interface number, but report IDs are unique across interfaces
-    return handle_get_report(report_id, buffer, reqlen);
+    if (itf == 0) {
+        return handle_get_report0(report_id, buffer, reqlen);
+    } else {
+        return handle_get_report1(report_id, buffer, reqlen);
+    }
 }
 
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    if (report_id == REPORT_ID_LEDS) {
-        handle_received_report(buffer, bufsize, OUR_OUT_INTERFACE, report_id);
+    if (itf == 0) {
+        if ((report_id == 0) && (report_type == 0) && (bufsize > 0)) {
+            report_id = buffer[0];
+            buffer++;
+        }
+        handle_set_report0(report_id, buffer, bufsize);
+    } else {
+        handle_set_report1(report_id, buffer, bufsize);
     }
-    // we don't pass interface number, but report IDs are unique across interfaces
-    handle_set_report(report_id, buffer, bufsize);
 }
 
 void tud_mount_cb() {

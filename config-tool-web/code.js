@@ -8,7 +8,7 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 8;
+const CONFIG_VERSION = 9;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -20,6 +20,7 @@ const NLAYERS = 4;
 const NMACROS = 32;
 const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
+const IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4;
 
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 const EXPR_USAGE_PAGE = 0xFFF30000;
@@ -91,8 +92,9 @@ const UINT32 = Symbol('uint32');
 const INT32 = Symbol('int32');
 
 let device = null;
-let modal = null;
-let extra_usages = [];
+let source_modal = null;
+let target_modal = null;
+let extra_usages = { 'source': [], 'target': [] };
 let config = {
     'version': CONFIG_VERSION,
     'unmapped_passthrough_layers': [0, 1, 2, 3],
@@ -100,6 +102,8 @@ let config = {
     'tap_hold_threshold': DEFAULT_TAP_HOLD_THRESHOLD,
     'gpio_debounce_time_ms': DEFAULT_GPIO_DEBOUNCE_TIME,
     'interval_override': 0,
+    'our_descriptor_number': 0,
+    'ignore_auth_dev_inputs': false,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -146,6 +150,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
     }
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
+    document.getElementById("our_descriptor_number_dropdown").addEventListener("change", our_descriptor_number_onchange);
+    document.getElementById("ignore_auth_dev_inputs_checkbox").addEventListener("change", ignore_auth_dev_inputs_onchange);
 
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
     document.getElementById("nav-monitor-tab").addEventListener("hide.bs.tab", monitor_tab_hide);
@@ -157,8 +163,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     setup_examples();
-    modal = new bootstrap.Modal(document.getElementById('usage_modal'), {});
-    setup_usages_modal();
+    source_modal = new bootstrap.Modal(document.getElementById('source_usage_modal'), {});
+    target_modal = new bootstrap.Modal(document.getElementById('target_usage_modal'), {});
     setup_macros();
     setup_expressions();
     set_ui_state();
@@ -168,7 +174,7 @@ async function open_device() {
     clear_error();
     let success = false;
     const devices = await navigator.hid.requestDevice({
-        filters: [{ vendorId: VENDOR_ID, productId: PRODUCT_ID }]
+        filters: [{ usagePage: 0xFF00, usage: 0x0020 }]
     }).catch((err) => { display_error(err); });
     const config_interface = devices?.find(d => d.collections.some(c => c.usagePage == 0xff00));
     if (config_interface !== undefined) {
@@ -182,7 +188,7 @@ async function open_device() {
             device.addEventListener('inputreport', input_report_received);
             await set_monitor_enabled(monitor_enabled);
             await get_usages_from_device();
-            setup_usages_modal();
+            setup_usages_modals();
             bluetooth_buttons_set_visibility(device.productName.includes("Bluetooth"));
         }
     }
@@ -202,8 +208,8 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8]);
         check_received_version(config_version);
 
         config['version'] = config_version;
@@ -212,6 +218,8 @@ async function load_from_device() {
         config['tap_hold_threshold'] = tap_hold_threshold;
         config['gpio_debounce_time_ms'] = gpio_debounce_time_ms;
         config['interval_override'] = interval_override;
+        config['our_descriptor_number'] = our_descriptor_number;
+        config['ignore_auth_dev_inputs'] = !!(flags & IGNORE_AUTH_DEV_INPUTS_FLAG);
         config['mappings'] = [];
 
         for (let i = 0; i < mapping_count; i++) {
@@ -239,14 +247,14 @@ async function load_from_device() {
                 await send_feature_command(GET_MACRO, [[UINT32, macro_i], [UINT32, i]]);
                 const fields = await read_config_feature([UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32]);
                 const nitems = fields[0];
-                const usages = fields.slice(1);
+                const usages_ = fields.slice(1);
                 if (nitems < MACRO_ITEMS_IN_PACKET) {
                     keep_going = false;
                 }
                 if ((macro.length == 0) && (nitems > 0)) {
                     macro = [[]];
                 }
-                for (const usage of usages.slice(0, nitems)) {
+                for (const usage of usages_.slice(0, nitems)) {
                     if (usage == 0) {
                         macro.push([]);
                     } else {
@@ -307,12 +315,15 @@ async function save_to_device() {
 
     try {
         await send_feature_command(SUSPEND);
+        const flags = layer_list_to_mask(config['unmapped_passthrough_layers']) |
+            (config['ignore_auth_dev_inputs'] ? IGNORE_AUTH_DEV_INPUTS_FLAG : 0);
         await send_feature_command(SET_CONFIG, [
-            [UINT8, layer_list_to_mask(config['unmapped_passthrough_layers'])],
+            [UINT8, flags],
             [UINT32, config['partial_scroll_timeout']],
             [UINT8, config['interval_override']],
             [UINT32, config['tap_hold_threshold']],
             [UINT8, config['gpio_debounce_time_ms']],
+            [UINT8, config['our_descriptor_number']],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -396,43 +407,45 @@ async function save_to_device() {
     }
 }
 
-async function get_usages_from_device() {
-    try {
-        await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold, gpio_debounce_time_ms] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT8]);
-        check_received_version(config_version);
+async function do_get_usages_from_device(command, rle_count) {
+    const extra_usage_set = new Set();
+    let i = 0;
+    while (i < rle_count) {
+        await send_feature_command(command, [[UINT32, i]]);
+        const fields = await read_config_feature([UINT32, UINT32, UINT32, UINT32, UINT32, UINT32]);
 
-        let extra_usage_set = new Set();
-
-        for (const [command, rle_count] of [
-            [GET_OUR_USAGES, our_usage_count],
-            [GET_THEIR_USAGES, their_usage_count]
-        ]) {
-            let i = 0;
-            while (i < rle_count) {
-                await send_feature_command(command, [[UINT32, i]]);
-                const fields = await read_config_feature([UINT32, UINT32, UINT32, UINT32, UINT32, UINT32]);
-
-                for (let j = 0; j < 3; j++) {
-                    const usage = fields[2 * j];
-                    const count = fields[2 * j + 1];
-                    if (usage != 0) {
-                        for (let k = 0; k < count; k++) {
-                            const u = '0x' + (usage + k).toString(16).padStart(8, '0');
-                            if (!(u in usages) && !ignored_usages.has(u)) {
-                                extra_usage_set.add(u);
-                            }
-                        }
+        for (let j = 0; j < 3; j++) {
+            const usage = fields[2 * j];
+            const count = fields[2 * j + 1];
+            if (usage != 0) {
+                for (let k = 0; k < count; k++) {
+                    const u = '0x' + (usage + k).toString(16).padStart(8, '0');
+                    if (!ignored_usages.has(u)) {
+                        extra_usage_set.add(u);
                     }
                 }
-
-                i += 3;
             }
         }
 
-        extra_usages = Array.from(extra_usage_set);
-        extra_usages.sort();
+        i += 3;
+    }
+
+    const extra_usages_ = Array.from(extra_usage_set);
+    extra_usages_.sort();
+    return extra_usages_;
+}
+
+async function get_usages_from_device() {
+    try {
+        await send_feature_command(GET_CONFIG);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT8, UINT8]);
+        check_received_version(config_version);
+
+        extra_usages['target'] =
+            await do_get_usages_from_device(GET_OUR_USAGES, our_usage_count);
+        extra_usages['source'] =
+            await do_get_usages_from_device(GET_THEIR_USAGES, their_usage_count);
     } catch (e) {
         display_error(e);
     }
@@ -447,6 +460,8 @@ function set_config_ui_state() {
             config['unmapped_passthrough_layers'].includes(i);
     }
     document.getElementById('interval_override_dropdown').value = config['interval_override'];
+    document.getElementById('our_descriptor_number_dropdown').value = config['our_descriptor_number'];
+    document.getElementById('ignore_auth_dev_inputs_checkbox').checked = config['ignore_auth_dev_inputs'];
 }
 
 function set_mappings_ui_state() {
@@ -471,7 +486,7 @@ function set_macros_ui_state() {
             for (const item of entry) {
                 const item_element = add_macro_item(entry_element);
                 const usage_button_element = item_element.querySelector('.macro_item_usage');
-                usage_button_element.innerText = readable_usage_name(item);
+                usage_button_element.innerText = readable_target_usage_name(item);
                 usage_button_element.setAttribute('data-hid-usage', item);
             }
             if (entry.length == 0) {
@@ -545,7 +560,11 @@ function set_ui_state() {
         }
         config['gpio_debounce_time_ms'] = DEFAULT_GPIO_DEBOUNCE_TIME;
     }
-    if (config['version'] < 8) {
+    if (config['version'] < 9) {
+        config['our_descriptor_number'] = 0;
+        config['ignore_auth_dev_inputs'] = false;
+    }
+    if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
     }
 
@@ -553,6 +572,7 @@ function set_ui_state() {
     set_mappings_ui_state();
     set_macros_ui_state();
     set_expressions_ui_state();
+    setup_usages_modals();
 }
 
 function add_mapping(mapping) {
@@ -582,7 +602,7 @@ function add_mapping(mapping) {
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
     source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));
     const target_button = clone.querySelector(".target_button");
-    target_button.innerText = readable_usage_name(mapping['target_usage']);
+    target_button.innerText = readable_target_usage_name(mapping['target_usage']);
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
     target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
     container.appendChild(clone);
@@ -727,7 +747,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5, 6, 7, 8].includes(config_version))) {
+    if (!([3, 4, 5, 6, 7, 8, 9].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -743,7 +763,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 7, 6, 5, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 8, 7, 6, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -848,9 +868,11 @@ function expression_onchange(i) {
 
 function show_usage_modal(mapping, source_or_target, element) {
     return function () {
-        document.querySelector('.usage_modal_title').innerText = "Select " + (source_or_target == 'source' ? "input" : "output");
         // XXX it would be better not to do this every time we show the modal
-        document.querySelectorAll('.usage_button').forEach((button) => {
+        const modal_element = document.getElementById(
+            (source_or_target == 'source' ? 'source' : 'target') + '_usage_modal');
+        const modal_ = source_or_target == 'source' ? source_modal : target_modal;
+        modal_element.querySelectorAll('.usage_button').forEach((button) => {
             let clone = button.cloneNode(true);
             button.parentNode.replaceChild(clone, button); // to clear existing event listeners
             clone.addEventListener("click", function () {
@@ -858,7 +880,8 @@ function show_usage_modal(mapping, source_or_target, element) {
                 if (mapping !== null) {
                     mapping[source_or_target + '_usage'] = usage;
                 }
-                element.innerText = readable_usage_name(usage);
+                element.innerText =
+                    source_or_target == "source" ? readable_usage_name(usage) : readable_target_usage_name(usage);
 
                 if (source_or_target == "target") {
                     set_forced_layers(mapping, element.closest(".mapping_container"));
@@ -873,10 +896,10 @@ function show_usage_modal(mapping, source_or_target, element) {
                     set_macros_config_from_ui_state();
                 }
 
-                modal.hide();
+                modal_.hide();
             });
         });
-        modal.show();
+        modal_.show();
     };
 }
 
@@ -894,29 +917,38 @@ function add_mapping_onclick() {
     add_mapping(new_mapping);
 }
 
-function setup_usages_modal() {
+function setup_usages_modals() {
+    setup_usage_modal('source');
+    setup_usage_modal('target');
+}
+
+function setup_usage_modal(source_or_target) {
+    const modal_element = document.getElementById(source_or_target + '_usage_modal');
     let usage_classes = {
-        'mouse': document.querySelector('.mouse_usages'),
-        'keyboard': document.querySelector('.keyboard_usages'),
-        'media': document.querySelector('.media_usages'),
-        'other': document.querySelector('.other_usages'),
-        'extra': document.querySelector('.extra_usages'),
+        'mouse': modal_element.querySelector('.mouse_usages'),
+        'keyboard': modal_element.querySelector('.keyboard_usages'),
+        'media': modal_element.querySelector('.media_usages'),
+        'other': modal_element.querySelector('.other_usages'),
+        'extra': modal_element.querySelector('.extra_usages'),
     };
     for (const [usage_class, element] of Object.entries(usage_classes)) {
         clear_children(element);
     }
     let template = document.getElementById('usage_button_template');
-    for (const [usage, usage_def] of Object.entries(usages)) {
+    const relevant_usages = usages[source_or_target == 'source' ? 'source' : config['our_descriptor_number']];
+    for (const [usage, usage_def] of Object.entries(relevant_usages)) {
         let clone = template.content.cloneNode(true).firstElementChild;
         clone.innerText = usage_def['name'];
         clone.setAttribute('data-hid-usage', usage);
         usage_classes[usage_def['class']].appendChild(clone);
     }
-    for (const usage_ of extra_usages) {
-        let clone = template.content.cloneNode(true).firstElementChild;
-        clone.innerText = usage_;
-        clone.setAttribute('data-hid-usage', usage_);
-        usage_classes['extra'].appendChild(clone);
+    for (const usage_ of extra_usages[source_or_target]) {
+        if (!(usage_ in relevant_usages)) {
+            let clone = template.content.cloneNode(true).firstElementChild;
+            clone.innerText = usage_;
+            clone.setAttribute('data-hid-usage', usage_);
+            usage_classes['extra'].appendChild(clone);
+        }
     }
 }
 
@@ -1045,6 +1077,15 @@ function interval_override_onchange() {
     config['interval_override'] = parseInt(document.getElementById("interval_override_dropdown").value, 10);
 }
 
+function our_descriptor_number_onchange() {
+    config['our_descriptor_number'] = parseInt(document.getElementById("our_descriptor_number_dropdown").value, 10);
+    set_ui_state();
+}
+
+function ignore_auth_dev_inputs_onchange() {
+    config['ignore_auth_dev_inputs'] = document.getElementById("ignore_auth_dev_inputs_checkbox").checked;
+}
+
 function load_example(n) {
     config = structuredClone(examples[n]['config']);
     set_ui_state();
@@ -1107,7 +1148,11 @@ function layer_list_to_mask(layers) {
 }
 
 function readable_usage_name(usage) {
-    return (usage in usages) ? usages[usage]['name'] : usage;
+    return (usage in usages['source']) ? usages['source'][usage]['name'] : usage;
+}
+
+function readable_target_usage_name(usage) {
+    return (usage in usages[config['our_descriptor_number']]) ? usages[config['our_descriptor_number']][usage]['name'] : usage;
 }
 
 function set_forced_layers(mapping, mapping_container) {
@@ -1199,8 +1244,8 @@ function update_monitor_ui(usage, value) {
         const container = document.getElementById("monitor_container");
         element = template.content.cloneNode(true).firstElementChild;
         element.querySelector('.monitor_usage').innerText = usage;
-        if (usage in usages) {
-            element.querySelector('.monitor_readable_name').innerText = usages[usage]['name'];
+        if (usage in usages['source']) {
+            element.querySelector('.monitor_readable_name').innerText = usages['source'][usage]['name'];
         }
         element.id = 'monitor_usage_' + usage;
         container.appendChild(element);

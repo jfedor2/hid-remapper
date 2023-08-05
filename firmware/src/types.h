@@ -190,7 +190,18 @@ struct __attribute__((packed)) persist_config_v7_t {
     uint8_t gpio_debounce_time_ms;
 };
 
-typedef persist_config_v7_t persist_config_t;
+struct __attribute__((packed)) persist_config_v9_t {
+    uint8_t version;
+    uint8_t flags;
+    uint32_t partial_scroll_timeout;
+    uint32_t mapping_count;
+    uint8_t interval_override;
+    uint32_t tap_hold_threshold;
+    uint8_t gpio_debounce_time_ms;
+    uint8_t our_descriptor_number;
+};
+
+typedef persist_config_v9_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
     uint8_t version;
@@ -202,6 +213,7 @@ struct __attribute__((packed)) get_config_t {
     uint8_t interval_override;
     uint32_t tap_hold_threshold;
     uint8_t gpio_debounce_time_ms;
+    uint8_t our_descriptor_number;
 };
 
 struct __attribute__((packed)) set_config_t {
@@ -210,6 +222,7 @@ struct __attribute__((packed)) set_config_t {
     uint8_t interval_override;
     uint32_t tap_hold_threshold;
     uint8_t gpio_debounce_time_ms;
+    uint8_t our_descriptor_number;
 };
 
 struct __attribute__((packed)) get_indexed_t {

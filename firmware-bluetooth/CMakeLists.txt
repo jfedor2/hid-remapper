@@ -21,4 +21,5 @@ target_sources(app PRIVATE
     ${REMAPPER_SRC}/our_descriptor.cc
     ${REMAPPER_SRC}/quirks.cc
     ${REMAPPER_SRC}/remapper.cc
+    ${REMAPPER_SRC}/ps_auth.cc
 )

@@ -23,9 +23,10 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     interval_override,
     tap_hold_threshold,
     gpio_debounce_time_ms,
+    our_descriptor_number,
     *_,
     crc,
-) = struct.unpack("<BBBLLLLBLB4BL", data)
+) = struct.unpack("<BBBLLLLBLBB3BL", data)
 check_crc(data, crc)
 
 config = {
@@ -35,6 +36,8 @@ config = {
     "interval_override": interval_override,
     "tap_hold_threshold": tap_hold_threshold,
     "gpio_debounce_time_ms": gpio_debounce_time_ms,
+    "our_descriptor_number": our_descriptor_number,
+    "ignore_auth_dev_inputs": bool(flags & IGNORE_AUTH_DEV_INPUTS_FLAG),
     "mappings": [],
     "macros": [],
     "expressions": [],

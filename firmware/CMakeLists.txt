@@ -37,6 +37,7 @@ add_executable(remapper
     src/out_report.cc
     src/tick.cc
     src/activity_led.cc
+    src/ps_auth.cc
 )
 
 if(PICO_BOARD STREQUAL "pico")
@@ -87,6 +88,7 @@ add_executable(remapper_dual_a
     src/pico_debug/flash.c
     src/pico_debug/adi.c
     dual_b_binary.c
+    src/ps_auth.cc
 )
 target_include_directories(remapper_dual_a PRIVATE
     src
@@ -144,6 +146,7 @@ add_executable(remapper_serial
     src/interval_override.cc
     src/tick.cc
     src/activity_led.cc
+    src/ps_auth.cc
 )
 target_include_directories(remapper_serial PRIVATE
     src

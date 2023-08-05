@@ -140,7 +140,30 @@
                         </select>
                     </div>
                 </div>
-
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="our_descriptor_number_dropdown" class="col-form-label">Emulated device type</label>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select" id="our_descriptor_number_dropdown">
+                            <option value="0">Mouse and keyboard</option>
+                            <option value="1">Absolute mouse and keyboard</option>
+                            <option value="2">Switch gamepad</option>
+                            <option value="3">PS4 arcade stick</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="ignore_auth_dev_inputs_checkbox" class="col-form-label">Ignore auth device inputs</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="checkbox" id="ignore_auth_dev_inputs_checkbox" class="form-check-input align-middle">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <em>Changes to the emulated device type become active after disconnecting and reconnecting the device.</em>
+                </div>
             </div>
 
             <div class="tab-pane" id="nav-macros" role="tabpanel" tabindex="0">
@@ -333,11 +356,34 @@
         </div>
     </template>
 
-    <div id="usage_modal" class="modal fade" tabindex="-1">
+    <div id="source_usage_modal" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title usage_modal_title"></h5>
+                    <h5 class="modal-title usage_modal_title">Select input</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="col mouse_usages">
+                    </div>
+                    <div class="col keyboard_usages mt-3">
+                    </div>
+                    <div class="col media_usages mt-3">
+                    </div>
+                    <div class="col other_usages mt-3">
+                    </div>
+                    <div class="col extra_usages mt-3">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="target_usage_modal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title usage_modal_title">Select output</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">

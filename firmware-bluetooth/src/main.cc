@@ -557,7 +557,11 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
     LOG_HEXDUMP_DBG((*data), (uint32_t) *len, "");
 
     if ((request_value[0] > 0) && (*len > 0)) {
-        handle_set_report(request_value[0], (*data) + 1, (*len) - 1);
+        if (dev == hid_dev0) {
+            handle_set_report0(request_value[0], (*data) + 1, (*len) - 1);
+        } else if (dev == hid_dev1) {
+            handle_set_report1(request_value[0], (*data) + 1, (*len) - 1);
+        }
     } else {
         LOG_ERR("no report ID?");
     }
@@ -573,7 +577,11 @@ static int get_report_cb(const struct device* dev, struct usb_setup_packet* setu
     LOG_INF("report_id=%d, %d, len=%d", request_value[0], request_value[1], *len);
 
     *data[0] = request_value[0];
-    *len = handle_get_report(request_value[0], (*data) + 1, CONFIG_SIZE);
+    if (dev == hid_dev0) {
+        *len = handle_get_report0(request_value[0], (*data) + 1, CONFIG_SIZE);
+    } else if (dev == hid_dev1) {
+        *len = handle_get_report1(request_value[0], (*data) + 1, CONFIG_SIZE);
+    }
     (*len)++;
 
     return 0;
@@ -661,7 +669,7 @@ static void usb_init() {
         return;
     }
 
-    usb_hid_register_device(hid_dev0, our_report_descriptor, our_report_descriptor_length, &ops0);
+    usb_hid_register_device(hid_dev0, our_descriptor->descriptor, our_descriptor->descriptor_length, &ops0);
     usb_hid_register_device(hid_dev1, config_report_descriptor, config_report_descriptor_length, &ops1);
     CHK(usb_hid_init(hid_dev0));
     CHK(usb_hid_init(hid_dev1));
@@ -764,17 +772,26 @@ void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buff
     // TODO
 }
 
+void queue_set_feature_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
+    // TODO
+}
+
+void queue_get_feature_report(uint16_t interface, uint8_t report_id, uint8_t len) {
+    // TODO
+}
+
 int main() {
     LOG_INF("HID Remapper Bluetooth");
 
     my_mutexes_init();
     button_init();
     leds_init();
-    usb_init();
     bt_init();
     CHK(settings_subsys_init());
     CHK(settings_register(&our_settings_handlers));
     settings_load();
+    our_descriptor = &our_descriptors[our_descriptor_number];
+    usb_init();
     scan_init();
     parse_our_descriptor();
     set_mapping_from_config();

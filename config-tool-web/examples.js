@@ -1198,6 +1198,890 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'advanced autoclicker: use screen corners for right click, double click, click-drag',
+        'config': {
+            "version": 9,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 1,
+            "ignore_auth_dev_inputs": false,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00000000",
+                    "source_usage": "0x00010030",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00000000",
+                    "source_usage": "0x00010031",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0xfff30006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0xfff30007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state 9000 mul 1000 recall add 0 32767000 clamp dup 1000 store",
+                "0x00010031 input_state 16000 mul 2000 recall add 0 32767000 clamp dup 2000 store",
+                "0x00010030 input_state dup mul 0x00010031 input_state dup mul add sqrt dup 4000 recall add 4000 store 0 eq 5000 recall 1000 add mul 5000 store",
+                "1000 recall 0 eq 2000 recall 0 eq mul 1000 mul 1000 recall 32767000 eq 2000 recall 0 eq mul 2000 mul add 1000 recall 0 eq 2000 recall 32767000 eq mul 3000 mul add 1000 recall 32767000 eq 2000 recall 32767000 eq mul 4000 mul add dup 0 eq 6000 recall mul add 6000 store",
+                "",
+                "5000 recall 500000 gt 5000 recall 600000 gt not mul 4000 recall 200000 gt mul 6000 recall 1000 eq mul 6000 recall 5000 eq add 5000 recall 500000 gt 5000 recall 533000 gt not mul 5000 recall 566000 gt 5000 recall 600000 gt not mul add 4000 recall 200000 gt mul 6000 recall 3000 eq mul add",
+                "5000 recall 500000 gt 5000 recall 600000 gt not mul 4000 recall 200000 gt mul 6000 recall 2000 eq mul",
+                "5000 recall 600000 gt not 4000 recall mul 4000 store 5000 recall 600000 eq not 6000 recall mul 5000 recall 600000 eq 6000 recall 4000 eq not 1000 mul 6000 recall 4000 eq 5000 mul add mul add 6000 store"
+            ]
+        }
+    },
+    {
+        'description': 'absolute mouse: basic functionality',
+        'config': {
+            "version": 9,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 1,
+            "ignore_auth_dev_inputs": false,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state 9000 mul 1000 recall add 0 32767000 clamp dup 1000 store",
+                "0x00010031 input_state 16000 mul 2000 recall add 0 32767000 clamp dup 2000 store",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        }
+    },
+    {
+        'description': 'keyboard adapter for Switch with 15 degree nudges and tilt',
+        'config': {
+            "version": 9,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 2,
+            "ignore_auth_dev_inputs": false,
+            "mappings": [
+                {
+                    "target_usage": "0x00010039",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0xfff30007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0xfff30008",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0x0007000d",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x0007000e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090006",
+                    "source_usage": "0x0007000f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090008",
+                    "source_usage": "0x00070033",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090005",
+                    "source_usage": "0x00070010",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090007",
+                    "source_usage": "0x00070036",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090004",
+                    "source_usage": "0x00070037",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000a",
+                    "source_usage": "0x00070028",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000a",
+                    "source_usage": "0x0007002e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090009",
+                    "source_usage": "0x0007002d",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000d",
+                    "source_usage": "0x0007004a",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000b",
+                    "source_usage": "0x00070009",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0x0007000b",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x0007002c",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090004",
+                    "source_usage": "0x0007004f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000e",
+                    "source_usage": "0x0007004d",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0x0007005c",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x0007005d",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090006",
+                    "source_usage": "0x0007005e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090008",
+                    "source_usage": "0x00070057",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090005",
+                    "source_usage": "0x0007005f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090007",
+                    "source_usage": "0x00070060",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0x00070061",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "8000",
+                "",
+                "0x00070004 input_state_binary 1 mul 0x00070007 input_state_binary 2 mul bitwise_or 0x0007001a input_state_binary 4 mul bitwise_or 0x00070016 input_state_binary 8 mul bitwise_or 1000 store -1000 1000 recall 1 eq 7000 mul add 1000 recall 2 eq 3000 mul add 1000 recall 4 eq 1000 mul add 1000 recall 8 eq 5000 mul add 1000 recall 5 eq 8000 mul add 1000 recall 6 eq 2000 mul add 1000 recall 10 eq 4000 mul add 1000 recall 9 eq 6000 mul add 1000 recall 7 eq 1000 mul add 1000 recall 11 eq 5000 mul add 1000 recall 13 eq 7000 mul add 1000 recall 14 eq 3000 mul add 45000 mul dup dup dup dup 135000 gt 2000 mul -1000 add 4000 store 315000 add 360000 mod 135000 gt 2000 mul -1000 add 5000 store -45000 eq not dup 7000 store 0 0x00070014 input_state_binary 15000 mul 4000 recall mul add 0x00070008 input_state_binary 15000 mul 5000 recall mul add 0x0007001d input_state_binary -15000 mul 5000 recall mul add 0x00070006 input_state_binary -15000 mul 4000 recall mul add mul add 3000 store 0x000700e1 input_state_binary -500 mul 1000 add 6000 store",
+                "3000 recall sin 127000 mul 6000 recall mul 7000 recall mul 128000 add",
+                "3000 recall cos -127000 mul 6000 recall mul 7000 recall mul 128000 add",
+                "0x00070018 input_state_binary 0x00070059 input_state_binary bitwise_or 1 mul 0x00070012 input_state_binary 0x0007005b input_state_binary bitwise_or 2 mul bitwise_or 0x00070013 input_state_binary 0x00070058 input_state_binary bitwise_or 4 mul bitwise_or 0x0007000c input_state_binary 0x0007005a input_state_binary bitwise_or 8 mul bitwise_or 10000 store -1000 10000 recall 1 eq 7000 mul add 10000 recall 2 eq 3000 mul add 10000 recall 4 eq 1000 mul add 10000 recall 8 eq 5000 mul add 10000 recall 5 eq 8000 mul add 10000 recall 6 eq 2000 mul add 10000 recall 10 eq 4000 mul add 10000 recall 9 eq 6000 mul add 10000 recall 7 eq 1000 mul add 10000 recall 11 eq 5000 mul add 10000 recall 13 eq 7000 mul add 10000 recall 14 eq 3000 mul add 45000 mul dup -45000 eq not 8000 store 9000 store",
+                "9000 recall sin 127000 mul 8000 recall mul 128000 add",
+                "9000 recall cos -127000 mul 8000 recall mul 128000 add"
+            ]
+        }
+    },
+    {
+        'description': 'Stadia controller adapter for PS4',
+        'config': {
+            "version": 9,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 3,
+            "ignore_auth_dev_inputs": true,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0xfff30004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010039",
+                    "source_usage": "0xfff30005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010033",
+                    "source_usage": "0xfff30006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010034",
+                    "source_usage": "0xfff30007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x00090001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0x00090002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090004",
+                    "source_usage": "0x00090005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x00090004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090005",
+                    "source_usage": "0x00090007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090006",
+                    "source_usage": "0x00090008",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090007",
+                    "source_usage": "0x00090014",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090008",
+                    "source_usage": "0x00090013",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090009",
+                    "source_usage": "0x0009000b",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000a",
+                    "source_usage": "0x0009000c",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000b",
+                    "source_usage": "0x0009000e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0x0009000f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000d",
+                    "source_usage": "0x0009000d",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000e",
+                    "source_usage": "0x00090011",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000e",
+                    "source_usage": "0x00090012",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state",
+                "0x00010031 input_state",
+                "0x00010032 input_state",
+                "0x00010035 input_state",
+                "0x00010039 input_state",
+                "0x000200c5 input_state",
+                "0x000200c4 input_state",
+                ""
+            ]
+        }
+    },
 ];
 
 export default examples;

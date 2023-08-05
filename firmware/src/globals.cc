@@ -2,9 +2,9 @@
 
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>> their_usages;
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>> their_out_usages;
+std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>> their_feature_usages;
 
 std::unordered_map<uint16_t, bool> has_report_id_theirs;
-std::unordered_map<uint16_t, bool> has_report_id_theirs_out;
 
 std::unordered_map<uint32_t, uint8_t*> out_reports;
 std::unordered_map<uint32_t, uint8_t*> prev_out_reports;
@@ -26,6 +26,8 @@ uint8_t unmapped_passthrough_layer_mask = 0b00001111;
 uint32_t partial_scroll_timeout = 1000000;
 uint32_t tap_hold_threshold = 200000;
 uint64_t gpio_debounce_time = 5000;
+uint8_t our_descriptor_number = 0;
+bool ignore_auth_dev_inputs = false;
 
 std::vector<mapping_config_t> config_mappings;
 
@@ -36,3 +38,5 @@ std::vector<std::vector<uint32_t>> macros[NMACROS];
 std::vector<expr_elem_t> expressions[NEXPRESSIONS];
 
 bool monitor_enabled = false;
+
+const our_descriptor_def_t* our_descriptor;

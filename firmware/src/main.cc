@@ -145,8 +145,9 @@ int main() {
     my_mutexes_init();
     gpio_pins_init();
     tick_init();
-    parse_our_descriptor();
     load_config(FLASH_CONFIG_IN_MEMORY);
+    our_descriptor = &our_descriptors[our_descriptor_number];
+    parse_our_descriptor();
     set_mapping_from_config();
     board_init();
     extra_init();
@@ -185,6 +186,9 @@ int main() {
         }
         if (monitor_enabled && tud_hid_n_ready(1)) {
             send_monitor_report(do_send_report);
+        }
+        if (our_descriptor->main_loop_task != nullptr) {
+            our_descriptor->main_loop_task();
         }
         send_out_report();
         if (need_to_persist_config) {

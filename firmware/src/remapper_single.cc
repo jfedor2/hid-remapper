@@ -41,12 +41,14 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
 
     parse_descriptor(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance);
 
+    device_connected_callback((uint16_t) (dev_addr << 8) | instance, vid, pid);
+
     tuh_hid_receive_report(dev_addr, instance);
 }
 
 void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
     printf("tuh_hid_umount_cb\n");
-    clear_descriptor_data(dev_addr);
+    device_disconnected_callback(dev_addr);
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
@@ -60,7 +62,15 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 }
 
 void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
-    do_queue_out_report(buffer, len, report_id, interface >> 8, interface & 0xFF);
+    do_queue_out_report(buffer, len, report_id, interface >> 8, interface & 0xFF, OutType::OUTPUT);
+}
+
+void queue_set_feature_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
+    do_queue_out_report(buffer, len, report_id, interface >> 8, interface & 0xFF, OutType::SET_FEATURE);
+}
+
+void queue_get_feature_report(uint16_t interface, uint8_t report_id, uint8_t len) {
+    do_queue_get_report(report_id, interface >> 8, interface & 0xFF, len);
 }
 
 void send_out_report() {
@@ -75,4 +85,12 @@ static int64_t manual_sof(alarm_id_t id, void* user_data) {
 
 void sof_callback() {
     add_alarm_in_us(150, manual_sof, NULL, true);
+}
+
+void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
+    handle_get_report_response((uint16_t) (dev_addr << 8) | interface, report_id, report, len);
+}
+
+void set_report_complete_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id) {
+    handle_set_report_complete((uint16_t) (dev_addr << 8) | interface, report_id);
 }
