@@ -11,7 +11,6 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    container: nordicplayground/nrfconnect-sdk:v2.2-branch
     strategy:
       matrix:
         board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840"]
@@ -19,9 +18,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build
         run: |
-          west build -b ${{ matrix.board }}
-          mv build/zephyr/remapper.uf2 remapper_${{ matrix.board }}.uf2
-        working-directory: ./firmware-bluetooth
+          docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch \
+            west build -b ${{ matrix.board }}
+          cp firmware-bluetooth/build/zephyr/remapper.uf2 firmware-bluetooth/remapper_${{ matrix.board }}.uf2
       - uses: actions/upload-artifact@v3
         with:
           path: firmware-bluetooth/remapper_${{ matrix.board }}.uf2
