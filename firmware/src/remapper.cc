@@ -98,7 +98,8 @@ bool expression_valid[NEXPRESSIONS] = { false };
 
 std::unordered_map<uint32_t, int32_t> monitor_input_state;
 uint8_t monitor_usages_queued = 0;
-monitor_report_t monitor_report = { .report_id = REPORT_ID_MONITOR };
+monitor_report_t monitor_report[2] = { { .report_id = REPORT_ID_MONITOR }, { .report_id = REPORT_ID_MONITOR } };
+uint8_t monitor_report_idx = 0;
 
 #define NREGISTERS 32
 int32_t registers[NREGISTERS] = { 0 };
@@ -893,22 +894,25 @@ bool send_report(send_report_t do_send_report) {
     return sent;
 }
 
-void send_monitor_report(send_report_t do_send_report) {
+bool send_monitor_report(send_report_t do_send_report) {
     if ((monitor_usages_queued == 0) || suspended) {
-        return;
+        return false;
     }
 
-    do_send_report(1, (uint8_t*) &monitor_report, sizeof(monitor_report));
+    bool sent = do_send_report(1, (uint8_t*) &monitor_report[monitor_report_idx], sizeof(monitor_report_t));
 
-    memset(&(monitor_report.usage_values), 0, sizeof(monitor_report.usage_values));
+    monitor_report_idx = (monitor_report_idx + 1) % 2;
+    memset(&(monitor_report[monitor_report_idx].usage_values), 0, sizeof(monitor_report[0].usage_values));
     monitor_usages_queued = 0;
+
+    return sent;
 }
 
 void monitor_usage(uint32_t usage, int32_t value) {
-    if (monitor_usages_queued == sizeof(monitor_report.usage_values) / sizeof(monitor_report.usage_values[0])) {
+    if (monitor_usages_queued == sizeof(monitor_report[0].usage_values) / sizeof(monitor_report[0].usage_values[0])) {
         return;
     }
-    monitor_report.usage_values[monitor_usages_queued++] = { .usage = usage, .value = value };
+    monitor_report[monitor_report_idx].usage_values[monitor_usages_queued++] = { .usage = usage, .value = value };
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx) {

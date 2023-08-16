@@ -41,7 +41,8 @@ static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
 static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
 
-static K_SEM_DEFINE(usb_sem, 1, 1);
+static K_SEM_DEFINE(usb_sem0, 1, 1);
+static K_SEM_DEFINE(usb_sem1, 1, 1);
 
 static struct k_mutex mutexes[(uint8_t) MutexId::N];
 
@@ -578,19 +579,24 @@ static int get_report_cb(const struct device* dev, struct usb_setup_packet* setu
     return 0;
 };
 
-static void int_in_ready_cb(const struct device* dev) {
-    k_sem_give(&usb_sem);
+static void int_in_ready_cb0(const struct device* dev) {
+    k_sem_give(&usb_sem0);
+}
+
+static void int_in_ready_cb1(const struct device* dev) {
+    k_sem_give(&usb_sem1);
 }
 
 static const struct hid_ops ops0 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
-    .int_in_ready = int_in_ready_cb,
+    .int_in_ready = int_in_ready_cb0,
 };
 
 static const struct hid_ops ops1 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
+    .int_in_ready = int_in_ready_cb1,
 };
 
 static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
@@ -786,9 +792,14 @@ int main() {
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
             process_mapping(true);
         }
-        if (!k_sem_take(&usb_sem, K_NO_WAIT)) {
+        if (!k_sem_take(&usb_sem0, K_NO_WAIT)) {
             if (!send_report(do_send_report)) {
-                k_sem_give(&usb_sem);
+                k_sem_give(&usb_sem0);
+            }
+        }
+        if (!k_sem_take(&usb_sem1, K_NO_WAIT)) {
+            if (!send_monitor_report(do_send_report)) {
+                k_sem_give(&usb_sem1);
             }
         }
 

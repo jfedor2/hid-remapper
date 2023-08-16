@@ -20,7 +20,7 @@ void update_their_descriptor_derivates();
 bool send_report(send_report_t do_send_report);
 void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len);
 void send_out_report();
-void send_monitor_report(send_report_t do_send_report);
+bool send_monitor_report(send_report_t do_send_report);
 void print_stats();
 
 void set_monitor_enabled(bool enabled);
