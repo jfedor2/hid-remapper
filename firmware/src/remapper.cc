@@ -31,6 +31,7 @@ const uint8_t NLAYERS = 4;
 const uint32_t LAYERS_USAGE_PAGE = 0xFFF10000;
 const uint32_t MACRO_USAGE_PAGE = 0xFFF20000;
 const uint32_t EXPR_USAGE_PAGE = 0xFFF30000;
+const uint32_t REGISTER_USAGE_PAGE = 0xFFF50000;
 
 const uint16_t STACK_SIZE = 16;
 
@@ -753,6 +754,11 @@ void process_mapping(bool auto_repeat) {
                     if (layer_state_mask & map_source.layer_mask) {
                         value = *map_source.input_state;
                     }
+                } else if ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) {
+                    uint32_t reg_number = (map_source.usage & 0xFFFF) - 1;
+                    if (reg_number < NREGISTERS) {
+                        value = registers[reg_number];
+                    }
                 } else {
                     if (auto_repeat || map_source.is_relative) {
                         if (map_source.sticky) {
@@ -779,6 +785,11 @@ void process_mapping(bool auto_repeat) {
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
                     if (layer_state_mask & map_source.layer_mask) {
                         value = *map_source.input_state / 1000;
+                    }
+                } else if ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) {
+                    uint32_t reg_number = (map_source.usage & 0xFFFF) - 1;
+                    if (reg_number < NREGISTERS) {
+                        value = registers[reg_number] / 1000;
                     }
                 } else {
                     if (map_source.sticky) {
