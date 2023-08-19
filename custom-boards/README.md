@@ -30,3 +30,5 @@ If the board is already flashed with some version of the HID Remapper firmware t
 When the board is fresh from the factory (has never been flashed), it should enter firmware flashing mode automatically when you connect it to a computer with no additional steps necessary.
 
 In the future, I'd like to remove the need for step 2 above, it should be possible to make it happen automatically.
+
+v1 PCB design uses [Type-C.pretty](https://github.com/ai03-2725/Type-C.pretty) library by [ai03-2725](https://github.com/ai03-2725).
