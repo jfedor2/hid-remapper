@@ -1,6 +1,6 @@
 #include "activity_led.h"
 
-#include <bsp/board.h>
+#include <bsp/board_api.h>
 
 #include <hardware/timer.h>
 

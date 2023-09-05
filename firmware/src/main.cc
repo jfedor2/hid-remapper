@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <bsp/board.h>
+#include <bsp/board_api.h>
 #include <tusb.h>
 
 #include <hardware/flash.h>
