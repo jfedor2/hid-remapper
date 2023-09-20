@@ -327,7 +327,6 @@ void set_mapping_from_config() {
             for (auto const& elem : expressions[expr]) {
                 if (elem.op == Op::PUSH_USAGE) {
                     mapped_on_layers[elem.val] |= layer_mask;
-                    assign_state_slot(elem.val);
                 }
             }
         }
@@ -345,6 +344,14 @@ void set_mapping_from_config() {
         }
         if ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE) {
             macro_usage_set.insert(mapping.source_usage);
+        }
+    }
+
+    for (uint8_t expr = 0; expr < NEXPRESSIONS; expr++) {
+        for (auto const& elem : expressions[expr]) {
+            if (elem.op == Op::PUSH_USAGE) {
+                assign_state_slot(elem.val);
+            }
         }
     }
 
