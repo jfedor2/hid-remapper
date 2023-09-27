@@ -26,6 +26,12 @@
 
 #endif
 
+#define BUFFER_SIZE 512
+static char outgoing_buffer[BUFFER_SIZE];
+static uint16_t buf_head = 0;
+static uint16_t buf_tail = 0;
+static uint16_t buf_items = 0;
+
 void serial_init() {
     uart_init(SERIAL_UART, SERIAL_BAUDRATE);
     uart_set_hw_flow(SERIAL_UART, true, true);
@@ -42,6 +48,12 @@ void serial_init() {
 #define ESC_ESC 0335 /* ESC ESC_ESC means ESC data byte */
 
 bool serial_read(msg_recv_cb_t callback) {
+    while ((buf_items > 0) && uart_is_writable(SERIAL_UART)) {
+        uart_putc_raw(SERIAL_UART, outgoing_buffer[buf_head]);
+        buf_head = (buf_head + 1) % BUFFER_SIZE;
+        buf_items--;
+    }
+
     static uint8_t buffer[SERIAL_MAX_PAYLOAD_SIZE + 32];
     static uint16_t bytes_read = 0;
     static bool escaped = false;
@@ -97,27 +109,44 @@ bool serial_read(msg_recv_cb_t callback) {
     return false;
 }
 
+static void my_putc(char c) {
+    if ((buf_items == 0) && uart_is_writable(SERIAL_UART)) {
+        uart_putc_raw(SERIAL_UART, c);
+    } else {
+        if (buf_items < BUFFER_SIZE) {
+            outgoing_buffer[buf_tail] = c;
+            buf_tail = (buf_tail + 1) % BUFFER_SIZE;
+            buf_items++;
+        } else {
+            uart_putc_raw(SERIAL_UART, outgoing_buffer[buf_head]);  // blocks
+            buf_head = (buf_head + 1) % BUFFER_SIZE;
+            outgoing_buffer[buf_tail] = c;
+            buf_tail = (buf_tail + 1) % BUFFER_SIZE;
+        }
+    }
+}
+
 void send_escaped_byte(uint8_t b) {
     switch (b) {
         case END:
-            uart_putc_raw(SERIAL_UART, ESC);
-            uart_putc_raw(SERIAL_UART, ESC_END);
+            my_putc(ESC);
+            my_putc(ESC_END);
             break;
 
         case ESC:
-            uart_putc_raw(SERIAL_UART, ESC);
-            uart_putc_raw(SERIAL_UART, ESC_ESC);
+            my_putc(ESC);
+            my_putc(ESC_ESC);
             break;
 
         default:
-            uart_putc_raw(SERIAL_UART, b);
+            my_putc(b);
     }
 }
 
 void serial_write(const uint8_t* data, uint16_t len) {
     uint32_t crc = crc32(data, len);
 
-    uart_putc_raw(SERIAL_UART, END);
+    my_putc(END);
 
     for (int i = 0; i < len; i++) {
         send_escaped_byte(data[i]);
@@ -127,5 +156,5 @@ void serial_write(const uint8_t* data, uint16_t len) {
         send_escaped_byte((crc >> (i * 8)) & 0xFF);
     }
 
-    uart_putc_raw(SERIAL_UART, END);
+    my_putc(END);
 }
