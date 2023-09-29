@@ -487,6 +487,7 @@ function set_macros_ui_state() {
                 const item_element = add_macro_item(entry_element);
                 const usage_button_element = item_element.querySelector('.macro_item_usage');
                 usage_button_element.innerText = readable_target_usage_name(item);
+                usage_button_element.title = item;
                 usage_button_element.setAttribute('data-hid-usage', item);
             }
             if (entry.length == 0) {
@@ -600,10 +601,12 @@ function add_mapping(mapping) {
     const source_button = clone.querySelector(".source_button");
     source_button.innerText = readable_usage_name(mapping['source_usage']);
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
+    source_button.title = mapping['source_usage'];
     source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));
     const target_button = clone.querySelector(".target_button");
     target_button.innerText = readable_target_usage_name(mapping['target_usage']);
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
+    target_button.title = mapping['target_usage'];
     target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
     container.appendChild(clone);
     set_forced_layers(mapping, clone);
@@ -883,6 +886,8 @@ function show_usage_modal(mapping, source_or_target, element) {
                 element.innerText =
                     source_or_target == "source" ? readable_usage_name(usage) : readable_target_usage_name(usage);
 
+                element.title = usage;
+
                 if (source_or_target == "target") {
                     set_forced_layers(mapping, element.closest(".mapping_container"));
                 }
@@ -939,6 +944,7 @@ function setup_usage_modal(source_or_target) {
     for (const [usage, usage_def] of Object.entries(relevant_usages)) {
         let clone = template.content.cloneNode(true).firstElementChild;
         clone.innerText = usage_def['name'];
+        clone.title = usage;
         clone.setAttribute('data-hid-usage', usage);
         usage_classes[usage_def['class']].appendChild(clone);
     }
@@ -946,6 +952,7 @@ function setup_usage_modal(source_or_target) {
         if (!(usage_ in relevant_usages)) {
             let clone = template.content.cloneNode(true).firstElementChild;
             clone.innerText = usage_;
+            clone.title = usage_;
             clone.setAttribute('data-hid-usage', usage_);
             usage_classes['extra'].appendChild(clone);
         }
