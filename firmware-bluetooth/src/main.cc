@@ -608,6 +608,10 @@ static const struct hid_ops ops1 = {
 };
 
 static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
+    if (report_with_id[0] == 0) {
+        report_with_id++;
+        len--;
+    }
     if (interface == 0) {
         return CHK(hid_int_ep_write(hid_dev0, report_with_id, len, NULL));
     }
