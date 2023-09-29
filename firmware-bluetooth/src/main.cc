@@ -660,6 +660,17 @@ static void status_cb(enum usb_dc_status_code status, const uint8_t* param) {
     }
 }
 
+extern struct usb_device_descriptor __usb_descriptor_start[];
+
+static void descriptor_init() {
+    our_descriptor = &our_descriptors[our_descriptor_number];
+    if ((our_descriptor->vid != 0) && (our_descriptor->pid != 0)) {
+        struct usb_device_descriptor *device_descriptor = __usb_descriptor_start;
+        device_descriptor->idVendor = our_descriptor->vid;
+        device_descriptor->idProduct = our_descriptor->pid;
+    }
+}
+
 static void usb_init() {
     hid_dev0 = device_get_binding("HID_0");
     if (hid_dev0 == NULL) {
@@ -794,7 +805,7 @@ int main() {
     CHK(settings_subsys_init());
     CHK(settings_register(&our_settings_handlers));
     settings_load();
-    our_descriptor = &our_descriptors[our_descriptor_number];
+    descriptor_init();
     usb_init();
     scan_init();
     parse_our_descriptor();
