@@ -2,7 +2,7 @@
 
 This document describes how to have custom HID Remapper boards manufactured using the provided design files at a service like JLCPCB. If you'd rather make the device using a Raspberry Pi Pico, see [here](../HARDWARE.md) for details on that option.
 
-There are three versions, imaginatively named v1, v2 and v3. v1 and v2 are equivalent to the dual Pico variant when it comes to functionality and device compatibility. v3 is equivalent to the single Pico variant.
+There are four versions, imaginatively named v1, v2, v3 and v4. v1 and v2 are equivalent to the dual Pico variant when it comes to functionality and device compatibility. v3 and v4 are equivalent to the single Pico variant.
 
 ![Custom HID Remapper boards](../images/custom-boards.jpg)
 
@@ -11,6 +11,8 @@ The main advantage of the v1 version is that it can be made with no soldering, y
 The v2 version doesn't have USB connectors and is meant to be built into existing devices like trackballs by soldering the appropriate wires directly to the board.
 
 The v3 version has the form factor of a USB dongle (you plug it directly into your computer).
+
+The v4 version has eight 3.5mm connectors wired to GPIO2-9, meant to be used with external buttons or switches. The 3D printed case for it uses two M2x4 screws and four M3x10 flat head screws.
 
 ## How to order the boards
 
@@ -37,10 +39,10 @@ There are two RP2040 chips on each board and each chip has to be flashed with ap
 
 In the future, I'd like to remove the need for step 2, it should be possible to make it happen automatically.
 
-### v3
+### v3 and v4
 
 Flash the board with [remapper\_feather.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_feather.uf2) file by putting it in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
 
 ## Acknowledgements
 
-v1 PCB design uses [Type-C.pretty](https://github.com/ai03-2725/Type-C.pretty) library by [ai03-2725](https://github.com/ai03-2725).
+v1 and v4 PCB designs use [Type-C.pretty](https://github.com/ai03-2725/Type-C.pretty) library by [ai03-2725](https://github.com/ai03-2725).

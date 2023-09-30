@@ -1,0 +1,9 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "RP2040")(type "KiCad")(uri "${KIPRJMOD}/RP2040.pretty")(options "")(descr ""))
+  (lib (name "Type-C")(type "KiCad")(uri "${KIPRJMOD}/Type-C.pretty")(options "")(descr ""))
+  (lib (name "USON")(type "KiCad")(uri "${KIPRJMOD}/USON.pretty")(options "")(descr ""))
+  (lib (name "Type-A")(type "KiCad")(uri "${KIPRJMOD}/Type-A.pretty")(options "")(descr ""))
+  (lib (name "SOT-23-5")(type "KiCad")(uri "${KIPRJMOD}/SOT-23-5.pretty")(options "")(descr ""))
+  (lib (name "Jack")(type "KiCad")(uri "${KIPRJMOD}/Jack.pretty")(options "")(descr ""))
+)
