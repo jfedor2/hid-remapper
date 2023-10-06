@@ -302,9 +302,41 @@ static void scan_filter_no_match(struct bt_scan_device_info* device_info, bool c
 
 BT_SCAN_CB_INIT(scan_cb, scan_filter_match, scan_filter_no_match, scan_connecting_error, scan_connecting);
 
+// This is a workaround for the Xbox Adaptive Controller that sends UUIDs like this:
+// 00002a4a-0000-0000-0000-000000000000 in Find Information responses.
+// This is not the correct UUID128 representation for UUID16(2a4a), which would be:
+// 00002a4a-0000-1000-8000-00805f9b34fb
+static void patch_broken_uuids(struct bt_gatt_dm* dm) {
+    const struct bt_gatt_dm_attr* attr = NULL;
+    char str1[BT_UUID_STR_LEN];
+    char str2[BT_UUID_STR_LEN];
+
+    while (NULL != (attr = bt_gatt_dm_attr_next(dm, attr))) {
+        if (attr->uuid->type == BT_UUID_TYPE_128) {
+            bool needs_fix = true;
+            for (int i = 0; i < 16; i++) {
+                if ((i != 12) && (i != 13) && (BT_UUID_128(attr->uuid)->val[i] != 0)) {
+                    needs_fix = false;
+                    break;
+                }
+            }
+            if (needs_fix) {
+                bt_uuid_to_str(attr->uuid, str1, sizeof(str2));
+                *((bt_uuid_16*) attr->uuid) = {
+                    .uuid = { BT_UUID_TYPE_16 },
+                    .val = (BT_UUID_128(attr->uuid)->val[13] << 8 | BT_UUID_128(attr->uuid)->val[12])
+                };
+                bt_uuid_to_str(attr->uuid, str2, sizeof(str2));
+                LOG_INF("%s -> %s", str1, str2);
+            }
+        }
+    }
+}
+
 static void discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
     LOG_INF("");
-    CHK(bt_hogp_handles_assign(dm, ((struct bt_hogp*) context)));
+    patch_broken_uuids(dm);
+    CHK(bt_hogp_handles_assign(dm, ((struct bt_hogp*) context)));  // XXX disconnect if this fails?
     CHK(bt_gatt_dm_data_release(dm));
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 }
