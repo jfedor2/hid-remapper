@@ -665,7 +665,7 @@ extern struct usb_device_descriptor __usb_descriptor_start[];
 static void descriptor_init() {
     our_descriptor = &our_descriptors[our_descriptor_number];
     if ((our_descriptor->vid != 0) && (our_descriptor->pid != 0)) {
-        struct usb_device_descriptor *device_descriptor = __usb_descriptor_start;
+        struct usb_device_descriptor* device_descriptor = __usb_descriptor_start;
         device_descriptor->idVendor = our_descriptor->vid;
         device_descriptor->idProduct = our_descriptor->pid;
     }
