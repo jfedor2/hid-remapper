@@ -38,6 +38,7 @@ add_executable(remapper
     src/tick.cc
     src/activity_led.cc
     src/ps_auth.cc
+    src/xbox.cc
 )
 
 if(PICO_BOARD STREQUAL "pico")
@@ -113,6 +114,7 @@ add_executable(remapper_dual_b
     src/serial.cc
     src/out_report.cc
     src/activity_led.cc
+    src/xbox.cc
 )
 target_include_directories(remapper_dual_b PRIVATE
     src

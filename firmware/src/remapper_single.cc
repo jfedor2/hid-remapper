@@ -32,6 +32,10 @@ void interval_override_updated() {
 void flash_b_side() {
 }
 
+void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
+    parse_descriptor(vendor_id, product_id, report_descriptor, len, interface);
+}
+
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
     printf("tuh_hid_mount_cb\n");
 
@@ -39,24 +43,32 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
     uint16_t pid;
     tuh_vid_pid_get(dev_addr, &vid, &pid);
 
-    parse_descriptor(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance);
+    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance);
 
     device_connected_callback((uint16_t) (dev_addr << 8) | instance, vid, pid);
 
     tuh_hid_receive_report(dev_addr, instance);
 }
 
-void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
-    printf("tuh_hid_umount_cb\n");
+void umount_callback(uint8_t dev_addr, uint8_t instance) {
     device_disconnected_callback(dev_addr);
 }
 
-void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
+    printf("tuh_hid_umount_cb\n");
+    umount_callback(dev_addr, instance);
+}
+
+void report_received_callback(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
     if (len > 0) {
         handle_received_report(report, len, (uint16_t) (dev_addr << 8) | instance);
 
         reports_received = true;
     }
+}
+
+void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+    report_received_callback(dev_addr, instance, report, len);
 
     tuh_hid_receive_report(dev_addr, instance);
 }

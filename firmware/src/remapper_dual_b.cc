@@ -72,7 +72,7 @@ int main() {
     return 0;
 }
 
-void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+void report_received_callback(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
     activity_led_on();
 
     report_received_t* msg = (report_received_t*) buffer;
@@ -81,33 +81,44 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     msg->interface = instance;
     memcpy(msg->report, report, len);
     serial_write((uint8_t*) msg, len + sizeof(report_received_t));
+}
+
+void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
+    report_received_callback(dev_addr, instance, report, len);
+
     tuh_hid_receive_report(dev_addr, instance);
+}
+
+void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
+    device_connected_t* msg = (device_connected_t*) buffer;
+    msg->command = DualCommand::DEVICE_CONNECTED;
+    msg->vid = vendor_id;
+    msg->pid = product_id;
+    msg->dev_addr = (interface >> 8) & 0xFF;
+    msg->interface = interface & 0xFF;
+    memcpy(msg->report_descriptor, report_descriptor, len);
+    serial_write((uint8_t*) msg, len + sizeof(device_connected_t));
 }
 
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
     printf("tuh_hid_mount_cb\n");
-    stdio_flush();
-    device_connected_t* msg = (device_connected_t*) buffer;
-    msg->command = DualCommand::DEVICE_CONNECTED;
     uint16_t vid;
     uint16_t pid;
     tuh_vid_pid_get(dev_addr, &vid, &pid);
-    msg->vid = vid;
-    msg->pid = pid;
-    msg->dev_addr = dev_addr;
-    msg->interface = instance;
-    memcpy(msg->report_descriptor, desc_report, desc_len);
-    serial_write((uint8_t*) msg, desc_len + sizeof(device_connected_t));
+    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance);
     tuh_hid_receive_report(dev_addr, instance);
 }
 
-void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
-    printf("tuh_hid_umount_cb %d %d\n", dev_addr, instance);
-    stdio_flush();
+void umount_callback(uint8_t dev_addr, uint8_t instance) {
     device_disconnected_t msg;
     msg.dev_addr = dev_addr;
     msg.interface = instance;
     serial_write((uint8_t*) &msg, sizeof(msg));
+}
+
+void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
+    printf("tuh_hid_umount_cb %d %d\n", dev_addr, instance);
+    umount_callback(dev_addr, instance);
 }
 
 void tuh_sof_cb() {

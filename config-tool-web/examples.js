@@ -2573,7 +2573,7 @@ const examples = [
         }
     },
     {
-        'description': 'Xbox Adaptive Controller adapter for Switch',
+        'description': 'Xbox controller (Bluetooth) adapter for Switch',
         'config': {
             "version": 9,
             "unmapped_passthrough_layers": [],
@@ -2829,6 +2829,263 @@ const examples = [
             ]
         }
     },
+    {
+        'description': 'Xbox controller (USB) adapter for Switch',
+        'config': {
+            "version": 9,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 2,
+            "ignore_auth_dev_inputs": false,
+            "mappings": [
+                {
+                    "target_usage": "0x00010039",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0xfff30004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0xfff30005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x00090005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0x00090006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x00090007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090004",
+                    "source_usage": "0x00090008",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090005",
+                    "source_usage": "0x0009000d",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090006",
+                    "source_usage": "0x0009000e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090007",
+                    "source_usage": "0xfff30006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090008",
+                    "source_usage": "0xfff30007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000b",
+                    "source_usage": "0x0009000f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0x00090010",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x00090009",
+                    "source_usage": "0x00090004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000a",
+                    "source_usage": "0x00090003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                },
+                {
+                    "target_usage": "0x0009000d",
+                    "source_usage": "0x00090011",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x0009000b input_state_binary 1 mul 0x0009000c input_state_binary 2 mul bitwise_or 0x00090009 input_state_binary 4 mul bitwise_or 0x0009000a input_state_binary 8 mul bitwise_or 1000 store -1000 1000 recall 1 eq 7000 mul add 1000 recall 2 eq 3000 mul add 1000 recall 4 eq 1000 mul add 1000 recall 8 eq 5000 mul add 1000 recall 5 eq 8000 mul add 1000 recall 6 eq 2000 mul add 1000 recall 10 eq 4000 mul add 1000 recall 9 eq 6000 mul add 1000 recall 7 eq 1000 mul add 1000 recall 11 eq 5000 mul add 1000 recall 13 eq 7000 mul add 1000 recall 14 eq 3000 mul add dup -1000 eq 9000 mul add",
+                "0x00010030 input_state 32768000 add 125 mul 125 mul 250 mul",
+                "0x00010031 input_state -32767000 add 125 mul 125 mul -250 mul",
+                "0x00010032 input_state 32768000 add 125 mul 125 mul 250 mul",
+                "0x00010035 input_state -32767000 add 125 mul 125 mul -250 mul",
+                "0x000200c5 input_state 1023000 eq",
+                "0x000200c4 input_state 1023000 eq",
+                ""
+            ]
+        }
+    }
 ];
 
 export default examples;

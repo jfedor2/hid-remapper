@@ -1,0 +1,280 @@
+#include "host/usbh.h"
+#include "host/usbh_pvt.h"
+
+#include "remapper.h"
+
+#define NXDEVS 8
+
+static const uint8_t xbox_one_descriptor[] = {
+    0x05, 0x01,                    // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,                    // Usage (Game Pad)
+    0xA1, 0x01,                    // Collection (Application)
+    0x85, 0x20,                    //   Report ID (32)
+    0x75, 0x08,                    //   Report Size (8)
+    0x95, 0x03,                    //   Report Count (3)
+    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x15, 0x00,                    //   Logical Minimum (0)
+    0x25, 0x01,                    //   Logical Maximum (1)
+    0x75, 0x01,                    //   Report Size (1)
+    0x95, 0x10,                    //   Report Count (16)
+    0x05, 0x09,                    //   Usage Page (Button)
+    0x19, 0x01,                    //   Usage Minimum (0x01)
+    0x29, 0x10,                    //   Usage Maximum (0x10)
+    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x10,                    //   Report Size (16)
+    0x95, 0x02,                    //   Report Count (2)
+    0x15, 0x00,                    //   Logical Minimum (0)
+    0x27, 0xFF, 0xFF, 0x00, 0x00,  //   Logical Maximum (65534)
+    0x05, 0x02,                    //   Usage Page (Sim Ctrls)
+    0x09, 0xC5,                    //   Usage (Brake)
+    0x09, 0xC4,                    //   Usage (Accelerator)
+    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x04,                    //   Report Count (4)
+    0x16, 0x00, 0x80,              //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,              //   Logical Maximum (32767)
+    0x05, 0x01,                    //   Usage Page (Generic Desktop Ctrls)
+    0x09, 0x30,                    //   Usage (X)
+    0x09, 0x31,                    //   Usage (Y)
+    0x09, 0x32,                    //   Usage (Z)
+    0x09, 0x35,                    //   Usage (Rz)
+    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x08,                    //   Report Size (8)
+    0x95, 0x10,                    //   Report Count (16)
+    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,                    //   Report Count (1)
+    0x05, 0x0C,                    //   Usage Page (Consumer)
+    0x09, 0x85,                    //   Usage (Order Movie)
+    0x15, 0x00,                    //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,              //   Logical Maximum (255)
+    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x85, 0x07,                    //   Report ID (7)
+    0x75, 0x08,                    //   Report Size (8)
+    0x95, 0x03,                    //   Report Count (3)
+    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x01,                    //   Report Size (1)
+    0x95, 0x01,                    //   Report Count (1)
+    0x05, 0x09,                    //   Usage Page (Button)
+    0x09, 0x11,                    //   Usage (0x11)
+    0x15, 0x00,                    //   Logical Minimum (0)
+    0x25, 0x01,                    //   Logical Maximum (1)
+    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x07,                    //   Report Count (7)
+    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,                          // End Collection
+};
+
+static uint8_t init1[] = { 0x05, 0x20, 0x00, 0x01, 0x00 };
+static uint8_t init2[] = { 0x05, 0x20, 0x00, 0x0f, 0x06 };
+
+struct xdev_t {
+    uint8_t dev_addr = 0;
+    uint8_t itf_num = 0;
+    uint8_t in_ep = 0;
+    uint16_t in_ep_size = 0;
+    uint8_t out_ep = 0;
+    uint16_t out_ep_size = 0;
+    int setup_stage = 0;
+    uint8_t buf[64] = { 0 };
+};
+
+static struct xdev_t xdevs[NXDEVS];
+
+static struct xdev_t* allocate_xdev() {
+    for (int i = 0; i < NXDEVS; i++) {
+        if (xdevs[i].dev_addr == 0) {
+            return &xdevs[i];
+        }
+    }
+
+    return nullptr;
+}
+
+static struct xdev_t* get_xdev_by_itf(uint8_t dev_addr, uint8_t itf_num) {
+    for (int i = 0; i < NXDEVS; i++) {
+        if ((xdevs[i].dev_addr == dev_addr) && (xdevs[i].itf_num == itf_num)) {
+            return &xdevs[i];
+        }
+    }
+
+    return nullptr;
+}
+
+static struct xdev_t* get_xdev_by_ep(uint8_t dev_addr, uint8_t ep) {
+    for (int i = 0; i < NXDEVS; i++) {
+        if ((xdevs[i].dev_addr == dev_addr) &&
+            ((xdevs[i].in_ep == ep) || (xdevs[i].out_ep == ep))) {
+            return &xdevs[i];
+        }
+    }
+
+    return nullptr;
+}
+
+void xboxh_init(void) {
+}
+
+bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* desc_itf, uint16_t max_len) {
+    if ((desc_itf->bNumEndpoints != 2) ||
+        (desc_itf->bInterfaceClass != 255) ||
+        (desc_itf->bInterfaceSubClass != 71) ||
+        (desc_itf->bInterfaceProtocol != 208)) {
+        return false;
+    }
+
+    if (max_len < sizeof(tusb_desc_interface_t) + desc_itf->bNumEndpoints * sizeof(tusb_desc_endpoint_t)) {
+        return false;
+    }
+
+    struct xdev_t* xdev = allocate_xdev();
+    if (xdev == nullptr) {
+        return false;
+    }
+
+    uint8_t in_ep = 0;
+    uint16_t in_ep_size = 0;
+    uint8_t out_ep = 0;
+    uint16_t out_ep_size = 0;
+
+    uint8_t const* p_desc = (uint8_t const*) desc_itf;
+
+    for (int i = 0; i < 2; i++) {
+        p_desc = tu_desc_next(p_desc);
+        tusb_desc_endpoint_t const* desc_ep = (tusb_desc_endpoint_t const*) p_desc;
+        if (desc_ep->bDescriptorType != TUSB_DESC_ENDPOINT) {
+            return false;
+        }
+        if (desc_ep->bmAttributes.xfer != TUSB_XFER_INTERRUPT) {
+            return false;
+        }
+        if (!tuh_edpt_open(dev_addr, desc_ep)) {
+            return false;
+        }
+        uint8_t ep_addr = desc_ep->bEndpointAddress;
+        if (tu_edpt_dir(ep_addr) == TUSB_DIR_IN) {
+            in_ep = ep_addr;
+            in_ep_size = tu_edpt_packet_size(desc_ep);
+        } else {
+            out_ep = ep_addr;
+            out_ep_size = tu_edpt_packet_size(desc_ep);
+        }
+    }
+
+    xdev->dev_addr = dev_addr;
+    xdev->itf_num = desc_itf->bInterfaceNumber;
+    xdev->in_ep = in_ep;
+    xdev->in_ep_size = in_ep_size;
+    if (xdev->in_ep_size > sizeof(xdev->buf)) {
+        xdev->in_ep_size = sizeof(xdev->buf);
+    }
+    xdev->out_ep = out_ep;
+    xdev->out_ep_size = out_ep_size;
+
+    return true;
+}
+
+static bool xxfer_in(struct xdev_t* xdev) {
+    if (!usbh_edpt_claim(xdev->dev_addr, xdev->in_ep)) {
+        return false;
+    }
+
+    if (!usbh_edpt_xfer(xdev->dev_addr, xdev->in_ep, xdev->buf, xdev->in_ep_size)) {
+        usbh_edpt_release(xdev->dev_addr, xdev->in_ep);
+        return false;
+    }
+
+    return true;
+}
+
+static bool xxfer_out(struct xdev_t* xdev, uint8_t* buf, uint16_t len) {
+    if (!usbh_edpt_claim(xdev->dev_addr, xdev->out_ep)) {
+        return false;
+    }
+
+    if (!usbh_edpt_xfer(xdev->dev_addr, xdev->out_ep, buf, len)) {
+        usbh_edpt_release(xdev->dev_addr, xdev->out_ep);
+        return false;
+    }
+
+    return true;
+}
+
+static void process_setup(struct xdev_t* xdev) {
+    switch (xdev->setup_stage) {
+        case 1:
+            xxfer_out(xdev, init1, sizeof(init1));
+            break;
+        case 2:
+            xxfer_out(xdev, init2, sizeof(init2));
+            break;
+        case 3:
+            xdev->setup_stage = 0;
+            xxfer_in(xdev);
+            descriptor_received_callback(0, 0, xbox_one_descriptor, sizeof(xbox_one_descriptor), (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num);
+            usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
+            break;
+    }
+}
+
+bool xboxh_set_config(uint8_t dev_addr, uint8_t itf_num) {
+    struct xdev_t* xdev = get_xdev_by_itf(dev_addr, itf_num);
+    if (xdev == nullptr) {
+        return false;
+    }
+
+    xdev->setup_stage = 1;
+    process_setup(xdev);
+
+    return true;
+}
+
+bool xboxh_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes) {
+    struct xdev_t* xdev = get_xdev_by_ep(dev_addr, ep_addr);
+    if (xdev == nullptr) {
+        return false;
+    }
+
+    if (ep_addr == xdev->in_ep) {
+        if (xferred_bytes > 0) {
+            if ((xdev->buf[0] == 0x07) && (xdev->buf[1] == 0x30)) {
+                // this kind of packet requires ack
+                uint8_t ack[] = { 0x01, 0x20, xdev->buf[2], 9, 0x00, 0x07, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                xxfer_out(xdev, ack, sizeof(ack));  // we should have a queue or something
+            }
+            if ((xdev->buf[0] == 0x20) || (xdev->buf[0] == 0x07)) {  // only pass stuff we know
+                report_received_callback(xdev->dev_addr, xdev->itf_num, xdev->buf, xferred_bytes);
+            }
+        }
+        xxfer_in(xdev);
+    }
+    if (ep_addr == xdev->out_ep) {
+        if (xdev->setup_stage != 0) {
+            xdev->setup_stage++;
+            process_setup(xdev);
+        }
+    }
+    return true;
+}
+
+void xboxh_close(uint8_t dev_addr) {
+    for (int i = 0; i < NXDEVS; i++) {
+        if (xdevs[i].dev_addr == dev_addr) {
+            umount_callback(dev_addr, xdevs[i].itf_num);
+            xdevs[i] = {};
+        }
+    }
+}
+
+usbh_class_driver_t const* usbh_app_driver_get_cb(uint8_t* driver_count) {
+    static usbh_class_driver_t host_driver = {
+#if CFG_TUSB_DEBUG >= 2
+        .name = "XBOXH",
+#endif
+        .init = xboxh_init,
+        .open = xboxh_open,
+        .set_config = xboxh_set_config,
+        .xfer_cb = xboxh_xfer_cb,
+        .close = xboxh_close
+    };
+    *driver_count = 1;
+    return &host_driver;
+}
