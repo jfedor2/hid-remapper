@@ -16,6 +16,7 @@ enum class DualCommand : uint8_t {
     GET_FEATURE_REPORT = 10,
     GET_FEATURE_RESPONSE = 11,
     SET_FEATURE_COMPLETE = 12,
+    MIDI_RECEIVED = 13,
 };
 
 struct __attribute__((packed)) device_connected_t {
@@ -94,6 +95,12 @@ struct __attribute__((packed)) set_feature_complete_t {
     uint8_t dev_addr;
     uint8_t interface;
     uint8_t report_id;
+};
+
+struct __attribute__((packed)) midi_received_t {
+    DualCommand command = DualCommand::MIDI_RECEIVED;
+    uint8_t dev_addr;
+    uint8_t msg[4];
 };
 
 #endif

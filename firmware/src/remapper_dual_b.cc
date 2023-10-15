@@ -1,6 +1,8 @@
 #include <bsp/board_api.h>
 #include <tusb.h>
 
+#include "usb_midi_host.h"
+
 #include "hardware/watchdog.h"
 #include "pico/stdio.h"
 #include "pico/time.h"
@@ -143,4 +145,15 @@ void set_report_complete_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_
     msg->interface = interface;
     msg->report_id = report_id;
     serial_write((uint8_t*) msg, sizeof(set_feature_complete_t));
+}
+
+void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
+    activity_led_on();
+
+    midi_received_t* msg = (midi_received_t*) buffer;
+    msg->command = DualCommand::MIDI_RECEIVED;
+    msg->dev_addr = dev_addr;
+    while (tuh_midi_packet_read(dev_addr, msg->msg)) {
+        serial_write((uint8_t*) msg, sizeof(midi_received_t));
+    }
 }

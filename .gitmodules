@@ -7,3 +7,6 @@
 [submodule "firmware/Pico-PIO-USB"]
 	path = firmware/Pico-PIO-USB
 	url = https://github.com/jfedor2/Pico-PIO-USB
+[submodule "firmware/usb_midi_host"]
+	path = firmware/usb_midi_host
+	url = https://github.com/rppicomidi/usb_midi_host.git

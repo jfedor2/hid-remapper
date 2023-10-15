@@ -65,6 +65,12 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
             handle_set_report_complete((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->report_id);
             break;
         }
+        case DualCommand::MIDI_RECEIVED: {
+            midi_received_t* msg = (midi_received_t*) data;
+            handle_received_midi(msg->dev_addr, msg->msg);
+            ret = true;
+            break;
+        }
         default:
             break;
     }

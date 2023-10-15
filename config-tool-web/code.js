@@ -24,6 +24,7 @@ const IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4;
 
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 const EXPR_USAGE_PAGE = 0xFFF30000;
+const MIDI_USAGE_PAGE = 0xFFF70000;
 
 const RESET_INTO_BOOTSEL = 1;
 const SET_CONFIG = 2;
@@ -1154,8 +1155,27 @@ function layer_list_to_mask(layers) {
     return layer_mask;
 }
 
-function readable_usage_name(usage) {
-    return (usage in usages['source']) ? usages['source'][usage]['name'] : usage;
+function readable_usage_name(usage, default_to_hex = true) {
+    if (((usage & 0xFFFF0000) >>> 0) == MIDI_USAGE_PAGE) {
+        const status = (usage >> 8) & 0xF0;
+        const channel = (usage >> 8) & 0x0F;
+        const prefix = 'MIDI CH' + channel;
+        switch (status) {
+            case 0x90:
+                return prefix + ' note ' + (usage & 0xFF);
+            case 0xA0:
+                return prefix + ' PKP ' + (usage & 0xFF);
+            case 0xB0:
+                return prefix + ' CC' + (usage & 0xFF);
+            case 0xC0:
+                return prefix + ' program';
+            case 0xD0:
+                return prefix + ' CP';
+            case 0xE0:
+                return prefix + ' PB';
+        }
+    }
+    return (usage in usages['source']) ? usages['source'][usage]['name'] : (default_to_hex ? usage : '');
 }
 
 function readable_target_usage_name(usage) {
@@ -1251,9 +1271,7 @@ function update_monitor_ui(usage, value) {
         const container = document.getElementById("monitor_container");
         element = template.content.cloneNode(true).firstElementChild;
         element.querySelector('.monitor_usage').innerText = usage;
-        if (usage in usages['source']) {
-            element.querySelector('.monitor_readable_name').innerText = usages['source'][usage]['name'];
-        }
+        element.querySelector('.monitor_readable_name').innerText = readable_usage_name(usage, false);
         element.id = 'monitor_usage_' + usage;
         container.appendChild(element);
     }

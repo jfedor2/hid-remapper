@@ -1,6 +1,7 @@
 #include <tusb.h>
 
 #include "pio_usb.h"
+#include "usb_midi_host.h"
 
 #include "pico/time.h"
 
@@ -71,6 +72,14 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     report_received_callback(dev_addr, instance, report, len);
 
     tuh_hid_receive_report(dev_addr, instance);
+}
+
+void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
+    uint8_t buf[4];
+    while (tuh_midi_packet_read(dev_addr, buf)) {
+        handle_received_midi(dev_addr, buf);
+    }
+    reports_received = true;
 }
 
 void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {

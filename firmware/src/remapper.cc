@@ -32,6 +32,7 @@ const uint32_t LAYERS_USAGE_PAGE = 0xFFF10000;
 const uint32_t MACRO_USAGE_PAGE = 0xFFF20000;
 const uint32_t EXPR_USAGE_PAGE = 0xFFF30000;
 const uint32_t REGISTER_USAGE_PAGE = 0xFFF50000;
+const uint32_t MIDI_USAGE_PAGE = 0xFFF70000;
 
 const uint16_t STACK_SIZE = 16;
 
@@ -1085,6 +1086,41 @@ void do_handle_received_report(const uint8_t* report, int len, uint16_t interfac
     }
 
     my_mutex_exit(MutexId::THEIR_USAGES);
+}
+
+void handle_received_midi(uint8_t dev_addr, uint8_t* midi_msg) {
+    uint32_t usage = 0;
+    int32_t val = 0;
+    // ignore cable number and CIN
+    switch (midi_msg[1] & 0xF0) {
+        case 0x80:  // note off
+            usage = MIDI_USAGE_PAGE | ((midi_msg[1] | 0x10) << 8) | midi_msg[2];
+            val = 0;  // note off velocity not exposed
+            break;
+        case 0x90:  // note on
+        case 0xA0:  // polyphonic key pressure (aftertouch)
+        case 0xB0:  // control change
+            usage = MIDI_USAGE_PAGE | (midi_msg[1] << 8) | midi_msg[2];
+            val = midi_msg[3];
+            break;
+        case 0xC0:  // program change
+        case 0xD0:  // channel pressure (aftertouch)
+            usage = MIDI_USAGE_PAGE | (midi_msg[1] << 8);
+            val = midi_msg[2];
+            break;
+        case 0xE0:  // pitch bend change
+            usage = MIDI_USAGE_PAGE | (midi_msg[1] << 8);
+            val = (uint16_t) (midi_msg[3] << 7) | midi_msg[2];
+            break;
+        default:
+            break;
+    }
+    if (usage != 0) {
+        set_input_state(usage, val);
+        if (monitor_enabled) {
+            monitor_usage(usage, val);
+        }
+    }
 }
 
 void set_input_state(uint32_t usage, int32_t state) {
