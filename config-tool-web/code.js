@@ -910,9 +910,9 @@ function show_usage_modal(mapping, source_or_target, element) {
     };
 }
 
-function add_mapping_onclick() {
+function add_empty_mapping(source_usage = '0x00000000') {
     let new_mapping = {
-        'source_usage': '0x00000000',
+        'source_usage': source_usage,
         'target_usage': '0x00000000',
         'layers': [0],
         'sticky': false,
@@ -922,6 +922,18 @@ function add_mapping_onclick() {
     };
     config['mappings'].push(new_mapping);
     add_mapping(new_mapping);
+}
+
+function add_mapping_onclick() {
+    add_empty_mapping();
+}
+
+function map_this_onclick(usage) {
+    return function () {
+        add_empty_mapping(usage);
+        switch_to_mappings_tab();
+        // XXX scroll to bottom and flash the mapping if we know how?
+    }
 }
 
 function setup_usages_modals() {
@@ -1273,6 +1285,7 @@ function update_monitor_ui(usage, value) {
         element = template.content.cloneNode(true).firstElementChild;
         element.querySelector('.monitor_usage').innerText = usage;
         element.querySelector('.monitor_readable_name').innerText = readable_usage_name(usage, false);
+        element.querySelector('.map_this_button').addEventListener("click", map_this_onclick(usage));
         element.id = 'monitor_usage_' + usage;
         container.appendChild(element);
     }

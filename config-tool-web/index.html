@@ -222,7 +222,8 @@
                 </div>
 
                 <div id="monitor_header" class="row p-1 mt-4 mb-2 d-none">
-                    <div class="col-3 text-center monitor_usage">Usage</div>
+                    <div class="col-1 text-center"></div>
+                    <div class="col-2 text-center monitor_usage">Usage</div>
                     <div class="col-3 text-center monitor_readable_name"></div>
                     <div class="col-2 text-center monitor_last_value">Last value</div>
                     <div class="col-2 text-center monitor_min_value">Min value</div>
@@ -348,7 +349,8 @@
 
     <template id="monitor_template">
         <div class="row monitor_row p-1 my-2 rounded">
-            <div class="col-3 text-center monitor_usage font-monospace"></div>
+            <div class="col-1"><button type="button" title="map this" class="btn btn-sm btn-primary map_this_button" style="padding: 0rem 0.4rem;">+</button></div>
+            <div class="col-2 text-center monitor_usage font-monospace"></div>
             <div class="col-3 text-center monitor_readable_name"></div>
             <div class="col-2 text-end monitor_last_value"></div>
             <div class="col-2 text-end monitor_min_value"></div>
