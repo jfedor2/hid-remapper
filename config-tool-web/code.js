@@ -600,7 +600,8 @@ function add_mapping(mapping) {
         layer_checkbox.addEventListener("change", layer_checkbox_onchange(mapping, layer_checkbox, i));
     }
     const source_button = clone.querySelector(".source_button");
-    source_button.innerText = readable_usage_name(mapping['source_usage']);
+    source_button.innerText =
+        'source_name' in mapping ? mapping['source_name'] : readable_usage_name(mapping['source_usage']);
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
     source_button.title = mapping['source_usage'];
     source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));

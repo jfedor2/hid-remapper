@@ -1873,6 +1873,7 @@ const examples = [
                 {
                     "target_usage": "0x00090002",
                     "source_usage": "0x00090001",
+                    "source_name": "A",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1884,6 +1885,7 @@ const examples = [
                 {
                     "target_usage": "0x00090003",
                     "source_usage": "0x00090002",
+                    "source_name": "B",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1895,6 +1897,7 @@ const examples = [
                 {
                     "target_usage": "0x00090004",
                     "source_usage": "0x00090005",
+                    "source_name": "Y",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1906,6 +1909,7 @@ const examples = [
                 {
                     "target_usage": "0x00090001",
                     "source_usage": "0x00090004",
+                    "source_name": "X",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1917,6 +1921,7 @@ const examples = [
                 {
                     "target_usage": "0x00090005",
                     "source_usage": "0x00090007",
+                    "source_name": "L1",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1928,6 +1933,7 @@ const examples = [
                 {
                     "target_usage": "0x00090006",
                     "source_usage": "0x00090008",
+                    "source_name": "R1",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1939,6 +1945,7 @@ const examples = [
                 {
                     "target_usage": "0x00090007",
                     "source_usage": "0x00090014",
+                    "source_name": "L2",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1950,6 +1957,7 @@ const examples = [
                 {
                     "target_usage": "0x00090008",
                     "source_usage": "0x00090013",
+                    "source_name": "R2",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1961,6 +1969,7 @@ const examples = [
                 {
                     "target_usage": "0x00090009",
                     "source_usage": "0x0009000b",
+                    "source_name": "Options",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1972,6 +1981,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000a",
                     "source_usage": "0x0009000c",
+                    "source_name": "Menu",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1983,6 +1993,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000b",
                     "source_usage": "0x0009000e",
+                    "source_name": "L3",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -1994,6 +2005,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000c",
                     "source_usage": "0x0009000f",
+                    "source_name": "R3",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2005,6 +2017,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000d",
                     "source_usage": "0x0009000d",
+                    "source_name": "Stadia",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2016,6 +2029,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000e",
                     "source_usage": "0x00090011",
+                    "source_name": "Assistant",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2027,6 +2041,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000e",
                     "source_usage": "0x00090012",
+                    "source_name": "Capture",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2642,6 +2657,7 @@ const examples = [
                 {
                     "target_usage": "0x00090002",
                     "source_usage": "0x00090001",
+                    "source_name": "A",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2653,6 +2669,7 @@ const examples = [
                 {
                     "target_usage": "0x00090003",
                     "source_usage": "0x00090002",
+                    "source_name": "B",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2664,6 +2681,7 @@ const examples = [
                 {
                     "target_usage": "0x00090001",
                     "source_usage": "0x00090004",
+                    "source_name": "X",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2675,6 +2693,7 @@ const examples = [
                 {
                     "target_usage": "0x00090004",
                     "source_usage": "0x00090005",
+                    "source_name": "Y",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2686,6 +2705,7 @@ const examples = [
                 {
                     "target_usage": "0x00090005",
                     "source_usage": "0x00090007",
+                    "source_name": "LB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2697,6 +2717,7 @@ const examples = [
                 {
                     "target_usage": "0x00090006",
                     "source_usage": "0x00090008",
+                    "source_name": "RB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2730,6 +2751,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000b",
                     "source_usage": "0x0009000e",
+                    "source_name": "LSB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2741,6 +2763,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000c",
                     "source_usage": "0x0009000f",
+                    "source_name": "RSB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2752,6 +2775,7 @@ const examples = [
                 {
                     "target_usage": "0x00090009",
                     "source_usage": "0x0009000b",
+                    "source_name": "View",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2763,6 +2787,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000a",
                     "source_usage": "0x0009000c",
+                    "source_name": "Menu",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2774,6 +2799,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000d",
                     "source_usage": "0x0009000d",
+                    "source_name": "Guide",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2899,6 +2925,7 @@ const examples = [
                 {
                     "target_usage": "0x00090002",
                     "source_usage": "0x00090005",
+                    "source_name": "A",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2910,6 +2937,7 @@ const examples = [
                 {
                     "target_usage": "0x00090003",
                     "source_usage": "0x00090006",
+                    "source_name": "B",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2921,6 +2949,7 @@ const examples = [
                 {
                     "target_usage": "0x00090001",
                     "source_usage": "0x00090007",
+                    "source_name": "X",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2932,6 +2961,7 @@ const examples = [
                 {
                     "target_usage": "0x00090004",
                     "source_usage": "0x00090008",
+                    "source_name": "Y",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2943,6 +2973,7 @@ const examples = [
                 {
                     "target_usage": "0x00090005",
                     "source_usage": "0x0009000d",
+                    "source_name": "LB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2954,6 +2985,7 @@ const examples = [
                 {
                     "target_usage": "0x00090006",
                     "source_usage": "0x0009000e",
+                    "source_name": "RB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2987,6 +3019,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000b",
                     "source_usage": "0x0009000f",
+                    "source_name": "LSB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2998,6 +3031,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000c",
                     "source_usage": "0x00090010",
+                    "source_name": "RSB",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3009,6 +3043,7 @@ const examples = [
                 {
                     "target_usage": "0x00090009",
                     "source_usage": "0x00090004",
+                    "source_name": "View",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3020,6 +3055,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000a",
                     "source_usage": "0x00090003",
+                    "source_name": "Menu",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3031,6 +3067,7 @@ const examples = [
                 {
                     "target_usage": "0x0009000d",
                     "source_usage": "0x00090011",
+                    "source_name": "Guide",
                     "scaling": 1000,
                     "layers": [
                         0
