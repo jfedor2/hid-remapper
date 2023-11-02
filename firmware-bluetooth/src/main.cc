@@ -827,6 +827,9 @@ void queue_get_feature_report(uint16_t interface, uint8_t report_id, uint8_t len
     // TODO
 }
 
+void set_gpio_inout_masks(uint32_t in_mask, uint32_t out_mask) {
+}
+
 int main() {
     LOG_INF("HID Remapper Bluetooth");
 

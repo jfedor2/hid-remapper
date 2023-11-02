@@ -17,6 +17,18 @@ void extra_init() {
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 }
 
+uint32_t get_gpio_valid_pins_mask() {
+    return GPIO_VALID_PINS_BASE & ~(
+#ifdef PICO_DEFAULT_UART_TX_PIN
+                                      (1 << PICO_DEFAULT_UART_TX_PIN) |
+#endif
+#ifdef PICO_DEFAULT_UART_RX_PIN
+                                      (1 << PICO_DEFAULT_UART_RX_PIN) |
+#endif
+                                      (1 << PICO_DEFAULT_PIO_USB_DP_PIN) |
+                                      (1 << (PICO_DEFAULT_PIO_USB_DP_PIN + 1)));
+}
+
 static bool reports_received;
 
 void read_report(bool* new_report, bool* tick) {

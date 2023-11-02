@@ -8,6 +8,8 @@
 
 #define FEATHER_HOST_BOARD
 
+#define GPIO_VALID_PINS_BASE 0b00111111000000001101111111111111
+
 // On some samples, the xosc can take longer to stabilize than is usual
 #ifndef PICO_XOSC_STARTUP_DELAY_MULTIPLIER
 #define PICO_XOSC_STARTUP_DELAY_MULTIPLIER 64

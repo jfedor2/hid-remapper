@@ -82,6 +82,22 @@ void extra_init() {
     serial_init();
 }
 
+uint32_t get_gpio_valid_pins_mask() {
+    return GPIO_VALID_PINS_BASE & ~(
+#ifdef PICO_DEFAULT_UART_TX_PIN
+                                      (1 << PICO_DEFAULT_UART_TX_PIN) |
+#endif
+#ifdef PICO_DEFAULT_UART_RX_PIN
+                                      (1 << PICO_DEFAULT_UART_RX_PIN) |
+#endif
+                                      (1 << PIN_SWDIO) |
+                                      (1 << PIN_SWDCLK) |
+                                      (1 << SERIAL_TX_PIN) |
+                                      (1 << SERIAL_RX_PIN) |
+                                      (1 << SERIAL_CTS_PIN) |
+                                      (1 << SERIAL_RTS_PIN));
+}
+
 void read_report(bool* new_report, bool* tick) {
     *new_report = serial_read(serial_callback);
     *tick = get_and_clear_tick_pending();

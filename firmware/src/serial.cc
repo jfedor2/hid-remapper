@@ -10,22 +10,6 @@
 #define SERIAL_UART uart1
 #define SERIAL_BAUDRATE 4000000
 
-#ifdef HID_REMAPPER_BOARD
-
-#define SERIAL_TX_PIN 24
-#define SERIAL_RX_PIN 25
-#define SERIAL_CTS_PIN 26
-#define SERIAL_RTS_PIN 23
-
-#else
-
-#define SERIAL_TX_PIN 20
-#define SERIAL_RX_PIN 21
-#define SERIAL_CTS_PIN 26
-#define SERIAL_RTS_PIN 27
-
-#endif
-
 #define BUFFER_SIZE 512
 static char outgoing_buffer[BUFFER_SIZE];
 static uint16_t buf_head = 0;

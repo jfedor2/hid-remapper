@@ -40,3 +40,5 @@ std::vector<expr_elem_t> expressions[NEXPRESSIONS];
 bool monitor_enabled = false;
 
 const our_descriptor_def_t* our_descriptor;
+
+uint8_t gpio_out_state[4] = { 0 };

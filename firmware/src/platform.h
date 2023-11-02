@@ -18,4 +18,7 @@ void my_mutex_exit(MutexId id);
 uint64_t get_time();
 uint64_t get_unique_id();
 
+uint32_t get_gpio_valid_pins_mask();
+void set_gpio_inout_masks(uint32_t in_mask, uint32_t out_mask);
+
 #endif

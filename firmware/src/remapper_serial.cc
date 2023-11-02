@@ -63,6 +63,17 @@ void extra_init() {
     parse_descriptor(FAKE_VID, FAKE_PID, fake_descriptor, sizeof(fake_descriptor), FAKE_INTERFACE);
 }
 
+uint32_t get_gpio_valid_pins_mask() {
+    return GPIO_VALID_PINS_BASE & ~(
+#ifdef PICO_DEFAULT_UART_TX_PIN
+                                      (1 << PICO_DEFAULT_UART_TX_PIN) |
+#endif
+#ifdef PICO_DEFAULT_UART_RX_PIN
+                                      (1 << PICO_DEFAULT_UART_RX_PIN) |
+#endif
+                                      (1 << SERIAL_MOUSE_RX_PIN));
+}
+
 void read_report(bool* new_report, bool* tick) {
     *tick = get_and_clear_tick_pending();
     *new_report = false;

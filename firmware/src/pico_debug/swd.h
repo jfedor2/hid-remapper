@@ -12,6 +12,14 @@
 #ifndef __SWD_H
 #define __SWD_H
 
+#ifndef PIN_SWDCLK
+#define PIN_SWDCLK 2
+#endif
+
+#ifndef PIN_SWDIO
+#define PIN_SWDIO 3
+#endif
+
 #define SWD_OK              0
 #define SWD_WAIT            1
 #define SWD_FAULT           2

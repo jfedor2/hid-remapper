@@ -3,6 +3,8 @@
 
 #define OUR_OUT_INTERFACE 0xFFFF
 
+#define GPIO_USAGE_PAGE 0xFFF40000
+
 typedef bool (*send_report_t)(uint8_t interface, const uint8_t* report_with_id, uint8_t len);
 
 void set_mapping_from_config();

@@ -11,14 +11,6 @@
 
 #include "swd.h"
 
-#ifndef PIN_SWDCLK
-#define PIN_SWDCLK 2
-#endif
-
-#ifndef PIN_SWDIO
-#define PIN_SWDIO 3
-#endif
-
 #define OUT                 1
 #define IN                  0
 

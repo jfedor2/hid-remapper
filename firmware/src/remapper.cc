@@ -295,6 +295,8 @@ void set_mapping_from_config() {
     used_state_slots = 0;
     usage_state_ptr.clear();
     memset(input_state, 0, sizeof(input_state));
+    uint32_t gpio_in_mask_ = 0;
+    uint32_t gpio_out_mask_ = 0;
 
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
@@ -309,6 +311,16 @@ void set_mapping_from_config() {
                 // non-sticky layer-triggering mappings are forced to BE present on the layer they trigger
                 layer_mask |= (1 << layer) & ((1 << NLAYERS) - 1);
             }
+        }
+
+        if ((mapping.target_usage & 0xFFFF0000) == GPIO_USAGE_PAGE) {
+            uint16_t pin = mapping.target_usage & 0xFFFF;
+            gpio_out_mask_ |= 1 << pin;
+        }
+
+        if ((mapping.source_usage & 0xFFFF0000) == GPIO_USAGE_PAGE) {
+            uint16_t pin = mapping.source_usage & 0xFFFF;
+            gpio_in_mask_ |= 1 << pin;
         }
 
         if (assign_state_slot(mapping.source_usage)) {
@@ -328,6 +340,12 @@ void set_mapping_from_config() {
             for (auto const& elem : expressions[expr]) {
                 if (elem.op == Op::PUSH_USAGE) {
                     mapped_on_layers[elem.val] |= layer_mask;
+
+                    // if a GPIO pin usage appears in an expression, it's an "in" pin
+                    if ((elem.val & 0xFFFF0000) == GPIO_USAGE_PAGE) {
+                        uint16_t pin = elem.val & 0xFFFF;
+                        gpio_in_mask_ |= 1 << pin;
+                    }
                 }
             }
         }
@@ -427,16 +445,25 @@ void set_mapping_from_config() {
             .target = target,
             .sources = sources,
         };
-        auto search = our_usages_flat.find(target);
-        if (search != our_usages_flat.end()) {
-            const usage_def_t& our_usage = search->second;
+        if ((target & 0xFFFF0000) == GPIO_USAGE_PAGE) {
             rev_map.our_usages.push_back((out_usage_def_t){
-                .data = reports[our_usage.report_id],
-                .len = report_sizes[our_usage.report_id],
-                .size = our_usage.size,
-                .bitpos = our_usage.bitpos,
+                .data = gpio_out_state,
+                .len = sizeof(gpio_out_state),
+                .size = 1,
+                .bitpos = (uint16_t) (target & 0xFFFF),
             });
-            rev_map.is_relative = our_usage.is_relative;
+        } else {
+            auto search = our_usages_flat.find(target);
+            if (search != our_usages_flat.end()) {
+                const usage_def_t& our_usage = search->second;
+                rev_map.our_usages.push_back((out_usage_def_t){
+                    .data = reports[our_usage.report_id],
+                    .len = report_sizes[our_usage.report_id],
+                    .size = our_usage.size,
+                    .bitpos = our_usage.bitpos,
+                });
+                rev_map.is_relative = our_usage.is_relative;
+            }
         }
         if ((target & 0xFFFF0000) == MACRO_USAGE_PAGE) {
             reverse_mapping_macros.push_back(rev_map);
@@ -447,6 +474,7 @@ void set_mapping_from_config() {
         }
     }
 
+    set_gpio_inout_masks(gpio_in_mask_, gpio_out_mask_);
     update_their_descriptor_derivates();
 }
 

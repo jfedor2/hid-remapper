@@ -26,16 +26,13 @@
 #define CONFIG_OFFSET_IN_FLASH (PICO_FLASH_SIZE_BYTES - PERSISTED_CONFIG_SIZE)
 #define FLASH_CONFIG_IN_MEMORY (((uint8_t*) XIP_BASE) + CONFIG_OFFSET_IN_FLASH)
 
-#define GPIO_PIN_FIRST 2
-#define GPIO_PIN_LAST 9
-#define GPIO_PIN_MASK ((1 << (GPIO_PIN_LAST + 1)) - (1 << GPIO_PIN_FIRST))
-
-#define GPIO_USAGE_PAGE 0xFFF40000
-
 uint64_t next_print = 0;
 
 mutex_t mutexes[(uint8_t) MutexId::N];
 
+uint32_t gpio_valid_pins_mask = 0;
+uint32_t gpio_in_mask = 0;
+uint32_t gpio_out_mask = 0;
 uint32_t prev_gpio_state = 0;
 uint64_t last_gpio_change[32] = { 0 };
 
@@ -59,17 +56,29 @@ bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t le
 }
 
 void gpio_pins_init() {
-    for (uint8_t i = GPIO_PIN_FIRST; i <= GPIO_PIN_LAST; i++) {
-        gpio_init(i);
-        gpio_pull_up(i);
+    gpio_valid_pins_mask = get_gpio_valid_pins_mask();
+    gpio_init_mask(gpio_valid_pins_mask);
+}
+
+void set_gpio_inout_masks(uint32_t in_mask, uint32_t out_mask) {
+    // if some pin appears as both input and output, input wins
+    gpio_out_mask = (out_mask & ~in_mask) & gpio_valid_pins_mask;
+    // we treat all pins except the output ones as input so that the monitor works
+    gpio_in_mask = gpio_valid_pins_mask & ~gpio_out_mask;
+    gpio_set_dir_masked(gpio_valid_pins_mask, gpio_out_mask);
+    for (uint8_t i = 0; i <= 29; i++) {
+        uint32_t bit = 1 << i;
+        if (gpio_valid_pins_mask & bit) {
+            gpio_set_pulls(i, gpio_in_mask & bit, false);
+        }
     }
 }
 
 bool read_gpio(uint64_t now) {
-    uint32_t gpio_state = gpio_get_all() & GPIO_PIN_MASK;
+    uint32_t gpio_state = gpio_get_all() & gpio_in_mask;
     uint32_t changed = prev_gpio_state ^ gpio_state;
     if (changed != 0) {
-        for (uint8_t i = GPIO_PIN_FIRST; i <= GPIO_PIN_LAST; i++) {
+        for (uint8_t i = 0; i <= 29; i++) {
             uint32_t bit = 1 << i;
             if (changed & bit) {
                 if (last_gpio_change[i] + gpio_debounce_time <= now) {
@@ -90,6 +99,12 @@ bool read_gpio(uint64_t now) {
         prev_gpio_state = gpio_state;
     }
     return changed != 0;
+}
+
+void write_gpio() {
+    uint32_t value = gpio_out_state[0] | (gpio_out_state[1] << 8) | (gpio_out_state[2] << 16) | (gpio_out_state[3] << 24);
+    gpio_put_masked(gpio_out_mask, value);
+    memset(gpio_out_state, 0, sizeof(gpio_out_state));
 }
 
 void do_persist_config(uint8_t* buffer) {
@@ -175,6 +190,7 @@ int main() {
                 activity_led_on();
             }
             process_mapping(true);
+            write_gpio();
         }
         tud_task();
         if (config_updated) {

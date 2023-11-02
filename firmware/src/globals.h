@@ -51,4 +51,6 @@ extern bool monitor_enabled;
 
 extern const our_descriptor_def_t* our_descriptor;
 
+extern uint8_t gpio_out_state[4];
+
 #endif
