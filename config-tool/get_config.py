@@ -40,6 +40,7 @@ config = {
     "our_descriptor_number": our_descriptor_number,
     "ignore_auth_dev_inputs": bool(flags & IGNORE_AUTH_DEV_INPUTS_FLAG),
     "macro_entry_duration": macro_entry_duration + 1,
+    "gpio_output_mode": 1 if (flags & GPIO_OUTPUT_MODE_FLAG) else 0,
     "mappings": [],
     "macros": [],
     "expressions": [],

@@ -33,8 +33,13 @@ interval_override = config.get("interval_override", 0)
 our_descriptor_number = config.get("our_descriptor_number", 0)
 ignore_auth_dev_inputs = config.get("ignore_auth_dev_inputs", False)
 macro_entry_duration = config.get("macro_entry_duration", 1) - 1
+gpio_output_mode = config.get("gpio_output_mode", 0)
 
-flags = unmapped_passthrough_layer_mask | (IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0)
+flags = (
+    unmapped_passthrough_layer_mask
+    | (IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0)
+    | (GPIO_OUTPUT_MODE_FLAG if gpio_output_mode == 1 else 0)
+)
 
 data = struct.pack(
     "<BBBBLBLBBB13B",

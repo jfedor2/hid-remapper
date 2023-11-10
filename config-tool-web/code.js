@@ -22,6 +22,7 @@ const NMACROS = 32;
 const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
 const IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4;
+const GPIO_OUTPUT_MODE_FLAG = 1 << 5;
 
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 const EXPR_USAGE_PAGE = 0xFFF30000;
@@ -107,6 +108,7 @@ let config = {
     'our_descriptor_number': 0,
     'ignore_auth_dev_inputs': false,
     'macro_entry_duration': DEFAULT_MACRO_ENTRY_DURATION,
+    'gpio_output_mode': 0,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -155,6 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
     document.getElementById("our_descriptor_number_dropdown").addEventListener("change", our_descriptor_number_onchange);
+    document.getElementById("gpio_output_mode_dropdown").addEventListener("change", gpio_output_mode_onchange);
     document.getElementById("ignore_auth_dev_inputs_checkbox").addEventListener("change", ignore_auth_dev_inputs_onchange);
 
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
@@ -224,6 +227,7 @@ async function load_from_device() {
         config['interval_override'] = interval_override;
         config['our_descriptor_number'] = our_descriptor_number;
         config['ignore_auth_dev_inputs'] = !!(flags & IGNORE_AUTH_DEV_INPUTS_FLAG);
+        config['gpio_output_mode'] = (flags & GPIO_OUTPUT_MODE_FLAG) ? 1 : 0;
         config['macro_entry_duration'] = macro_entry_duration + 1;
         config['mappings'] = [];
 
@@ -321,7 +325,8 @@ async function save_to_device() {
     try {
         await send_feature_command(SUSPEND);
         const flags = layer_list_to_mask(config['unmapped_passthrough_layers']) |
-            (config['ignore_auth_dev_inputs'] ? IGNORE_AUTH_DEV_INPUTS_FLAG : 0);
+            (config['ignore_auth_dev_inputs'] ? IGNORE_AUTH_DEV_INPUTS_FLAG : 0) |
+            (config['gpio_output_mode'] ? GPIO_OUTPUT_MODE_FLAG : 0);
         await send_feature_command(SET_CONFIG, [
             [UINT8, flags],
             [UINT32, config['partial_scroll_timeout']],
@@ -469,6 +474,7 @@ function set_config_ui_state() {
     document.getElementById('our_descriptor_number_dropdown').value = config['our_descriptor_number'];
     document.getElementById('ignore_auth_dev_inputs_checkbox').checked = config['ignore_auth_dev_inputs'];
     document.getElementById('macro_entry_duration_input').value = config['macro_entry_duration'];
+    document.getElementById('gpio_output_mode_dropdown').value = config['gpio_output_mode'];
 }
 
 function set_mappings_ui_state() {
@@ -574,6 +580,7 @@ function set_ui_state() {
     }
     if (config['version'] < 10) {
         config['macro_entry_duration'] = DEFAULT_MACRO_ENTRY_DURATION;
+        config['gpio_output_mode'] = 0;
     }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
@@ -1110,6 +1117,10 @@ function interval_override_onchange() {
 function our_descriptor_number_onchange() {
     config['our_descriptor_number'] = parseInt(document.getElementById("our_descriptor_number_dropdown").value, 10);
     set_ui_state();
+}
+
+function gpio_output_mode_onchange() {
+    config['gpio_output_mode'] = parseInt(document.getElementById("gpio_output_mode_dropdown").value, 10);
 }
 
 function ignore_auth_dev_inputs_onchange() {

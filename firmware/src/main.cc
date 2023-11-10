@@ -35,6 +35,7 @@ uint32_t gpio_in_mask = 0;
 uint32_t gpio_out_mask = 0;
 uint32_t prev_gpio_state = 0;
 uint64_t last_gpio_change[32] = { 0 };
+bool set_gpio_dir_pending = false;
 
 void print_stats_maybe() {
     uint64_t now = time_us_64();
@@ -65,7 +66,12 @@ void set_gpio_inout_masks(uint32_t in_mask, uint32_t out_mask) {
     gpio_out_mask = (out_mask & ~in_mask) & gpio_valid_pins_mask;
     // we treat all pins except the output ones as input so that the monitor works
     gpio_in_mask = gpio_valid_pins_mask & ~gpio_out_mask;
-    gpio_set_dir_masked(gpio_valid_pins_mask, gpio_out_mask);
+    set_gpio_dir_pending = true;
+}
+
+void set_gpio_dir() {
+    gpio_set_dir_masked(gpio_in_mask, 0);
+    // output pin direction will be set in write_gpio()
     for (uint8_t i = 0; i <= 29; i++) {
         uint32_t bit = 1 << i;
         if (gpio_valid_pins_mask & bit) {
@@ -102,8 +108,21 @@ bool read_gpio(uint64_t now) {
 }
 
 void write_gpio() {
+    if (suspended) {
+        return;
+    }
+
     uint32_t value = gpio_out_state[0] | (gpio_out_state[1] << 8) | (gpio_out_state[2] << 16) | (gpio_out_state[3] << 24);
-    gpio_put_masked(gpio_out_mask, value);
+    switch (gpio_output_mode) {
+        case 0:
+            gpio_put_masked(gpio_out_mask, value);
+            gpio_set_dir_masked(gpio_out_mask, gpio_out_mask);
+            break;
+        case 1:
+            gpio_put_masked(gpio_out_mask, 0);
+            gpio_set_dir_masked(gpio_out_mask, value);
+            break;
+    }
     memset(gpio_out_state, 0, sizeof(gpio_out_state));
 }
 
@@ -196,6 +215,10 @@ int main() {
         if (config_updated) {
             set_mapping_from_config();
             config_updated = false;
+        }
+        if (set_gpio_dir_pending && !suspended) {
+            set_gpio_dir();
+            set_gpio_dir_pending = false;
         }
         if (tud_hid_n_ready(0)) {
             send_report(do_send_report);

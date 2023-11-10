@@ -166,6 +166,17 @@
                 </div>
                 <div class="row mt-3">
                     <div class="col-4 text-end">
+                        <label for="gpio_output_mode_dropdown" class="col-form-label">GPIO output mode</label>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select" id="gpio_output_mode_dropdown">
+                            <option value="0">0=low, 1=high</option>
+                            <option value="1">0=high impedance, 1=low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
                         <label for="ignore_auth_dev_inputs_checkbox" class="col-form-label">Ignore auth device inputs</label>
                     </div>
                     <div class="col-auto">
