@@ -88,7 +88,12 @@ uint8_t layer_state_mask = 1;
 
 std::vector<int32_t*> relative_usages;  // input_state pointers
 
-std::queue<std::vector<uint32_t>> macro_queue;
+struct macro_entry_t {
+    uint8_t duration_left;
+    std::vector<uint32_t> items;
+};
+
+std::queue<macro_entry_t> macro_queue;
 
 std::unordered_map<uint32_t, int32_t> accumulated_scroll;
 std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
@@ -772,7 +777,7 @@ void process_mapping(bool auto_repeat) {
                     (map_source.tap && tap_state[map_source.usage]))) {
                 my_mutex_enter(MutexId::MACROS);
                 for (auto const& usages : macros[macro]) {
-                    macro_queue.push(usages);
+                    macro_queue.push((macro_entry_t){ duration_left : macro_entry_duration, items : usages });
                 }
                 my_mutex_exit(MutexId::MACROS);
             }
@@ -857,15 +862,19 @@ void process_mapping(bool auto_repeat) {
     }
 
     // execute queued macros
-    if ((or_items == 0) && !macro_queue.empty()) {
-        for (uint32_t usage : macro_queue.front()) {
+    if (!macro_queue.empty()) {
+        for (uint32_t usage : macro_queue.front().items) {
             auto search = our_usages_flat.find(usage);
             if (search != our_usages_flat.end()) {
                 const usage_def_t& our_usage = search->second;
                 put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, 1);
             }
         }
-        macro_queue.pop();
+        if (macro_queue.front().duration_left > 0) {
+            macro_queue.front().duration_left--;
+        } else {
+            macro_queue.pop();
+        }
     }
 
     for (auto state : relative_usages) {

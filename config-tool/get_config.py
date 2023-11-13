@@ -24,9 +24,10 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     tap_hold_threshold,
     gpio_debounce_time_ms,
     our_descriptor_number,
+    macro_entry_duration,
     *_,
     crc,
-) = struct.unpack("<BBBLLLLBLBB3BL", data)
+) = struct.unpack("<BBBLLLLBLBBB2BL", data)
 check_crc(data, crc)
 
 config = {
@@ -38,6 +39,7 @@ config = {
     "gpio_debounce_time_ms": gpio_debounce_time_ms,
     "our_descriptor_number": our_descriptor_number,
     "ignore_auth_dev_inputs": bool(flags & IGNORE_AUTH_DEV_INPUTS_FLAG),
+    "macro_entry_duration": macro_entry_duration + 1,
     "mappings": [],
     "macros": [],
     "expressions": [],

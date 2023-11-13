@@ -8,13 +8,14 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 9;
+const CONFIG_VERSION = 10;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
 const DEFAULT_TAP_HOLD_THRESHOLD = 200000;
 const DEFAULT_GPIO_DEBOUNCE_TIME = 5;
 const DEFAULT_SCALING = 1000;
+const DEFAULT_MACRO_ENTRY_DURATION = 1;
 
 const NLAYERS = 4;
 const NMACROS = 32;
@@ -105,6 +106,7 @@ let config = {
     'interval_override': 0,
     'our_descriptor_number': 0,
     'ignore_auth_dev_inputs': false,
+    'macro_entry_duration': DEFAULT_MACRO_ENTRY_DURATION,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -147,6 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("partial_scroll_timeout_input").addEventListener("change", partial_scroll_timeout_onchange);
     document.getElementById("tap_hold_threshold_input").addEventListener("change", tap_hold_threshold_onchange);
     document.getElementById("gpio_debounce_time_input").addEventListener("change", gpio_debounce_time_onchange);
+    document.getElementById("macro_entry_duration_input").addEventListener("change", macro_entry_duration_onchange);
     for (let i = 0; i < NLAYERS; i++) {
         document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
     }
@@ -209,8 +212,8 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8]);
         check_received_version(config_version);
 
         config['version'] = config_version;
@@ -221,6 +224,7 @@ async function load_from_device() {
         config['interval_override'] = interval_override;
         config['our_descriptor_number'] = our_descriptor_number;
         config['ignore_auth_dev_inputs'] = !!(flags & IGNORE_AUTH_DEV_INPUTS_FLAG);
+        config['macro_entry_duration'] = macro_entry_duration + 1;
         config['mappings'] = [];
 
         for (let i = 0; i < mapping_count; i++) {
@@ -325,6 +329,7 @@ async function save_to_device() {
             [UINT32, config['tap_hold_threshold']],
             [UINT8, config['gpio_debounce_time_ms']],
             [UINT8, config['our_descriptor_number']],
+            [UINT8, config['macro_entry_duration'] - 1],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -439,8 +444,8 @@ async function do_get_usages_from_device(command, rle_count) {
 async function get_usages_from_device() {
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT8, UINT8]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT8, UINT8, UINT8]);
         check_received_version(config_version);
 
         extra_usages['target'] =
@@ -463,6 +468,7 @@ function set_config_ui_state() {
     document.getElementById('interval_override_dropdown').value = config['interval_override'];
     document.getElementById('our_descriptor_number_dropdown').value = config['our_descriptor_number'];
     document.getElementById('ignore_auth_dev_inputs_checkbox').checked = config['ignore_auth_dev_inputs'];
+    document.getElementById('macro_entry_duration_input').value = config['macro_entry_duration'];
 }
 
 function set_mappings_ui_state() {
@@ -565,6 +571,9 @@ function set_ui_state() {
     if (config['version'] < 9) {
         config['our_descriptor_number'] = 0;
         config['ignore_auth_dev_inputs'] = false;
+    }
+    if (config['version'] < 10) {
+        config['macro_entry_duration'] = DEFAULT_MACRO_ENTRY_DURATION;
     }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
@@ -752,7 +761,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5, 6, 7, 8, 9].includes(config_version))) {
+    if (!([3, 4, 5, 6, 7, 8, 9, 10].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -768,7 +777,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 8, 7, 6, 5, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 9, 8, 7, 6, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -1105,6 +1114,20 @@ function our_descriptor_number_onchange() {
 
 function ignore_auth_dev_inputs_onchange() {
     config['ignore_auth_dev_inputs'] = document.getElementById("ignore_auth_dev_inputs_checkbox").checked;
+}
+
+function macro_entry_duration_onchange() {
+    let value = parseInt(document.getElementById("macro_entry_duration_input").value, 10);
+    if (isNaN(value)) {
+        value = DEFAULT_MACRO_ENTRY_DURATION;
+    }
+    if (value < 1) {
+        value = 1;
+    }
+    if (value > 256) {
+        value = 256;
+    }
+    config['macro_entry_duration'] = value;
 }
 
 function load_example(n) {

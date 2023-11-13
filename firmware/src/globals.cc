@@ -28,6 +28,7 @@ uint32_t tap_hold_threshold = 200000;
 uint64_t gpio_debounce_time = 5000;
 uint8_t our_descriptor_number = 0;
 bool ignore_auth_dev_inputs = false;
+uint8_t macro_entry_duration = 0;  // 0 means 1ms
 
 std::vector<mapping_config_t> config_mappings;
 
