@@ -18,6 +18,9 @@ const uint16_t PRODUCT_ID_KENSINGTON_SLIMBLADE = 0x2041;
 const uint16_t VENDOR_ID_CH_PRODUCTS = 0x068e;
 const uint16_t PRODUCT_ID_CH_PRODUCTS_DT225 = 0xf700;
 
+const uint16_t VENDOR_ID_THRUSTMASTER = 0x044f;
+const uint16_t PRODUCT_ID_T_FLIGHT_HOTAS_4 = 0xb67b;
+
 const uint8_t elecom_huge_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
     0x09, 0x02,        // Usage (Mouse)
@@ -306,6 +309,86 @@ const uint8_t ch_products_dt225_descriptor[] = {
     0xC0,        // End Collection
 };
 
+const uint8_t t_flight_hotas_4_descriptor[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, 0x01,        //   Report ID (1)
+    0x09, 0x30,        //   Usage (X)
+    0x09, 0x31,        //   Usage (Y)
+    0x09, 0x32,        //   Usage (Z)
+    0x09, 0x35,        //   Usage (Rz)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x04,        //   Report Count (4)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x39,        //   Usage (Hat switch)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x07,        //   Logical Maximum (7)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x46, 0x3B, 0x01,  //   Physical Maximum (315)
+    0x65, 0x14,        //   Unit (System: English Rotation, Length: Centimeter)
+    0x75, 0x04,        //   Report Size (4)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x42,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
+    0x65, 0x00,        //   Unit (None)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x19, 0x01,        //   Usage Minimum (0x01)
+    0x29, 0x0E,        //   Usage Maximum (0x0E)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x0E,        //   Report Count (14)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x06, 0x00, 0xFF,  //   Usage Page (Vendor Defined 0xFF00)
+    0x09, 0x20,        //   Usage (0x20)
+    0x75, 0x06,        //   Report Size (6)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
+    0x09, 0x33,        //   Usage (Rx)
+    0x09, 0x34,        //   Usage (Ry)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x02,        //   Report Count (2)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x06, 0x00, 0xFF,  //   Usage Page (Vendor Defined 0xFF00)
+    0x09, 0x21,        //   Usage (0x21)
+    0x95, 0x36,        //   Report Count (54)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x85, 0x05,        //   Report ID (5)
+    0x09, 0x22,        //   Usage (0x22)
+    0x95, 0x1F,        //   Report Count (31)
+    0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x85, 0x03,        //   Report ID (3)
+    0x0A, 0x21, 0x27,  //   Usage (0x2721)
+    0x95, 0x2F,        //   Report Count (47)
+    0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0xC0,              // End Collection
+    0x06, 0xF0, 0xFF,  // Usage Page (Vendor Defined 0xFFF0)
+    0x09, 0x40,        // Usage (0x40)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, 0xF0,        //   Report ID (-16)
+    0x09, 0x47,        //   Usage (0x47)
+    0x95, 0x3F,        //   Report Count (63)
+    0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x85, 0xF1,        //   Report ID (-15)
+    0x09, 0x48,        //   Usage (0x48)
+    0x95, 0x3F,        //   Report Count (63)
+    0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x85, 0xF2,        //   Report ID (-14)
+    0x09, 0x49,        //   Usage (0x49)
+    0x95, 0x0F,        //   Report Count (15)
+    0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x85, 0xF3,        //   Report ID (-13)
+    0x0A, 0x01, 0x47,  //   Usage (0x4701)
+    0x95, 0x07,        //   Report Count (7)
+    0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0xC0,              // End Collection
+};
+
 void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len) {
     // Button Fn1 is described as a constant (padding) in the descriptor.
     // We add it as button 6.
@@ -432,5 +515,35 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
+    }
+
+    // PS4 controllers hide the interesting data in a vendor specific blob
+    if (vendor_id == VENDOR_ID_THRUSTMASTER &&
+        product_id == PRODUCT_ID_T_FLIGHT_HOTAS_4 &&
+        len == sizeof(t_flight_hotas_4_descriptor) &&
+        !memcmp(report_descriptor, t_flight_hotas_4_descriptor, len)) {
+        usage_map[1][0xFEFE0001] = (usage_def_t){
+            .report_id = 1,
+            .size = 16,
+            .bitpos = 336,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        usage_map[1][0xFEFE0002] = (usage_def_t){
+            .report_id = 1,
+            .size = 16,
+            .bitpos = 352,
+            .is_relative = false,
+            .logical_minimum = 0,
+        };
+        for (int i = 0; i < 8; i++) {
+            usage_map[1][0xFEFE0003 + i] = (usage_def_t){
+                .report_id = 1,
+                .size = 8,
+                .bitpos = (uint16_t) (368 + i * 8),
+                .is_relative = false,
+                .logical_minimum = 0,
+            };
+        }
     }
 }
