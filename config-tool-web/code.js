@@ -290,7 +290,7 @@ async function load_from_device() {
                         if (elem == ops['PUSH']) {
                             expression.push(val.toString());
                         } else {
-                            expression.push('0x' + val.toString(16).padStart(8, '0'));
+                            expression.push('0x' + (val >>> 0).toString(16).padStart(8, '0'));
                         }
                     } else {
                         expression.push(opcodes[elem].toLowerCase());
