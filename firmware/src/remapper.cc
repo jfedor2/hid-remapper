@@ -379,6 +379,19 @@ void set_mapping_from_config() {
         }
     }
 
+    my_mutex_enter(MutexId::MACROS);
+    for (int macro = 0; macro < NMACROS; macro++) {
+        for (auto const& usages : macros[macro]) {
+            for (uint32_t usage : usages) {
+                if ((usage & 0xFFFF0000) == GPIO_USAGE_PAGE) {
+                    uint16_t pin = usage & 0xFFFF;
+                    gpio_out_mask_ |= 1 << pin;
+                }
+            }
+        }
+    }
+    my_mutex_exit(MutexId::MACROS);
+
     sticky_usages.clear();
     tap_hold_usages.clear();
     tap_sticky_usages.clear();
@@ -864,10 +877,14 @@ void process_mapping(bool auto_repeat) {
     // execute queued macros
     if (!macro_queue.empty()) {
         for (uint32_t usage : macro_queue.front().items) {
-            auto search = our_usages_flat.find(usage);
-            if (search != our_usages_flat.end()) {
-                const usage_def_t& our_usage = search->second;
-                put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, 1);
+            if ((usage & 0xFFFF0000) == GPIO_USAGE_PAGE) {
+                put_bits(gpio_out_state, sizeof(gpio_out_state), (uint16_t) (usage & 0xFFFF), 1, 1);
+            } else {
+                auto search = our_usages_flat.find(usage);
+                if (search != our_usages_flat.end()) {
+                    const usage_def_t& our_usage = search->second;
+                    put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, 1);
+                }
             }
         }
         if (macro_queue.front().duration_left > 0) {
