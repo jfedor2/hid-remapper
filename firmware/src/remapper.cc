@@ -856,11 +856,16 @@ void process_mapping(bool auto_repeat) {
                                 (map_source.hold && hold_state[map_source.usage])) {
                                 value = 1;
                             }
-                            if ((!map_source.tap && !map_source.hold) &&
-                                (map_source.is_relative
-                                        ? (*map_source.input_state * map_source.scaling > 0)
-                                        : *map_source.input_state)) {
-                                value = 1;
+                            if (!map_source.tap && !map_source.hold) {
+                                if (map_source.is_relative) {
+                                    if (*map_source.input_state * map_source.scaling > 0) {
+                                        value = 1;
+                                    }
+                                } else {
+                                    if (*map_source.input_state) {
+                                        value = *map_source.input_state;
+                                    }
+                                }
                             }
                         }
                     }
@@ -868,6 +873,9 @@ void process_mapping(bool auto_repeat) {
             }
             if (value) {
                 for (auto const& out_usage_def : rev_map.our_usages) {
+                    if (out_usage_def.size == 1) {
+                        value = 1;
+                    }
                     put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos, out_usage_def.size, value);
                 }
             }
