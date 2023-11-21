@@ -898,7 +898,9 @@ void process_mapping(bool auto_repeat) {
         if (macro_queue.front().duration_left > 0) {
             macro_queue.front().duration_left--;
         } else {
-            macro_queue.pop();
+            if (or_items == 0) {
+                macro_queue.pop();
+            }
         }
     }
 
