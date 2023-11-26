@@ -54,7 +54,6 @@ std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<int32_t*>>>
 std::vector<usage_layer_mask_input_state_t> sticky_usages;
 std::vector<usage_layer_mask_t> tap_sticky_usages;
 std::vector<usage_input_state_t> tap_hold_usages;
-std::vector<uint32_t> macro_usages;
 
 // report_id -> ...
 uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
@@ -289,7 +288,6 @@ void set_mapping_from_config() {
     std::unordered_map<uint32_t, uint8_t> sticky_usage_map;
     std::unordered_map<uint32_t, uint8_t> tap_sticky_usage_map;
     std::unordered_set<uint32_t> tap_hold_usage_set;
-    std::unordered_set<uint32_t> macro_usage_set;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     validate_expressions();
@@ -366,9 +364,6 @@ void set_mapping_from_config() {
             ((mapping.flags & MAPPING_FLAG_HOLD) != 0)) {
             tap_hold_usage_set.insert(mapping.source_usage);
         }
-        if ((mapping.target_usage & 0xFFFF0000) == MACRO_USAGE_PAGE) {
-            macro_usage_set.insert(mapping.source_usage);
-        }
     }
 
     for (uint8_t expr = 0; expr < NEXPRESSIONS; expr++) {
@@ -395,7 +390,6 @@ void set_mapping_from_config() {
     sticky_usages.clear();
     tap_hold_usages.clear();
     tap_sticky_usages.clear();
-    macro_usages.clear();
 
     for (auto const& [usage, layer_mask] : sticky_usage_map) {
         int32_t* state_ptr = get_state_ptr(usage);
@@ -423,10 +417,6 @@ void set_mapping_from_config() {
                 .input_state = state_ptr,
             });
         }
-    }
-
-    for (auto const usage : macro_usage_set) {
-        macro_usages.push_back(usage);
     }
 
     if (unmapped_passthrough_layer_mask) {
