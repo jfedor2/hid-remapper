@@ -24,7 +24,7 @@ add_compile_options(-Wall)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
 
 if(PICO_BOARD STREQUAL "pico")
-add_compile_definitions(GPIO_VALID_PINS_BASE=0b00011100011111111111111111111111)
+add_compile_definitions(GPIO_VALID_PINS_BASE=0b00111100011111111111111111111111)
 endif()
 
 
