@@ -74,7 +74,6 @@ target_link_libraries(remapper
     usb_midi_host
 )
 
-pico_set_binary_type(remapper copy_to_ram)
 pico_add_extra_outputs(remapper)
 
 
