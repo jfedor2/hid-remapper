@@ -507,7 +507,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "Remapper4.1.step",
+      "step": "Remapper-v3.1-pcb.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""

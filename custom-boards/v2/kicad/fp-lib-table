@@ -1,4 +1,6 @@
 (fp_lib_table
+  (version 7)
   (lib (name "RP2040")(type "KiCad")(uri "${KIPRJMOD}/RP2040.pretty")(options "")(descr ""))
   (lib (name "USON")(type "KiCad")(uri "${KIPRJMOD}/USON.pretty")(options "")(descr ""))
+  (lib (name "SOT")(type "KiCad")(uri "${KIPRJMOD}/SOT.pretty")(options "")(descr ""))
 )

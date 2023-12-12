@@ -482,7 +482,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "Remapper-v5-pcb.step",
+      "step": "Remapper-v5.1-pcb.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""

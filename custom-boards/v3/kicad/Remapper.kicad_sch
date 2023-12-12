@@ -3496,7 +3496,7 @@
     (property "Datasheet" "http://www.winbond.com/resource-files/w25q128jv_dtr%20revc%2003272018%20plus.pdf" (at 204.47 147.32 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "LCSC" "C401667" (at 204.47 147.32 0)
+    (property "LCSC" "C2843335" (at 204.47 147.32 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (pin "1" (uuid 9f33bac8-0d04-4d24-a31f-12f71a2e0387))
