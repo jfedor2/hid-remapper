@@ -2,19 +2,21 @@
 
 This document describes how to have custom HID Remapper boards manufactured using the provided design files at a service like JLCPCB. If you'd rather make the device using a Raspberry Pi Pico, see [here](../HARDWARE.md) for details on that option.
 
-There are five versions, imaginatively named v1-v5. v1, v2 and v5 are equivalent to the dual Pico variant when it comes to functionality and device compatibility. v3 and v4 are equivalent to the single Pico variant.
+There are six versions, imaginatively named v1-v6. v1, v2, v5 and v6 are equivalent to the dual Pico variant when it comes to functionality and device compatibility. v3 and v4 are equivalent to the single Pico variant.
 
 ![Custom HID Remapper boards](../images/custom-boards.jpg)
 
-The main advantage of the v1 version is that it can be made with no soldering, you just order the board, flash the firmware, and have a working device. Files for an optional 3D printable enclosure are also available (it uses M2x8 flat head screws).
+The main advantage of the v1 board is that it can be made with no soldering, you just order the board, flash the firmware, and have a working device. Files for an optional 3D printable enclosure are also available (it uses M2x8 flat head screws).
 
-The v2 version doesn't have USB connectors and is meant to be built into existing devices like trackballs by soldering the appropriate wires directly to the board.
+The v2 board doesn't have USB connectors and is meant to be built into existing devices like trackballs by soldering the appropriate wires directly to the board.
 
-The v3 version has the form factor of a USB dongle (you plug it directly into your computer).
+The v3 board has the form factor of a USB dongle (you plug it directly into your computer).
 
-The v4 version has eight 3.5mm connectors wired to GPIO2-9, meant to be used with external buttons or switches. The 3D printed case for it uses two M2x4 screws and four M3x10 flat head screws.
+The v4 board has eight 3.5mm connectors wired to GPIO2-9, meant to be used with external buttons or switches. The 3D printed case for it uses two M2x4 screws and four M3x10 flat head screws.
 
-The v5 version has a built-in four port USB hub. The 3D printed case for it uses one M2x4 screw and four M3x10 flat head screws.
+The v5 board has a built-in four port USB hub. The 3D printed case for it uses one M2x4 screw and four M3x10 flat head screws.
+
+The v6 board has a built-in four port USB hub and eighteen 3.5mm connectors wired to GPIO pins that can be used with external buttons or switches. The 3D printed case for it uses three M2x4 screws and four M3x10 flat head screws.
 
 ## How to order the boards
 
@@ -26,13 +28,13 @@ If you want to use some other service than JLCPCB, you will likely need to adapt
 
 ### Firmware flashing mode
 
-v1 and v3/v4/v5 boards have buttons labeled "BOOT\_A" and "BOOT", respectively. These work the same as the BOOTSEL button on a Raspberry Pi Pico. You hold the button while connecting it to a computer to put the board in firmware flashing mode. The v2 board doesn't have a button, but it has the equivalent pin broken out. Short the BOOT pin on the A side to GND while connecting the board to a computer to put it in firmware flashing mode. Then copy the UF2 file to the drive that appears.
+v1 and v3/v4/v5/v6 boards have buttons labeled "BOOT\_A" and "BOOT", respectively. These work the same as the BOOTSEL button on a Raspberry Pi Pico. You hold the button while connecting it to a computer to put the board in firmware flashing mode. The v2 board doesn't have a button, but it has the equivalent pin broken out. Short the BOOT pin on the A side to GND while connecting the board to a computer to put it in firmware flashing mode. Then copy the UF2 file to the drive that appears.
 
 If the board is already flashed with some version of the HID Remapper firmware then you can also put it in firmware flashing mode by going to the web config tool and pressing the "Flash firmware" button. This is useful when you want to upgrade the firmware on a device that is not easily accessible.
 
 When the board is fresh from the factory (has never been flashed), it should enter firmware flashing mode automatically when you connect it to a computer with no additional steps necessary.
 
-### v1, v2 and v5
+### v1, v2, v5 and v6
 
 There are two RP2040 chips on each board and each chip has to be flashed with appropriate firmware. The procedure to do it goes as follows:
 
@@ -47,4 +49,4 @@ Flash the board with [remapper\_feather.uf2](https://github.com/jfedor2/hid-rema
 
 ## Acknowledgements
 
-v1, v4 and v5 PCB designs use [Type-C.pretty](https://github.com/ai03-2725/Type-C.pretty) library by [ai03-2725](https://github.com/ai03-2725).
+v1, v4, v5 and v6 PCB designs use [Type-C.pretty](https://github.com/ai03-2725/Type-C.pretty) library by [ai03-2725](https://github.com/ai03-2725).

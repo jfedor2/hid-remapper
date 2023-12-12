@@ -1,0 +1,6 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "RP2040")(type "KiCad")(uri "${KIPRJMOD}/RP2040.pretty/MCU_RaspberryPi_RP2040.kicad_sym")(options "")(descr ""))
+  (lib (name "Type-C")(type "KiCad")(uri "${KIPRJMOD}/Type-C.pretty/Type-C.kicad_sym")(options "")(descr ""))
+  (lib (name "SL2.1A")(type "KiCad")(uri "${KIPRJMOD}/SL2.1A.pretty/SL2.1A.kicad_sym")(options "")(descr ""))
+)
