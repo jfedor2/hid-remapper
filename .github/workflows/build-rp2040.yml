@@ -35,10 +35,16 @@ jobs:
           PICO_BOARD=feather_host cmake ..
           make remapper
           cd ..
+          mkdir build-waveshare_rp2040_pizero
+          cd build-waveshare_rp2040_pizero
+          PICO_BOARD=waveshare_rp2040_pizero cmake ..
+          make remapper
+          cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
           mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board.uf2
           mv build-feather/remapper.uf2 artifacts/remapper_feather.uf2
+          mv build-waveshare_rp2040_pizero/remapper.uf2 artifacts/remapper_waveshare_rp2040_pizero.uf2
         working-directory: ./firmware
       - uses: actions/upload-artifact@v3
         with:
