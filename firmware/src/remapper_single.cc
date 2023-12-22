@@ -45,20 +45,24 @@ void interval_override_updated() {
 void flash_b_side() {
 }
 
-void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
+void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port) {
     parse_descriptor(vendor_id, product_id, report_descriptor, len, interface);
 }
 
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
     printf("tuh_hid_mount_cb\n");
 
+    uint8_t hub_addr;
+    uint8_t hub_port;
+    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+
     uint16_t vid;
     uint16_t pid;
     tuh_vid_pid_get(dev_addr, &vid, &pid);
 
-    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance);
+    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance, hub_port);
 
-    device_connected_callback((uint16_t) (dev_addr << 8) | instance, vid, pid);
+    device_connected_callback((uint16_t) (dev_addr << 8) | instance, vid, pid, hub_port);
 
     tuh_hid_receive_report(dev_addr, instance);
 }
@@ -87,9 +91,13 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 }
 
 void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
+    uint8_t hub_addr;
+    uint8_t hub_port;
+    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+
     uint8_t buf[4];
     while (tuh_midi_packet_read(dev_addr, buf)) {
-        handle_received_midi(dev_addr, buf);
+        handle_received_midi(hub_port, buf);
     }
     reports_received = true;
 }

@@ -38,7 +38,7 @@ extern bool ignore_auth_dev_inputs;
 extern uint8_t macro_entry_duration;
 extern uint8_t gpio_output_mode;
 
-extern std::vector<mapping_config_t> config_mappings;
+extern std::vector<mapping_config11_t> config_mappings;
 
 extern uint8_t resolution_multiplier;
 

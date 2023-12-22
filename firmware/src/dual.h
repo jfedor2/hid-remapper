@@ -25,6 +25,7 @@ struct __attribute__((packed)) device_connected_t {
     uint16_t pid;
     uint8_t dev_addr;
     uint8_t interface;
+    uint8_t hub_port;
     uint8_t report_descriptor[0];
 };
 
@@ -99,7 +100,7 @@ struct __attribute__((packed)) set_feature_complete_t {
 
 struct __attribute__((packed)) midi_received_t {
     DualCommand command = DualCommand::MIDI_RECEIVED;
-    uint8_t dev_addr;
+    uint8_t hub_port;
     uint8_t msg[4];
 };
 

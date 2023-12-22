@@ -92,7 +92,7 @@ bool read_gpio(uint64_t now) {
                     int32_t state = !(gpio_state & bit);  // active low
                     set_input_state(usage, state);
                     if (monitor_enabled) {
-                        monitor_usage(usage, state);
+                        monitor_usage(usage, state, 0);
                     }
                     last_gpio_change[i] = now;
                 } else {

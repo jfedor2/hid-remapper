@@ -35,7 +35,7 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
         case DualCommand::DEVICE_CONNECTED: {
             device_connected_t* msg = (device_connected_t*) data;
             parse_descriptor(msg->vid, msg->pid, msg->report_descriptor, len - sizeof(device_connected_t), (uint16_t) (msg->dev_addr << 8) | msg->interface);
-            device_connected_callback((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->vid, msg->pid);
+            device_connected_callback((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->vid, msg->pid, msg->hub_port);
             break;
         }
         case DualCommand::DEVICE_DISCONNECTED: {
@@ -67,7 +67,7 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
         }
         case DualCommand::MIDI_RECEIVED: {
             midi_received_t* msg = (midi_received_t*) data;
-            handle_received_midi(msg->dev_addr, msg->msg);
+            handle_received_midi(msg->hub_port, msg->msg);
             ret = true;
             break;
         }

@@ -59,9 +59,10 @@ for i in range(mapping_count):
         scaling,
         layer_mask,
         flags,
+        hub_ports,
         *_,
         crc,
-    ) = struct.unpack("<BLLlBB14BL", data)
+    ) = struct.unpack("<BLLlBBB13BL", data)
     check_crc(data, crc)
     config["mappings"].append(
         {
@@ -72,6 +73,8 @@ for i in range(mapping_count):
             "sticky": (flags & STICKY_FLAG) != 0,
             "tap": (flags & TAP_FLAG) != 0,
             "hold": (flags & HOLD_FLAG) != 0,
+            "source_port": hub_ports & 0x0F,
+            "target_port": (hub_ports >> 4) & 0x0F,
         }
     )
 

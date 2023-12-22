@@ -6,7 +6,7 @@ It can do things like reassign buttons, change keyboard layouts, map mouse butto
 
 It is configurable [through a web browser](https://www.jfedor.org/hid-remapper-config/) using WebHID (Chrome or Chrome-based browser required).
 
-Wireless receivers are supported and multiple devices can be connected at the same time using a USB hub.
+Wireless receivers are supported and multiple devices can be connected at the same time using a USB hub (with different mappings for each device if desired).
 
 In addition to the remapping functionality, it can do polling rate overclocking up to 1000 Hz.
 

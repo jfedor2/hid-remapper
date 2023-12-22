@@ -31,7 +31,7 @@ bool ignore_auth_dev_inputs = false;
 uint8_t macro_entry_duration = 0;  // 0 means 1ms
 uint8_t gpio_output_mode = 0;
 
-std::vector<mapping_config_t> config_mappings;
+std::vector<mapping_config11_t> config_mappings;
 
 uint8_t resolution_multiplier = 0;
 

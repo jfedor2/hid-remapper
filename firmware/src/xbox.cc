@@ -207,7 +207,11 @@ static void process_setup(struct xdev_t* xdev) {
         case 3:
             xdev->setup_stage = 0;
             xxfer_in(xdev);
-            descriptor_received_callback(0, 0, xbox_one_descriptor, sizeof(xbox_one_descriptor), (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num);
+
+            uint8_t hub_addr;
+            uint8_t hub_port;
+            tuh_get_hub_addr_port(xdev->dev_addr, &hub_addr, &hub_port);
+            descriptor_received_callback(0, 0, xbox_one_descriptor, sizeof(xbox_one_descriptor), (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num, hub_port);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
     }

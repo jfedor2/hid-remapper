@@ -41,7 +41,8 @@ struct usage_def_t {
     uint32_t index = 0;      // for arrays
     uint32_t count = 0;      // for arrays
     uint32_t usage_maximum;  // effective, for arrays/usage ranges
-    int32_t* input_state = NULL;
+    int32_t* input_state_0 = NULL;
+    int32_t* input_state_n = NULL;
 };
 
 struct usage_usage_def_t {
@@ -84,6 +85,7 @@ enum class Op : int8_t {
     SQRT = 31,
     ATAN2 = 32,
     ROUND = 33,
+    PORT = 34,
 };
 
 struct expr_elem_t {
@@ -99,7 +101,12 @@ struct map_source_t {
     bool tap = false;
     bool hold = false;
     int32_t* input_state;
+    bool* tap_state;
+    bool* hold_state;
+    uint8_t* sticky_state;
     bool is_relative = false;
+    int32_t accumulated_scroll;
+    uint64_t last_scroll_timestamp;  // XXX we can make this 32 or less bits
 };
 
 struct out_usage_def_t {
@@ -111,25 +118,29 @@ struct out_usage_def_t {
 
 struct reverse_mapping_t {
     uint32_t target;
+    uint8_t hub_port = 0;
     bool is_relative = false;
     std::vector<out_usage_def_t> our_usages;
     std::vector<map_source_t> sources;
 };
 
-struct usage_input_state_t {
-    uint32_t usage;
+struct tap_hold_usage_t {
     int32_t* input_state;
+    bool* tap_state;
+    bool* hold_state;
+    uint64_t pressed_at;
 };
 
-struct usage_layer_mask_input_state_t {
-    uint32_t usage;
+struct sticky_usage_t {
     int32_t* input_state;
+    uint8_t* sticky_state;
     uint8_t layer_mask;
 };
 
-struct usage_layer_mask_t {
-    uint32_t usage;
+struct tap_sticky_usage_t {
     uint8_t layer_mask;
+    bool* tap_state;
+    uint8_t* sticky_state;
 };
 
 struct usage_rle_t {
@@ -149,12 +160,21 @@ struct __attribute__((packed)) get_feature_t {
     uint32_t crc32;
 };
 
-struct __attribute__((packed)) mapping_config_t {
+struct __attribute__((packed)) mapping_config10_t {
     uint32_t target_usage;
     uint32_t source_usage;
     int32_t scaling;  // * 1000
     uint8_t layer_mask;
     uint8_t flags;
+};
+
+struct __attribute__((packed)) mapping_config11_t {
+    uint32_t target_usage;
+    uint32_t source_usage;
+    int32_t scaling;  // * 1000
+    uint8_t layer_mask;
+    uint8_t flags;
+    uint8_t hub_ports = 0;
 };
 
 struct __attribute__((packed)) config_version_t {
@@ -213,7 +233,9 @@ struct __attribute__((packed)) persist_config_v10_t {
     uint8_t macro_entry_duration;
 };
 
-typedef persist_config_v10_t persist_config_t;
+typedef persist_config_v10_t persist_config_v11_t;
+
+typedef persist_config_v11_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
     uint8_t version;
@@ -306,14 +328,15 @@ struct __attribute__((packed)) monitor_t {
     uint8_t enabled;
 };
 
-struct __attribute__((packed)) usage_value_t {
+struct __attribute__((packed)) monitor_report_item_t {
     uint32_t usage;
     int32_t value;
+    uint8_t hub_port;
 };
 
 struct __attribute__((packed)) monitor_report_t {
     uint8_t report_id;
-    usage_value_t usage_values[7];
+    monitor_report_item_t items[7];
 };
 
 #endif

@@ -91,23 +91,30 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     tuh_hid_receive_report(dev_addr, instance);
 }
 
-void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
+void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port) {
     device_connected_t* msg = (device_connected_t*) buffer;
     msg->command = DualCommand::DEVICE_CONNECTED;
     msg->vid = vendor_id;
     msg->pid = product_id;
     msg->dev_addr = (interface >> 8) & 0xFF;
     msg->interface = interface & 0xFF;
+    msg->hub_port = hub_port;
     memcpy(msg->report_descriptor, report_descriptor, len);
     serial_write((uint8_t*) msg, len + sizeof(device_connected_t));
 }
 
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
     printf("tuh_hid_mount_cb\n");
+
+    uint8_t hub_addr;
+    uint8_t hub_port;
+    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+
     uint16_t vid;
     uint16_t pid;
     tuh_vid_pid_get(dev_addr, &vid, &pid);
-    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance);
+
+    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance, hub_port);
     tuh_hid_receive_report(dev_addr, instance);
 }
 
@@ -150,9 +157,13 @@ void set_report_complete_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_
 void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
     activity_led_on();
 
+    uint8_t hub_addr;
+    uint8_t hub_port;
+    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+
     midi_received_t* msg = (midi_received_t*) buffer;
     msg->command = DualCommand::MIDI_RECEIVED;
-    msg->dev_addr = dev_addr;
+    msg->hub_port = hub_port;
     while (tuh_midi_packet_read(dev_addr, msg->msg)) {
         serial_write((uint8_t*) msg, sizeof(midi_received_t));
     }

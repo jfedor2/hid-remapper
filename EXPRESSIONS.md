@@ -141,3 +141,4 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `sticky_state` | _usage_ | _sticky\_state(usage)_ | Bit mask of layers on which given usage is in sticky state. |
 | `tap_state` | _usage_ | _tap\_state(usage)_ | 1 if input is in tap state, 0 otherwise. |
 | `hold_state` | _usage_ | _hold\_state(usage)_ | 1 if input is in hold state, 0 otherwise. |
+| `port` | _port number_ | | Sets the value of the port register that determines which input state is fetched by `input_state` etc. Defaults to 0 at the beginning of each mapping engine iteration, which means "all ports". |

@@ -8,7 +8,7 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 10;
+const CONFIG_VERSION = 11;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -86,6 +86,7 @@ const ops = {
     "SQRT": 31,
     "ATAN2": 32,
     "ROUND": 33,
+    "PORT": 34,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
@@ -117,6 +118,8 @@ let config = {
         'tap': false,
         'hold': false,
         'scaling': DEFAULT_SCALING,
+        'source_port': 0,
+        'target_port': 0,
     }],
     macros: [
         [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
@@ -233,8 +236,8 @@ async function load_from_device() {
 
         for (let i = 0; i < mapping_count; i++) {
             await send_feature_command(GET_MAPPING, [[UINT32, i]]);
-            const [target_usage, source_usage, scaling, layer_mask, mapping_flags] =
-                await read_config_feature([UINT32, UINT32, INT32, UINT8, UINT8]);
+            const [target_usage, source_usage, scaling, layer_mask, mapping_flags, hub_ports] =
+                await read_config_feature([UINT32, UINT32, INT32, UINT8, UINT8, UINT8]);
             config['mappings'].push({
                 'target_usage': '0x' + target_usage.toString(16).padStart(8, '0'),
                 'source_usage': '0x' + source_usage.toString(16).padStart(8, '0'),
@@ -243,6 +246,8 @@ async function load_from_device() {
                 'sticky': (mapping_flags & STICKY_FLAG) != 0,
                 'tap': (mapping_flags & TAP_FLAG) != 0,
                 'hold': (mapping_flags & HOLD_FLAG) != 0,
+                'source_port': hub_ports & 0x0F,
+                'target_port': (hub_ports >> 4) & 0x0F,
             });
         }
 
@@ -346,7 +351,8 @@ async function save_to_device() {
                 [UINT8, layer_list_to_mask(mapping['layers'])],
                 [UINT8, (mapping['sticky'] ? STICKY_FLAG : 0)
                     | (mapping['tap'] ? TAP_FLAG : 0)
-                    | (mapping['hold'] ? HOLD_FLAG : 0)]
+                    | (mapping['hold'] ? HOLD_FLAG : 0)],
+                [UINT8, ((mapping['target_port'] & 0x0F) << 4) | (mapping['source_port'] & 0x0F)],
             ]);
         }
 
@@ -582,6 +588,12 @@ function set_ui_state() {
         config['macro_entry_duration'] = DEFAULT_MACRO_ENTRY_DURATION;
         config['gpio_output_mode'] = 0;
     }
+    if (config['version'] < 11) {
+        for (const mapping of config['mappings']) {
+            mapping['source_port'] = 0;
+            mapping['target_port'] = 0;
+        }
+    }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
     }
@@ -591,6 +603,16 @@ function set_ui_state() {
     set_macros_ui_state();
     set_expressions_ui_state();
     setup_usages_modals();
+}
+
+function set_port_badge(button_element, port) {
+    const port_badge = button_element.querySelector('.hub_port_badge');
+    port_badge.innerText = port;
+    if (port == 0) {
+        port_badge.classList.add('d-none');
+    } else {
+        port_badge.classList.remove('d-none');
+    }
 }
 
 function add_mapping(mapping) {
@@ -616,16 +638,18 @@ function add_mapping(mapping) {
         layer_checkbox.addEventListener("change", layer_checkbox_onchange(mapping, layer_checkbox, i));
     }
     const source_button = clone.querySelector(".source_button");
-    source_button.innerText =
+    source_button.querySelector('.button_label').innerText =
         'source_name' in mapping ? mapping['source_name'] : readable_usage_name(mapping['source_usage']);
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
     source_button.title = mapping['source_usage'];
     source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));
+    set_port_badge(source_button, mapping['source_port']);
     const target_button = clone.querySelector(".target_button");
-    target_button.innerText = readable_target_usage_name(mapping['target_usage']);
+    target_button.querySelector('.button_label').innerText = readable_target_usage_name(mapping['target_usage']);
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
     target_button.title = mapping['target_usage'];
     target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
+    set_port_badge(target_button, mapping['target_port']);
     container.appendChild(clone);
     set_forced_layers(mapping, clone);
     set_forced_flags(mapping, clone);
@@ -768,7 +792,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5, 6, 7, 8, 9, 10].includes(config_version))) {
+    if (!([3, 4, 5, 6, 7, 8, 9, 10, 11].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -784,7 +808,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 9, 8, 7, 6, 5, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 10, 9, 8, 7, 6, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -901,7 +925,7 @@ function show_usage_modal(mapping, source_or_target, element) {
                 if (mapping !== null) {
                     mapping[source_or_target + '_usage'] = usage;
                 }
-                element.innerText =
+                element.querySelector('.button_label').innerText =
                     source_or_target == "source" ? readable_usage_name(usage) : readable_target_usage_name(usage);
 
                 element.title = usage;
@@ -922,6 +946,23 @@ function show_usage_modal(mapping, source_or_target, element) {
                 modal_.hide();
             });
         });
+        const hub_port_container = modal_element.querySelector('.hub_port_container');
+        if (source_or_target == "macro_item") {
+            hub_port_container.classList.add('d-none');
+        } else {
+            let clone = hub_port_container.cloneNode(true);
+            hub_port_container.parentElement.replaceChild(clone, hub_port_container); // to clear existing event listeners
+            if (source_or_target == "target") {
+                clone.classList.remove('d-none');
+            }
+            const hub_port_dropdown = clone.querySelector('.hub_port_dropdown');
+            hub_port_dropdown.value = mapping[source_or_target + '_port'];
+            hub_port_dropdown.addEventListener("change", function () {
+                const hub_port = parseInt(hub_port_dropdown.value, 10)
+                set_port_badge(element, hub_port);
+                mapping[source_or_target + '_port'] = hub_port;
+            });
+        }
         modal_.show();
     };
 }
@@ -934,7 +975,9 @@ function add_empty_mapping(source_usage = '0x00000000') {
         'sticky': false,
         'tap': false,
         'hold': false,
-        'scaling': DEFAULT_SCALING
+        'scaling': DEFAULT_SCALING,
+        'source_port': 0,
+        'target_port': 0,
     };
     config['mappings'].push(new_mapping);
     add_mapping(new_mapping);
@@ -1302,16 +1345,17 @@ function input_report_received(event) {
             element.classList.remove('bg-light');
         });
         for (let i = 0; i < 7; i++) {
-            const usage = "0x" + event.data.getUint32(i * 8, true).toString(16).padStart(8, "0");
-            const value = event.data.getInt32(i * 8 + 4, true);
+            const usage = "0x" + event.data.getUint32(i * 9, true).toString(16).padStart(8, "0");
+            const value = event.data.getInt32(i * 9 + 4, true);
+            const hub_port = event.data.getUint8(i * 9 + 8);
             if (usage != 0) {
-                update_monitor_ui(usage, value);
+                update_monitor_ui(usage, value, hub_port);
             }
         }
     }
 }
 
-function update_monitor_ui(usage, value) {
+function update_monitor_ui(usage, value, hub_port) {
     let element = document.getElementById('monitor_usage_' + usage);
     if (element == null) {
         const template = document.getElementById("monitor_template");

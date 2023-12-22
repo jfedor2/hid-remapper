@@ -464,7 +464,7 @@ const uint8_t config_report_descriptor[] = {
     0x09, 0x21,               //   Usage (0x21)
     0x85, REPORT_ID_MONITOR,  //   Report ID (REPORT_ID_MONITOR)
     0x75, 0x08,               //   Report Size (8)
-    0x95, 0x38,               //   Report Count (56)
+    0x95, 0x3F,               //   Report Count (63)
     0x81, 0x02,               //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,                     // End Collection
 };

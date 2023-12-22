@@ -9,7 +9,7 @@ PRODUCT_ID = 0xBAF2
 CONFIG_USAGE_PAGE = 0xFF00
 CONFIG_USAGE = 0x0020
 
-CONFIG_VERSION = 10
+CONFIG_VERSION = 11
 CONFIG_SIZE = 32
 REPORT_ID_CONFIG = 100
 
@@ -92,6 +92,7 @@ ops = {
     "SQRT": 31,
     "ATAN2": 32,
     "ROUND": 33,
+    "PORT": 34,
 }
 
 opcodes = {v: k for k, v in ops.items()}

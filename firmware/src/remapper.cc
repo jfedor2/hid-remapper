@@ -36,9 +36,9 @@ const uint32_t MIDI_USAGE_PAGE = 0xFFF70000;
 
 const uint16_t STACK_SIZE = 16;
 
-const std::unordered_map<uint32_t, uint8_t> resolution_multiplier_masks = {
-    { V_SCROLL_USAGE, V_RESOLUTION_BITMASK },
-    { H_SCROLL_USAGE, H_RESOLUTION_BITMASK },
+const uint8_t resolution_multiplier_masks[] = {
+    V_RESOLUTION_BITMASK,
+    H_RESOLUTION_BITMASK,
 };
 
 std::vector<reverse_mapping_t> reverse_mapping;
@@ -51,9 +51,9 @@ std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_usage_def_t>>> their_used_usages;  // dev_addr+interface -> report_id -> (usage, usage_def)
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<int32_t*>>> array_range_usages;          // dev_addr+interface -> report_id -> input_state ptr vector
 
-std::vector<usage_layer_mask_input_state_t> sticky_usages;
-std::vector<usage_layer_mask_t> tap_sticky_usages;
-std::vector<usage_input_state_t> tap_hold_usages;
+std::vector<sticky_usage_t> sticky_usages;
+std::vector<tap_sticky_usage_t> tap_sticky_usages;
+std::vector<tap_hold_usage_t> tap_hold_usages;
 
 // report_id -> ...
 uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
@@ -74,15 +74,13 @@ std::vector<uint8_t> report_ids;
 #define PREV_STATE_OFFSET MAX_INPUT_STATES
 
 int32_t input_state[MAX_INPUT_STATES * 2];
-std::unordered_map<uint32_t, int32_t*> usage_state_ptr;  // usage -> input_state pointer
+bool tap_state[MAX_INPUT_STATES];
+bool hold_state[MAX_INPUT_STATES];
+uint8_t sticky_state[MAX_INPUT_STATES];                  // state per layer (mask)
+std::unordered_map<uint64_t, int32_t*> usage_state_ptr;  // usage -> input_state pointer
 uint32_t used_state_slots = 0;
 
-// usage -> ...
-std::unordered_map<uint32_t, int8_t> sticky_state;  // usage -> state per layer (mask)
-std::unordered_map<uint32_t, int8_t> tap_state;
-std::unordered_map<uint32_t, int8_t> hold_state;
-std::unordered_map<uint32_t, int32_t> accumulated;  // * 1000
-std::unordered_map<uint32_t, uint64_t> pressed_at;  // usage -> timestamp
+std::unordered_map<uint32_t, int32_t> accumulated;  // usage -> relative movement, * 1000
 uint8_t layer_state_mask = 1;
 
 std::vector<int32_t*> relative_usages;  // input_state pointers
@@ -93,9 +91,6 @@ struct macro_entry_t {
 };
 
 std::queue<macro_entry_t> macro_queue;
-
-std::unordered_map<uint32_t, int32_t> accumulated_scroll;
-std::unordered_map<uint32_t, uint64_t> last_scroll_timestamp;
 
 uint32_t reports_received;
 uint32_t reports_sent;
@@ -109,26 +104,29 @@ uint8_t monitor_report_idx = 0;
 
 #define NREGISTERS 32
 int32_t registers[NREGISTERS] = { 0 };
+uint8_t port_register = 0;
 
 uint64_t frame_counter = 0;
 
-int32_t handle_scroll(uint32_t source_usage, uint32_t target_usage, int32_t movement) {
+#define NPORTS 15
+std::unordered_map<uint8_t, uint8_t> hub_ports;  // dev_addr -> hub_port
+
+inline int32_t handle_scroll(map_source_t& map_source, uint32_t target_usage, int32_t movement, uint64_t now) {
+    // movement is always non-zero
     int32_t ret = 0;
-    if (resolution_multiplier & resolution_multiplier_masks.at(target_usage)) {  // hi-res
+    if (resolution_multiplier &
+        resolution_multiplier_masks[target_usage == H_RESOLUTION_BITMASK]) {  // hi-res
         ret = movement;
     } else {  // lo-res
-        if (movement != 0) {
-            last_scroll_timestamp[source_usage] = get_time();
-            accumulated_scroll[source_usage] += movement;
-            int ticks = accumulated_scroll[source_usage] / (1000 * RESOLUTION_MULTIPLIER);
-            accumulated_scroll[source_usage] -= ticks * (1000 * RESOLUTION_MULTIPLIER);
-            ret = ticks * 1000;
-        } else {
-            if ((accumulated_scroll[source_usage] != 0) &&
-                (get_time() - last_scroll_timestamp[source_usage] > partial_scroll_timeout)) {
-                accumulated_scroll[source_usage] = 0;
-            }
+        if ((map_source.accumulated_scroll != 0) &&
+            (now - map_source.last_scroll_timestamp > partial_scroll_timeout)) {
+            map_source.accumulated_scroll = 0;
         }
+        map_source.last_scroll_timestamp = now;
+        map_source.accumulated_scroll += movement;
+        int ticks = map_source.accumulated_scroll / (1000 * RESOLUTION_MULTIPLIER);
+        map_source.accumulated_scroll -= ticks * (1000 * RESOLUTION_MULTIPLIER);
+        ret = ticks * 1000;
     }
     return ret;
 }
@@ -248,8 +246,14 @@ bool is_expr_valid(uint8_t expr) {
                 }
                 on_stack -= 2;
                 break;
+            case Op::PORT:
+                if (on_stack < 1) {
+                    return false;
+                }
+                on_stack--;
+                break;
             default:
-                printf("unknown op in expression_valid()\n");
+                printf("unknown op in is_expr_valid()\n");
                 return false;
         }
     }
@@ -262,32 +266,68 @@ void validate_expressions() {
     }
 }
 
-bool assign_state_slot(uint32_t usage) {
-    if (usage_state_ptr.count(usage) == 0) {
+bool assign_state_slot(uint32_t usage, uint8_t hub_port) {
+    uint64_t key = ((uint64_t) hub_port << 32) | usage;
+    if (usage_state_ptr.count(key) == 0) {
         if (used_state_slots >= MAX_INPUT_STATES) {
             printf("out of input_state slots!");
             return false;
         }
 
-        usage_state_ptr[usage] = input_state + used_state_slots++;
+        usage_state_ptr[key] = input_state + used_state_slots++;
     }
     return true;
 }
 
-inline int32_t* get_state_ptr(uint32_t usage) {
-    auto search = usage_state_ptr.find(usage);
+inline int32_t* get_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false) {
+    uint64_t key = ((uint64_t) hub_port << 32) | usage;
+    auto search = usage_state_ptr.find(key);
     if (search != usage_state_ptr.end()) {
         return search->second;
+    }
+
+    if (assign_if_absent) {
+        if (assign_state_slot(usage, hub_port)) {
+            their_descriptor_updated = true;
+            return usage_state_ptr[key];  // it's zero, but maybe someone wants to write to it
+        }
+    }
+
+    return NULL;
+}
+
+inline bool* get_tap_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false) {
+    int32_t* state_ptr = get_state_ptr(usage, hub_port, assign_if_absent);
+    if (state_ptr != NULL) {
+        return tap_state + (state_ptr - input_state);
+    }
+
+    return NULL;
+}
+
+inline bool* get_hold_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false) {
+    int32_t* state_ptr = get_state_ptr(usage, hub_port, assign_if_absent);
+    if (state_ptr != NULL) {
+        return hold_state + (state_ptr - input_state);
+    }
+
+    return NULL;
+}
+
+inline uint8_t* get_sticky_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false) {
+    int32_t* state_ptr = get_state_ptr(usage, hub_port, assign_if_absent);
+    if (state_ptr != NULL) {
+        return sticky_state + (state_ptr - input_state);
     }
 
     return NULL;
 }
 
 void set_mapping_from_config() {
-    std::unordered_map<uint32_t, std::vector<map_source_t>> reverse_mapping_map;  // target -> sources list
-    std::unordered_map<uint32_t, uint8_t> sticky_usage_map;
-    std::unordered_map<uint32_t, uint8_t> tap_sticky_usage_map;
-    std::unordered_set<uint32_t> tap_hold_usage_set;
+    std::unordered_map<uint64_t, std::vector<map_source_t>> reverse_mapping_map;  // hub_port+target -> sources list
+    std::unordered_map<uint64_t, uint8_t> sticky_usage_map;
+    std::unordered_map<uint64_t, uint8_t> tap_sticky_usage_map;
+    std::unordered_set<uint64_t> tap_hold_usage_set;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     validate_expressions();
@@ -298,11 +338,16 @@ void set_mapping_from_config() {
     used_state_slots = 0;
     usage_state_ptr.clear();
     memset(input_state, 0, sizeof(input_state));
+    memset(tap_state, 0, sizeof(tap_state));
+    memset(hold_state, 0, sizeof(hold_state));
+    memset(sticky_state, 0, sizeof(sticky_state));
     uint32_t gpio_in_mask_ = 0;
     uint32_t gpio_out_mask_ = 0;
 
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
+        uint8_t source_port = mapping.hub_ports & 0x0F;
+        uint8_t target_port = (mapping.hub_ports >> 4) & 0x0F;
         if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
             uint16_t layer = mapping.target_usage & 0xFFFF;
             if (mapping.flags & MAPPING_FLAG_STICKY) {
@@ -326,15 +371,18 @@ void set_mapping_from_config() {
             gpio_in_mask_ |= 1 << pin;
         }
 
-        if (assign_state_slot(mapping.source_usage)) {
-            reverse_mapping_map[mapping.target_usage].push_back((map_source_t){
+        if (assign_state_slot(mapping.source_usage, source_port)) {
+            reverse_mapping_map[((uint64_t) target_port << 32) | mapping.target_usage].push_back((map_source_t){
                 .usage = mapping.source_usage,
                 .scaling = mapping.scaling,
                 .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
                 .layer_mask = layer_mask,
                 .tap = (mapping.flags & MAPPING_FLAG_TAP) != 0,
                 .hold = (mapping.flags & MAPPING_FLAG_HOLD) != 0,
-                .input_state = usage_state_ptr[mapping.source_usage],
+                .input_state = get_state_ptr(mapping.source_usage, source_port),
+                .tap_state = get_tap_state_ptr(mapping.source_usage, source_port),
+                .hold_state = get_hold_state_ptr(mapping.source_usage, source_port),
+                .sticky_state = get_sticky_state_ptr(mapping.source_usage, source_port),
             });
         }
         // if a usage appears in an expression, consider it mapped
@@ -352,24 +400,24 @@ void set_mapping_from_config() {
                 }
             }
         }
-        mapped_on_layers[mapping.source_usage] |= layer_mask;
+        mapped_on_layers[mapping.source_usage] |= layer_mask;  // usage mapped on any hub_port is considered to be mapped
         if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
             if (mapping.flags & MAPPING_FLAG_TAP) {
-                tap_sticky_usage_map[mapping.source_usage] |= layer_mask;
+                tap_sticky_usage_map[((uint64_t) source_port << 32) | mapping.source_usage] |= layer_mask;
             } else {
-                sticky_usage_map[mapping.source_usage] |= layer_mask;
+                sticky_usage_map[((uint64_t) source_port << 32) | mapping.source_usage] |= layer_mask;
             }
         }
         if (((mapping.flags & MAPPING_FLAG_TAP) != 0) ||
             ((mapping.flags & MAPPING_FLAG_HOLD) != 0)) {
-            tap_hold_usage_set.insert(mapping.source_usage);
+            tap_hold_usage_set.insert(((uint64_t) source_port << 32) | mapping.source_usage);
         }
     }
 
     for (uint8_t expr = 0; expr < NEXPRESSIONS; expr++) {
         for (auto const& elem : expressions[expr]) {
             if (elem.op == Op::PUSH_USAGE) {
-                assign_state_slot(elem.val);
+                assign_state_slot(elem.val, 0);  // slots for other ports will be assigned on demand
             }
         }
     }
@@ -391,30 +439,38 @@ void set_mapping_from_config() {
     tap_hold_usages.clear();
     tap_sticky_usages.clear();
 
-    for (auto const& [usage, layer_mask] : sticky_usage_map) {
-        int32_t* state_ptr = get_state_ptr(usage);
+    for (auto const& [hub_port_usage, layer_mask] : sticky_usage_map) {
+        uint32_t usage = hub_port_usage & 0xFFFFFFFF;
+        uint8_t hub_port = hub_port_usage >> 32;
+        int32_t* state_ptr = get_state_ptr(usage, hub_port);
         if (state_ptr != NULL) {
-            sticky_usages.push_back((usage_layer_mask_input_state_t){
-                .usage = usage,
+            sticky_usages.push_back((sticky_usage_t){
                 .input_state = state_ptr,
+                .sticky_state = get_sticky_state_ptr(usage, hub_port),
                 .layer_mask = layer_mask,
             });
         }
     }
 
-    for (auto const& [usage, layer_mask] : tap_sticky_usage_map) {
-        tap_sticky_usages.push_back((usage_layer_mask_t){
-            .usage = usage,
+    for (auto const& [hub_port_usage, layer_mask] : tap_sticky_usage_map) {
+        uint32_t usage = hub_port_usage & 0xFFFFFFFF;
+        uint8_t hub_port = hub_port_usage >> 32;
+        tap_sticky_usages.push_back((tap_sticky_usage_t){
             .layer_mask = layer_mask,
+            .tap_state = get_tap_state_ptr(usage, hub_port),
+            .sticky_state = get_sticky_state_ptr(usage, hub_port),
         });
     }
 
-    for (auto const usage : tap_hold_usage_set) {
-        int32_t* state_ptr = get_state_ptr(usage);
+    for (auto const hub_port_usage : tap_hold_usage_set) {
+        uint32_t usage = hub_port_usage & 0xFFFFFFFF;
+        uint8_t hub_port = hub_port_usage >> 32;
+        int32_t* state_ptr = get_state_ptr(usage, hub_port);
         if (state_ptr != NULL) {
-            tap_hold_usages.push_back((usage_input_state_t){
-                .usage = usage,
+            tap_hold_usages.push_back((tap_hold_usage_t){
                 .input_state = state_ptr,
+                .tap_state = get_tap_state_ptr(usage, hub_port),
+                .hold_state = get_hold_state_ptr(usage, hub_port),
             });
         }
     }
@@ -423,11 +479,11 @@ void set_mapping_from_config() {
         for (auto const& [usage, usage_def] : our_usages_flat) {
             uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
             if (unmapped_layers) {
-                if (assign_state_slot(usage)) {
+                if (assign_state_slot(usage, 0)) {
                     reverse_mapping_map[usage].push_back((map_source_t){
                         .usage = usage,
                         .layer_mask = unmapped_layers,
-                        .input_state = usage_state_ptr[usage],
+                        .input_state = get_state_ptr(usage, 0),
                     });
                 }
             }
@@ -437,20 +493,23 @@ void set_mapping_from_config() {
             for (auto const& [usage, usage_def] : usage_map) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
                 if (unmapped_layers) {
-                    assign_state_slot(usage);
+                    assign_state_slot(usage, 0);
                     reverse_mapping_map[usage].push_back((map_source_t){
                         .usage = usage,
                         .layer_mask = unmapped_layers,
-                        .input_state = usage_state_ptr[usage],
+                        .input_state = get_state_ptr(usage, 0),
                     });
                 }
             }
         }
     }
 
-    for (auto const& [target, sources] : reverse_mapping_map) {
+    for (auto const& [hub_port_target, sources] : reverse_mapping_map) {
+        uint8_t hub_port = (hub_port_target >> 32) & 0xFF;
+        uint32_t target = hub_port_target & 0xFFFFFFFF;
         reverse_mapping_t rev_map = {
             .target = target,
+            .hub_port = hub_port,
             .sources = sources,
         };
         if ((target & 0xFFFF0000) == GPIO_USAGE_PAGE) {
@@ -538,7 +597,7 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[++ptr] = elem.val;
                 break;
             case Op::INPUT_STATE: {
-                int32_t* state_ptr = get_state_ptr(stack[ptr]);
+                int32_t* state_ptr = get_state_ptr(stack[ptr], port_register, true);
                 stack[ptr] = (state_ptr != NULL) ? *state_ptr * 1000 : 0;
                 break;
             }
@@ -569,7 +628,7 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[ptr] = (!stack[ptr]) * 1000;
                 break;
             case Op::INPUT_STATE_BINARY: {
-                int32_t* state_ptr = get_state_ptr(stack[ptr]);
+                int32_t* state_ptr = get_state_ptr(stack[ptr], port_register, true);
                 stack[ptr] = (state_ptr != NULL) ? !!(*state_ptr) * 1000 : 0;
                 break;
             }
@@ -613,15 +672,27 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::LAYER_STATE:
                 stack[++ptr] = layer_state_mask;
                 break;
-            case Op::STICKY_STATE:
-                stack[ptr] = sticky_state[stack[ptr]];
+            case Op::STICKY_STATE: {
+                uint8_t* sticky_state_ptr = get_sticky_state_ptr(stack[ptr], port_register, true);
+                if (sticky_state_ptr != NULL) {
+                    stack[ptr] = *sticky_state_ptr;
+                }
                 break;
-            case Op::TAP_STATE:
-                stack[ptr] = tap_state[stack[ptr]] * 1000;
+            }
+            case Op::TAP_STATE: {
+                bool* tap_state_ptr = get_tap_state_ptr(stack[ptr], port_register, true);
+                if (tap_state_ptr != NULL) {
+                    stack[ptr] = *tap_state_ptr * 1000;
+                }
                 break;
-            case Op::HOLD_STATE:
-                stack[ptr] = hold_state[stack[ptr]] * 1000;
+            }
+            case Op::HOLD_STATE: {
+                bool* hold_state_ptr = get_hold_state_ptr(stack[ptr], port_register, true);
+                if (hold_state_ptr != NULL) {
+                    stack[ptr] = *hold_state_ptr * 1000;
+                }
                 break;
+            }
             case Op::BITWISE_OR:
                 stack[ptr - 1] = stack[ptr - 1] | stack[ptr];
                 ptr--;
@@ -634,12 +705,12 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[ptr] = ~stack[ptr];
                 break;
             case Op::PREV_INPUT_STATE: {
-                int32_t* state_ptr = get_state_ptr(stack[ptr]);
+                int32_t* state_ptr = get_state_ptr(stack[ptr], port_register, true);
                 stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
                 break;
             }
             case Op::PREV_INPUT_STATE_BINARY: {
-                int32_t* state_ptr = get_state_ptr(stack[ptr]);
+                int32_t* state_ptr = get_state_ptr(stack[ptr], port_register, true);
                 stack[ptr] = (state_ptr != NULL) ? !!(*(state_ptr + PREV_STATE_OFFSET)) * 1000 : 0;
                 break;
             }
@@ -671,6 +742,13 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[ptr] += 500;
                 stack[ptr] -= ((stack[ptr] % 1000) + 1000) % 1000;
                 break;
+            case Op::PORT:
+                port_register = stack[ptr] / 1000;
+                if (port_register > NPORTS) {
+                    port_register = 0;
+                }
+                ptr--;
+                break;
             default:
                 printf("unknown op!\n");
                 return 0;
@@ -696,28 +774,28 @@ void process_mapping(bool auto_repeat) {
     uint64_t now = get_time();
     frame_counter++;
 
-    for (auto const tap_hold : tap_hold_usages) {
-        tap_state[tap_hold.usage] =
+    for (auto& tap_hold : tap_hold_usages) {
+        *tap_hold.tap_state =
             (*tap_hold.input_state == 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) != 0) &&
-            (now - pressed_at[tap_hold.usage] < tap_hold_threshold);
-        hold_state[tap_hold.usage] =
+            (now - tap_hold.pressed_at < tap_hold_threshold);
+        *tap_hold.hold_state =
             (*tap_hold.input_state != 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) != 0) &&
-            (now - pressed_at[tap_hold.usage] >= tap_hold_threshold);
+            (now - tap_hold.pressed_at >= tap_hold_threshold);
         if ((*tap_hold.input_state != 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) == 0)) {
-            pressed_at[tap_hold.usage] = now;
+            tap_hold.pressed_at = now;
         }
     }
 
     for (auto const& sticky : sticky_usages) {
         if ((layer_state_mask & sticky.layer_mask) &&
             ((*(sticky.input_state + PREV_STATE_OFFSET) == 0) && (*sticky.input_state != 0))) {
-            sticky_state[sticky.usage] ^= (layer_state_mask & sticky.layer_mask);
+            *sticky.sticky_state ^= (layer_state_mask & sticky.layer_mask);
         }
     }
 
-    for (auto const& tap_sticky : tap_sticky_usages) {
-        if ((layer_state_mask & tap_sticky.layer_mask) && tap_state[tap_sticky.usage]) {
-            sticky_state[tap_sticky.usage] ^= (layer_state_mask & tap_sticky.layer_mask);
+    for (auto& tap_sticky : tap_sticky_usages) {
+        if ((layer_state_mask & tap_sticky.layer_mask) && *tap_sticky.tap_state) {
+            *tap_sticky.sticky_state ^= (layer_state_mask & tap_sticky.layer_mask);
         }
     }
 
@@ -728,7 +806,7 @@ void process_mapping(bool auto_repeat) {
             if (!map_source.sticky) {
                 if ((map_source.layer_mask & layer_state_mask) &&
                     (map_source.hold
-                            ? hold_state[map_source.usage]
+                            ? *map_source.hold_state
                             : *map_source.input_state)) {
                     new_layer_state_mask |= 1 << i;
                 }
@@ -737,14 +815,14 @@ void process_mapping(bool auto_repeat) {
                 // by a sticky mapping and the user pressed the button again.
                 // There must be a better way of handling this.
                 if (((!map_source.tap && (*(map_source.input_state + PREV_STATE_OFFSET) == 0) && (*map_source.input_state != 0)) ||
-                        (map_source.tap && tap_state[map_source.usage])) &&
-                    (sticky_state[map_source.usage] & map_source.layer_mask) &&
+                        (map_source.tap && *map_source.tap_state)) &&
+                    (*map_source.sticky_state & map_source.layer_mask) &&
                     (layer_state_mask & (1 << i))) {
-                    sticky_state[map_source.usage] &= ~map_source.layer_mask;
+                    *map_source.sticky_state &= ~map_source.layer_mask;
                 }
 
                 // Sticky mapping works even if it's not present on the currently active layers.
-                if (sticky_state[map_source.usage] & map_source.layer_mask) {
+                if (*map_source.sticky_state & map_source.layer_mask) {
                     new_layer_state_mask |= 1 << i;
                 }
             }
@@ -760,9 +838,10 @@ void process_mapping(bool auto_repeat) {
 
     // evaluate all expressions
     // XXX should we do this before or after tap-hold/sticky/layer logic?
+    port_register = 0;
     for (uint8_t i = 0; i < NEXPRESSIONS; i++) {
         int32_t result = eval_expr(i, frame_counter * 1000, auto_repeat);
-        int32_t* state_ptr = get_state_ptr(EXPR_USAGE_PAGE | (i + 1));
+        int32_t* state_ptr = get_state_ptr(EXPR_USAGE_PAGE | (i + 1), 0);
         if (state_ptr != NULL) {
             *state_ptr = result;
         }
@@ -777,7 +856,7 @@ void process_mapping(bool auto_repeat) {
         for (auto const& map_source : rev_map.sources) {
             if ((layer_state_mask & map_source.layer_mask) &&
                 ((!map_source.tap && (*(map_source.input_state + PREV_STATE_OFFSET) == 0) && (*map_source.input_state != 0)) ||
-                    (map_source.tap && tap_state[map_source.usage]))) {
+                    (map_source.tap && *map_source.tap_state))) {
                 my_mutex_enter(MutexId::MACROS);
                 for (auto const& usages : macros[macro]) {
                     macro_queue.push((macro_entry_t){ duration_left : macro_entry_duration, items : usages });
@@ -789,10 +868,10 @@ void process_mapping(bool auto_repeat) {
 
     memcpy(input_state + PREV_STATE_OFFSET, input_state, used_state_slots * sizeof(input_state[0]));
 
-    for (auto const& rev_map : reverse_mapping) {
+    for (auto& rev_map : reverse_mapping) {
         uint32_t target = rev_map.target;
         if (rev_map.is_relative) {
-            for (auto const& map_source : rev_map.sources) {
+            for (auto& map_source : rev_map.sources) {
                 int32_t value = 0;
                 if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
                     if (layer_state_mask & map_source.layer_mask) {
@@ -806,10 +885,10 @@ void process_mapping(bool auto_repeat) {
                 } else {
                     if (auto_repeat || map_source.is_relative) {
                         if (map_source.sticky) {
-                            value = !!(sticky_state[map_source.usage] & map_source.layer_mask) * map_source.scaling;
+                            value = !!(*map_source.sticky_state & map_source.layer_mask) * map_source.scaling;
                         } else {
                             if (layer_state_mask & map_source.layer_mask) {
-                                int32_t state = map_source.hold ? hold_state[map_source.usage] : *map_source.input_state;
+                                int32_t state = map_source.hold ? *map_source.hold_state : *map_source.input_state;
                                 value = (map_source.is_relative ? state : !!state) * map_source.scaling;
                             }
                         }
@@ -817,7 +896,7 @@ void process_mapping(bool auto_repeat) {
                 }
                 if (value != 0) {
                     if (target == V_SCROLL_USAGE || target == H_SCROLL_USAGE) {
-                        accumulated[target] += handle_scroll(map_source.usage, target, value * RESOLUTION_MULTIPLIER);
+                        accumulated[target] += handle_scroll(map_source, target, value * RESOLUTION_MULTIPLIER, now);
                     } else {
                         accumulated[target] += value;
                     }
@@ -837,13 +916,13 @@ void process_mapping(bool auto_repeat) {
                     }
                 } else {
                     if (map_source.sticky) {
-                        if (sticky_state[map_source.usage] & map_source.layer_mask) {
+                        if (*map_source.sticky_state & map_source.layer_mask) {
                             value = 1;
                         }
                     } else {
                         if ((layer_state_mask & map_source.layer_mask)) {
-                            if ((map_source.tap && tap_state[map_source.usage]) ||
-                                (map_source.hold && hold_state[map_source.usage])) {
+                            if ((map_source.tap && *map_source.tap_state) ||
+                                (map_source.hold && *map_source.hold_state)) {
                                 value = 1;
                             }
                             if (!map_source.tap && !map_source.hold) {
@@ -903,6 +982,7 @@ void process_mapping(bool auto_repeat) {
             continue;
         }
         usage_def_t& our_usage = our_usages_flat[usage];
+        // XXX I don't think this is necessary now that we only do process_mapping once per frame (existing_val is always zero)
         int32_t existing_val = get_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size);
         if (our_usage.logical_minimum < 0) {
             if (existing_val & (1 << (our_usage.size - 1))) {
@@ -975,17 +1055,21 @@ bool send_monitor_report(send_report_t do_send_report) {
     bool sent = do_send_report(1, (uint8_t*) &monitor_report[monitor_report_idx], sizeof(monitor_report_t));
 
     monitor_report_idx = (monitor_report_idx + 1) % 2;
-    memset(&(monitor_report[monitor_report_idx].usage_values), 0, sizeof(monitor_report[0].usage_values));
+    memset(&(monitor_report[monitor_report_idx].items), 0, sizeof(monitor_report[0].items));
     monitor_usages_queued = 0;
 
     return sent;
 }
 
-void monitor_usage(uint32_t usage, int32_t value) {
-    if (monitor_usages_queued == sizeof(monitor_report[0].usage_values) / sizeof(monitor_report[0].usage_values[0])) {
+void monitor_usage(uint32_t usage, int32_t value, uint8_t hub_port) {
+    if (monitor_usages_queued == sizeof(monitor_report[0].items) / sizeof(monitor_report[0].items[0])) {
         return;
     }
-    monitor_report[monitor_report_idx].usage_values[monitor_usages_queued++] = { .usage = usage, .value = value };
+    monitor_report[monitor_report_idx].items[monitor_usages_queued++] = {
+        .usage = usage,
+        .value = value,
+        .hub_port = hub_port,
+    };
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx) {
@@ -1007,21 +1091,31 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
     }
 
     if (their_usage.is_relative) {
-        *(their_usage.input_state) += value;
+        if (their_usage.input_state_0 != NULL) {
+            *(their_usage.input_state_0) += value;
+        }
+        if (their_usage.input_state_n != NULL) {
+            *(their_usage.input_state_n) = value;  // XXX does it need to be += ?
+        }
     } else {
-        if (their_usage.size == 1) {
-            if (value) {
-                *(their_usage.input_state) |= 1 << interface_idx;
+        if (their_usage.input_state_0 != NULL) {
+            if (their_usage.size == 1) {
+                if (value) {
+                    *(their_usage.input_state_0) |= 1 << interface_idx;
+                } else {
+                    *(their_usage.input_state_0) &= ~(1 << interface_idx);
+                }
             } else {
-                *(their_usage.input_state) &= ~(1 << interface_idx);
+                *(their_usage.input_state_0) = value;
             }
-        } else {
-            *(their_usage.input_state) = value;
+        }
+        if (their_usage.input_state_n != NULL) {
+            *(their_usage.input_state_n) = value;
         }
     }
 }
 
-inline void read_input_range(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx) {
+inline void read_input_range(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx, uint8_t hub_port) {
     // is_array and !is_relative is implied
     for (unsigned int i = 0; i < their_usage.count; i++) {
         uint32_t bits = get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size);
@@ -1029,15 +1123,19 @@ inline void read_input_range(const uint8_t* report, int len, uint32_t source_usa
         if ((bits >= their_usage.logical_minimum) &&
             (bits <= their_usage.logical_minimum + their_usage.usage_maximum - source_usage)) {
             uint32_t actual_usage = source_usage + bits - their_usage.logical_minimum;
-            int32_t* state_ptr = get_state_ptr(actual_usage);
-            if (state_ptr != NULL) {
-                *state_ptr |= 1 << interface_idx;
+            int32_t* state_ptr_0 = get_state_ptr(actual_usage, 0);
+            if (state_ptr_0 != NULL) {
+                *state_ptr_0 |= 1 << interface_idx;
+            }
+            int32_t* state_ptr_n = get_state_ptr(actual_usage, hub_port);
+            if (state_ptr_n != NULL) {
+                *state_ptr_n = 1 << interface_idx;  // set the bit because in do_handle_received_report we clear it not knowing if it's "0" or "n"
             }
         }
     }
 }
 
-inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx) {
+inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx, uint8_t hub_port) {
     int32_t value = 0;
     if (their_usage.is_array) {
         for (unsigned int i = 0; i < their_usage.count; i++) {
@@ -1057,12 +1155,12 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
 
     if (their_usage.is_relative) {
         if (value != 0) {
-            monitor_usage(source_usage, value);
+            monitor_usage(source_usage, value, hub_port);
         }
     } else {
         if (their_usage.size == 1) {
             if (value != (1 & (monitor_input_state[source_usage] >> interface_idx))) {
-                monitor_usage(source_usage, value);
+                monitor_usage(source_usage, value, hub_port);
             }
             if (value) {
                 monitor_input_state[source_usage] |= 1 << interface_idx;
@@ -1071,14 +1169,14 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
             }
         } else {
             if (value != monitor_input_state[source_usage]) {
-                monitor_usage(source_usage, value);
+                monitor_usage(source_usage, value, hub_port);
             }
             monitor_input_state[source_usage] = value;
         }
     }
 }
 
-inline void monitor_read_input_range(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx) {
+inline void monitor_read_input_range(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx, uint8_t hub_port) {
     // is_array and !is_relative is implied
     for (unsigned int i = 0; i < their_usage.count; i++) {
         uint32_t bits = get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size);
@@ -1088,7 +1186,7 @@ inline void monitor_read_input_range(const uint8_t* report, int len, uint32_t so
             uint32_t actual_usage = source_usage + bits - their_usage.logical_minimum;
             // for array inputs, "key-up" events (value=0) don't show up in the monitor
             if (monitor_enabled && ((actual_usage & 0xFFFF) != 0)) {
-                monitor_usage(actual_usage, 1);
+                monitor_usage(actual_usage, 1, hub_port);
             }
         }
     }
@@ -1121,20 +1219,22 @@ void do_handle_received_report(const uint8_t* report, int len, uint16_t interfac
         *state_ptr &= ~(1 << interface_idx);
     }
 
+    uint8_t hub_port = hub_ports[interface >> 8];
+
     for (auto const& their : their_used_usages[interface][report_id]) {
         if (their.usage_def.usage_maximum == 0) {
             read_input(report, len, their.usage, their.usage_def, interface_idx);
         } else {
-            read_input_range(report, len, their.usage, their.usage_def, interface_idx);
+            read_input_range(report, len, their.usage, their.usage_def, interface_idx, hub_port);
         }
     }
 
     if (monitor_enabled) {
         for (auto const& [their_usage, their_usage_def] : their_usages[interface][report_id]) {
             if (their_usage_def.usage_maximum == 0) {
-                monitor_read_input(report, len, their_usage, their_usage_def, interface_idx);
+                monitor_read_input(report, len, their_usage, their_usage_def, interface_idx, hub_port);
             } else {
-                monitor_read_input_range(report, len, their_usage, their_usage_def, interface_idx);
+                monitor_read_input_range(report, len, their_usage, their_usage_def, interface_idx, hub_port);
             }
         }
     }
@@ -1142,7 +1242,7 @@ void do_handle_received_report(const uint8_t* report, int len, uint16_t interfac
     my_mutex_exit(MutexId::THEIR_USAGES);
 }
 
-void handle_received_midi(uint8_t dev_addr, uint8_t* midi_msg) {
+void handle_received_midi(uint8_t hub_port, uint8_t* midi_msg) {
     uint32_t usage = 0;
     int32_t val = 0;
     // ignore cable number and CIN
@@ -1170,15 +1270,16 @@ void handle_received_midi(uint8_t dev_addr, uint8_t* midi_msg) {
             break;
     }
     if (usage != 0) {
-        set_input_state(usage, val);
+        set_input_state(usage, val, 0);
+        set_input_state(usage, val, hub_port);
         if (monitor_enabled) {
-            monitor_usage(usage, val);
+            monitor_usage(usage, val, hub_port);
         }
     }
 }
 
-void set_input_state(uint32_t usage, int32_t state) {
-    int32_t* state_ptr = get_state_ptr(usage);
+void set_input_state(uint32_t usage, int32_t state, uint8_t hub_port) {
+    int32_t* state_ptr = get_state_ptr(usage, hub_port);
     if (state_ptr != NULL) {
         *state_ptr = state;
     }
@@ -1221,19 +1322,25 @@ void update_their_descriptor_derivates() {
     array_range_usages.clear();
 
     for (auto& [interface, report_id_usage_map] : their_usages) {
+        uint8_t hub_port = hub_ports[interface >> 8];
         for (auto& [report_id, usage_map] : report_id_usage_map) {
             for (auto& [usage, usage_def] : usage_map) {
                 if (usage_def.usage_maximum == 0) {
-                    int32_t* state_ptr = get_state_ptr(usage);
+                    int32_t* state_ptr_0 = get_state_ptr(usage, 0);
+                    int32_t* state_ptr_n = get_state_ptr(usage, hub_port);
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage);
                     if (usage_def.is_relative) {
-                        if (state_ptr != NULL) {
-                            relative_usages.push_back(state_ptr);
+                        if (state_ptr_0 != NULL) {
+                            relative_usages.push_back(state_ptr_0);
+                        }
+                        if (state_ptr_n != NULL) {
+                            relative_usages.push_back(state_ptr_n);
                         }
                         relative_usage_set.insert(usage);
                     }
-                    if (state_ptr != NULL) {
-                        usage_def.input_state = state_ptr;
+                    if ((state_ptr_0 != NULL) || (state_ptr_n != NULL)) {
+                        usage_def.input_state_0 = state_ptr_0;
+                        usage_def.input_state_n = state_ptr_n;
                         their_used_usages[interface][report_id].push_back((usage_usage_def_t){
                             .usage = usage,
                             .usage_def = usage_def,
@@ -1243,10 +1350,15 @@ void update_their_descriptor_derivates() {
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage_def.usage_maximum);
                     bool any_used = false;
                     for (uint32_t actual_usage = usage; actual_usage <= usage_def.usage_maximum; actual_usage++) {
-                        int32_t* state_ptr = get_state_ptr(actual_usage);
-                        if (state_ptr != NULL) {
+                        int32_t* state_ptr_0 = get_state_ptr(actual_usage, 0);
+                        int32_t* state_ptr_n = get_state_ptr(actual_usage, hub_port);
+                        if (state_ptr_0 != NULL) {
                             any_used = true;
-                            array_range_usages[interface][report_id].push_back(state_ptr);
+                            array_range_usages[interface][report_id].push_back(state_ptr_0);
+                        }
+                        if (state_ptr_n != NULL) {
+                            any_used = true;
+                            array_range_usages[interface][report_id].push_back(state_ptr_n);
                         }
                     }
                     if (any_used) {
@@ -1271,13 +1383,16 @@ void update_their_descriptor_derivates() {
         if (search != their_out_usages_flat.end()) {
             rev_map.our_usages.clear();
             for (auto dev_addr_int_rep_id : search->second) {
-                auto const& our_usage2 = their_out_usages[dev_addr_int_rep_id >> 16][dev_addr_int_rep_id & 0xFFFF][rev_map.target];
-                rev_map.our_usages.push_back((out_usage_def_t){
-                    .data = out_reports[dev_addr_int_rep_id],
-                    .len = out_report_sizes[dev_addr_int_rep_id],
-                    .size = our_usage2.size,
-                    .bitpos = our_usage2.bitpos,
-                });
+                uint8_t hub_port = hub_ports[dev_addr_int_rep_id >> 24];
+                if ((rev_map.hub_port == 0) || (rev_map.hub_port == hub_port)) {
+                    auto const& our_usage2 = their_out_usages[dev_addr_int_rep_id >> 16][dev_addr_int_rep_id & 0xFFFF][rev_map.target];
+                    rev_map.our_usages.push_back((out_usage_def_t){
+                        .data = out_reports[dev_addr_int_rep_id],
+                        .len = out_report_sizes[dev_addr_int_rep_id],
+                        .size = our_usage2.size,
+                        .bitpos = our_usage2.bitpos,
+                    });
+                }
             }
         }
     }
@@ -1338,7 +1453,8 @@ void set_monitor_enabled(bool enabled) {
     }
 }
 
-void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid) {
+void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid, uint8_t hub_port) {
+    hub_ports[interface >> 8] = hub_port;
     if (our_descriptor->device_connected != nullptr) {
         our_descriptor->device_connected(interface, vid, pid);
     }
@@ -1349,6 +1465,7 @@ void device_disconnected_callback(uint8_t dev_addr) {
         our_descriptor->device_disconnected(dev_addr);
     }
     clear_descriptor_data(dev_addr);
+    hub_ports.erase(dev_addr);
 }
 
 uint16_t handle_get_report0(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) {

@@ -75,8 +75,11 @@ for mapping in config.get("mappings", []):
     if version >= 5:
         flags |= TAP_FLAG if mapping.get("tap", False) else 0
         flags |= HOLD_FLAG if mapping.get("hold", False) else 0
+    hub_ports = ((mapping.get("target_port", 0) & 0x0F) << 4) | (
+        mapping.get("source_port", 0) & 0x0F
+    )
     data = struct.pack(
-        "<BBBLLlBB12B",
+        "<BBBLLlBBB11B",
         REPORT_ID_CONFIG,
         CONFIG_VERSION,
         ADD_MAPPING,
@@ -85,7 +88,8 @@ for mapping in config.get("mappings", []):
         scaling,
         layer_mask,
         flags,
-        *([0] * 12)
+        hub_ports,
+        *([0] * 11)
     )
     device.send_feature_report(add_crc(data))
 

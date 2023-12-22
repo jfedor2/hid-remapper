@@ -276,8 +276,18 @@
     <template id="mapping_template">
         <div class="row mb-1 mapping_container">
             <div class="col-1"><button type="button" class="btn btn-primary delete_button">×</button></div>
-            <div class="col-3"><button type="button" class="btn btn-primary w-100 source_button">source</button></div>
-            <div class="col-3"><button type="button" class="btn btn-primary w-100 target_button">target</button></div>
+            <div class="col-3">
+                <button type="button" class="btn btn-primary w-100 source_button position-relative">
+                    <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
+                    <span class="button_label">source</span>
+                </button>
+            </div>
+            <div class="col-3">
+                <button type="button" class="btn btn-primary w-100 target_button position-relative">
+                    <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
+                    <span class="button_label">target</span>
+                </button>
+            </div>
             <div class="col-3">
                 <div class="d-flex lh-1 text-center">
                     <div class="flex-fill row gx-1 justify-content-center">
@@ -358,7 +368,9 @@
     <template id="macro_item_template">
         <div class="btn-group macro_item col-auto">
             <button type="button" class="delete_macro_item btn btn-primary">×</button>
-            <button type="button" class="macro_item_usage btn btn-primary" data-hid-usage="0x00000000">Nothing</button>
+            <button type="button" class="macro_item_usage btn btn-primary" data-hid-usage="0x00000000">
+                <span class="button_label">Nothing</span>
+            </button>
         </div>
     </template>
 
@@ -388,7 +400,32 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="col mouse_usages">
+                    <div class="row hub_port_container">
+                        <div class="col-auto">
+                            <label for="source_port_dropdown" class="col-form-label">Port</label>
+                        </div>
+                        <div class="col-auto">
+                            <select class="form-select hub_port_dropdown" id="source_port_dropdown">
+                                <option value="0">all</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="13">13</option>
+                                <option value="14">14</option>
+                                <option value="15">15</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col mouse_usages mt-3">
                     </div>
                     <div class="col keyboard_usages mt-3">
                     </div>
@@ -411,7 +448,32 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="col mouse_usages">
+                    <div class="row hub_port_container">
+                        <div class="col-auto">
+                            <label for="target_port_dropdown" class="col-form-label">Port</label>
+                        </div>
+                        <div class="col-auto">
+                            <select class="form-select hub_port_dropdown" id="target_port_dropdown">
+                                <option value="0">all</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="13">13</option>
+                                <option value="14">14</option>
+                                <option value="15">15</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col mouse_usages mt-3">
                     </div>
                     <div class="col keyboard_usages mt-3">
                     </div>
