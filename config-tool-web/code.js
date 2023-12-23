@@ -87,6 +87,7 @@ const ops = {
     "ATAN2": 32,
     "ROUND": 33,
     "PORT": 34,
+    "DPAD": 35,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));

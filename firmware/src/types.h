@@ -86,6 +86,7 @@ enum class Op : int8_t {
     ATAN2 = 32,
     ROUND = 33,
     PORT = 34,
+    DPAD = 35,
 };
 
 struct expr_elem_t {

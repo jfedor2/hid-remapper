@@ -142,3 +142,4 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `tap_state` | _usage_ | _tap\_state(usage)_ | 1 if input is in tap state, 0 otherwise. |
 | `hold_state` | _usage_ | _hold\_state(usage)_ | 1 if input is in hold state, 0 otherwise. |
 | `port` | _port number_ | | Sets the value of the port register that determines which input state is fetched by `input_state` etc. Defaults to 0 at the beginning of each mapping engine iteration, which means "all ports". |
+| `dpad` | _left_state_, _right_state_, _up_state_, _down_state_ | d-pad output state | Takes four input states and produces a 0-8 value that can be used as a d-pad (hat switch) output on a gamepad. |

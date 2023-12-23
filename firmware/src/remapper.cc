@@ -252,6 +252,12 @@ bool is_expr_valid(uint8_t expr) {
                 }
                 on_stack--;
                 break;
+            case Op::DPAD:
+                if (on_stack < 4) {
+                    return false;
+                }
+                on_stack -= 3;
+                break;
             default:
                 printf("unknown op in is_expr_valid()\n");
                 return false;
@@ -580,6 +586,13 @@ void aggregate_relative(uint8_t* prev_report, const uint8_t* report, uint8_t rep
     }
 }
 
+static uint8_t dpad_table[16] = { 8, 6, 2, 8, 0, 7, 1, 0, 4, 5, 3, 4, 8, 6, 2, 8 };
+
+static inline uint8_t dpad(bool left, bool right, bool up, bool down) {
+    uint8_t index = left | (right << 1) | (up << 2) | (down << 3);
+    return dpad_table[index];
+}
+
 int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
     static int32_t stack[STACK_SIZE];
     bool debug = false;
@@ -748,6 +761,10 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                     port_register = 0;
                 }
                 ptr--;
+                break;
+            case Op::DPAD:
+                stack[ptr - 3] = 1000 * dpad(stack[ptr - 3], stack[ptr - 2], stack[ptr - 1], stack[ptr]);
+                ptr -= 3;
                 break;
             default:
                 printf("unknown op!\n");

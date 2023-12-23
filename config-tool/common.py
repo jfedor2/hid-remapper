@@ -93,6 +93,7 @@ ops = {
     "ATAN2": 32,
     "ROUND": 33,
     "PORT": 34,
+    "DPAD": 35,
 }
 
 opcodes = {v: k for k, v in ops.items()}
