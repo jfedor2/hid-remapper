@@ -74,6 +74,8 @@ target_link_libraries(remapper
     usb_midi_host
 )
 
+pico_set_binary_type(remapper copy_to_ram)
+pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single.ld)
 pico_add_extra_outputs(remapper)
 
 

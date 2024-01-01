@@ -3,6 +3,7 @@
 #include "pio_usb.h"
 #include "usb_midi_host.h"
 
+#include "pico/platform.h"
 #include "pico/time.h"
 
 #include "descriptor_parser.h"
@@ -118,13 +119,13 @@ void send_out_report() {
     do_send_out_report();
 }
 
-static int64_t manual_sof(alarm_id_t id, void* user_data) {
+static int64_t __no_inline_not_in_flash_func(manual_sof)(alarm_id_t id, void* user_data) {
     pio_usb_host_frame();
     set_tick_pending();
     return 0;
 }
 
-void sof_callback() {
+void __no_inline_not_in_flash_func(sof_callback)() {
     add_alarm_in_us(150, manual_sof, NULL, true);
 }
 

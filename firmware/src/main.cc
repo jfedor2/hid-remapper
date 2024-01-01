@@ -10,6 +10,7 @@
 #include <hardware/gpio.h>
 #include <pico/bootrom.h>
 #include <pico/mutex.h>
+#include <pico/platform.h>
 #include <pico/stdio.h>
 #include <pico/unique_id.h>
 
@@ -47,7 +48,7 @@ void print_stats_maybe() {
     }
 }
 
-void sof_handler(uint32_t frame_count) {
+void __no_inline_not_in_flash_func(sof_handler)(uint32_t frame_count) {
     sof_callback();
 }
 
