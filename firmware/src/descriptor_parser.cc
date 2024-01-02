@@ -32,6 +32,12 @@ void mark_usage(
     uint32_t index = 0,
     uint32_t count = 0,
     uint32_t usage_maximum = 0) {
+    if (bitpos >= (8 * ((report_id == 0) ? 64 : 63))) {
+        // We don't currently handle reports longer than 64 bytes so let's save some memory.
+        // It's probably a broken descriptor anyway.
+        return;
+    }
+
     (*usage_map)[report_id].try_emplace(usage,
         (usage_def_t){
             .report_id = report_id,
