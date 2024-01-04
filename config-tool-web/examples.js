@@ -1784,7 +1784,7 @@ const examples = [
     {
         'description': 'Stadia controller adapter for PS4',
         'config': {
-            "version": 9,
+            "version": 11,
             "unmapped_passthrough_layers": [],
             "partial_scroll_timeout": 1000000,
             "tap_hold_threshold": 200000,
@@ -1795,80 +1795,101 @@ const examples = [
             "mappings": [
                 {
                     "target_usage": "0x00010030",
-                    "source_usage": "0xfff30001",
+                    "source_usage": "0x00010030",
+                    "source_name": "Left stick X",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010031",
-                    "source_usage": "0xfff30002",
+                    "source_usage": "0x00010031",
+                    "source_name": "Left stick Y",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010032",
-                    "source_usage": "0xfff30003",
+                    "source_usage": "0x00010032",
+                    "source_name": "Right stick X",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010035",
-                    "source_usage": "0xfff30004",
+                    "source_usage": "0x00010035",
+                    "source_name": "Right stick Y",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010039",
-                    "source_usage": "0xfff30005",
+                    "source_usage": "0x00010039",
+                    "source_name": "D-pad",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010033",
-                    "source_usage": "0xfff30006",
+                    "source_usage": "0x000200c5",
+                    "source_name": "L2 axis",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010034",
-                    "source_usage": "0xfff30007",
+                    "source_usage": "0x000200c4",
+                    "source_name": "R2 axis",
                     "scaling": 1000,
                     "layers": [
                         0
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090002",
@@ -1880,7 +1901,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090003",
@@ -1892,7 +1915,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090004",
@@ -1904,7 +1929,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090001",
@@ -1916,7 +1943,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090005",
@@ -1928,7 +1957,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090006",
@@ -1940,7 +1971,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090007",
@@ -1952,7 +1985,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090008",
@@ -1964,7 +1999,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090009",
@@ -1976,7 +2013,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000a",
@@ -1988,7 +2027,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000b",
@@ -2000,7 +2041,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000c",
@@ -2012,7 +2055,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000d",
@@ -2024,7 +2069,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000e",
@@ -2036,7 +2083,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000e",
@@ -2048,7 +2097,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 }
             ],
             "macros": [
@@ -2086,15 +2137,17 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0x00010030 input_state",
-                "0x00010031 input_state",
-                "0x00010032 input_state",
-                "0x00010035 input_state",
-                "0x00010039 input_state",
-                "0x000200c5 input_state",
-                "0x000200c4 input_state",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
                 ""
-            ]
+            ],
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0
         }
     },
     {
