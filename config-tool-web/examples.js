@@ -2153,7 +2153,7 @@ const examples = [
     {
         'description': 'keyboard adapter for PS4: arrows=D-pad, WASD=left stick, numpad=right stick',
         'config': {
-            "version": 9,
+            "version": 11,
             "unmapped_passthrough_layers": [
                 0,
                 1,
@@ -2176,7 +2176,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010030",
@@ -2187,7 +2189,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010031",
@@ -2198,7 +2202,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010032",
@@ -2209,7 +2215,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010035",
@@ -2220,7 +2228,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090002",
@@ -2231,7 +2241,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090003",
@@ -2242,7 +2254,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090001",
@@ -2253,7 +2267,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090004",
@@ -2264,7 +2280,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090006",
@@ -2275,7 +2293,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090008",
@@ -2286,7 +2306,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010034",
@@ -2297,7 +2319,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090005",
@@ -2308,7 +2332,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090007",
@@ -2319,7 +2345,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00010033",
@@ -2330,7 +2358,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000b",
@@ -2341,7 +2371,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000c",
@@ -2352,7 +2384,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000d",
@@ -2363,7 +2397,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x00090009",
@@ -2374,7 +2410,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000a",
@@ -2385,7 +2423,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 },
                 {
                     "target_usage": "0x0009000e",
@@ -2396,7 +2436,9 @@ const examples = [
                     ],
                     "sticky": false,
                     "tap": false,
-                    "hold": false
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 }
             ],
             "macros": [
@@ -2434,15 +2476,17 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0x00070050 input_state_binary 1 mul 0x0007004f input_state_binary 2 mul bitwise_or 0x00070052 input_state_binary 4 mul bitwise_or 0x00070051 input_state_binary 8 mul bitwise_or 1000 store -1000 1000 recall 1 eq 7000 mul add 1000 recall 2 eq 3000 mul add 1000 recall 4 eq 1000 mul add 1000 recall 8 eq 5000 mul add 1000 recall 5 eq 8000 mul add 1000 recall 6 eq 2000 mul add 1000 recall 10 eq 4000 mul add 1000 recall 9 eq 6000 mul add 1000 recall 7 eq 1000 mul add 1000 recall 11 eq 5000 mul add 1000 recall 13 eq 7000 mul add 1000 recall 14 eq 3000 mul add dup -1000 eq 9000 mul add",
-                "0x00070004 input_state_binary 1 mul 0x00070007 input_state_binary 2 mul bitwise_or 0x0007001a input_state_binary 4 mul bitwise_or 0x00070016 input_state_binary 8 mul bitwise_or 2000 store -1000 2000 recall 1 eq 7000 mul add 2000 recall 2 eq 3000 mul add 2000 recall 4 eq 1000 mul add 2000 recall 8 eq 5000 mul add 2000 recall 5 eq 8000 mul add 2000 recall 6 eq 2000 mul add 2000 recall 10 eq 4000 mul add 2000 recall 9 eq 6000 mul add 2000 recall 7 eq 1000 mul add 2000 recall 11 eq 5000 mul add 2000 recall 13 eq 7000 mul add 2000 recall 14 eq 3000 mul add 45000 mul dup -45000 eq not 3000 store 4000 store",
+                "0x00070050 input_state_binary 0x0007004f input_state_binary 0x00070052 input_state_binary 0x00070051 input_state_binary dpad",
+                "0x00070004 input_state_binary 0x00070007 input_state_binary 0x0007001a input_state_binary 0x00070016 input_state_binary dpad 45000 mul dup 360000 eq not 3000 store 4000 store",
                 "4000 recall sin 127000 mul 3000 recall mul 128000 add",
                 "4000 recall cos -127000 mul 3000 recall mul 128000 add",
-                "0x0007005c input_state_binary 1 mul 0x0007005e input_state_binary 2 mul bitwise_or 0x00070060 input_state_binary 4 mul bitwise_or 0x0007005d input_state_binary 8 mul bitwise_or 5000 store -1000 5000 recall 1 eq 7000 mul add 5000 recall 2 eq 3000 mul add 5000 recall 4 eq 1000 mul add 5000 recall 8 eq 5000 mul add 5000 recall 5 eq 8000 mul add 5000 recall 6 eq 2000 mul add 5000 recall 10 eq 4000 mul add 5000 recall 9 eq 6000 mul add 5000 recall 7 eq 1000 mul add 5000 recall 11 eq 5000 mul add 5000 recall 13 eq 7000 mul add 5000 recall 14 eq 3000 mul add 45000 mul dup -45000 eq not 6000 store 7000 store",
+                "0x0007005c input_state_binary 0x0007005e input_state_binary 0x00070060 input_state_binary 0x0007005d input_state_binary dpad 45000 mul dup 360000 eq not 6000 store 7000 store",
                 "7000 recall sin 127000 mul 6000 recall mul 128000 add",
                 "7000 recall cos -127000 mul 6000 recall mul 128000 add",
                 "0x0007000f input_state_binary dup 10000 store 255000 mul 11000 store 0x00070033 input_state_binary dup 12000 store 255000 mul 13000 store"
-            ]
+            ],
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0
         }
     },
     {
