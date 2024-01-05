@@ -34,6 +34,8 @@ const uint32_t EXPR_USAGE_PAGE = 0xFFF30000;
 const uint32_t REGISTER_USAGE_PAGE = 0xFFF50000;
 const uint32_t MIDI_USAGE_PAGE = 0xFFF70000;
 
+const uint32_t ROLLOVER_USAGE = 0x00070001;
+
 const uint16_t STACK_SIZE = 16;
 
 const uint8_t resolution_multiplier_masks[] = {
@@ -50,6 +52,7 @@ std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_usage_def_t>>> their_used_usages;  // dev_addr+interface -> report_id -> (usage, usage_def)
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<int32_t*>>> array_range_usages;          // dev_addr+interface -> report_id -> input_state ptr vector
+std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_def_t>>> rollover_usages;          // dev_addr+interface -> report_id -> usage_def vector
 
 std::vector<sticky_usage_t> sticky_usages;
 std::vector<tap_sticky_usage_t> tap_sticky_usages;
@@ -1218,6 +1221,24 @@ void handle_received_report(const uint8_t* report, int len, uint16_t interface, 
     }
 }
 
+static inline bool is_rollover(const uint8_t* report, int len, uint16_t interface, uint8_t report_id) {
+    for (auto const& usage_def : rollover_usages[interface][report_id]) {
+        if (usage_def.is_array) {
+            for (unsigned int i = 0; i < usage_def.count; i++) {
+                if (get_bits(report, len, usage_def.bitpos + i * usage_def.size, usage_def.size) == usage_def.index) {
+                    return true;
+                }
+            }
+        } else {
+            if (get_bits(report, len, usage_def.bitpos, usage_def.size) != 0) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void do_handle_received_report(const uint8_t* report, int len, uint16_t interface, uint8_t external_report_id) {
     reports_received++;
 
@@ -1235,17 +1256,19 @@ void do_handle_received_report(const uint8_t* report, int len, uint16_t interfac
     }
 
     uint8_t interface_idx = interface_index[interface];
-    for (int32_t* state_ptr : array_range_usages[interface][report_id]) {
-        *state_ptr &= ~(1 << interface_idx);
-    }
-
     uint8_t hub_port = hub_ports[interface >> 8];
 
-    for (auto const& their : their_used_usages[interface][report_id]) {
-        if (their.usage_def.usage_maximum == 0) {
-            read_input(report, len, their.usage, their.usage_def, interface_idx);
-        } else {
-            read_input_range(report, len, their.usage, their.usage_def, interface_idx, hub_port);
+    if (!is_rollover(report, len, interface, report_id)) {
+        for (int32_t* state_ptr : array_range_usages[interface][report_id]) {
+            *state_ptr &= ~(1 << interface_idx);
+        }
+
+        for (auto const& their : their_used_usages[interface][report_id]) {
+            if (their.usage_def.usage_maximum == 0) {
+                read_input(report, len, their.usage, their.usage_def, interface_idx);
+            } else {
+                read_input_range(report, len, their.usage, their.usage_def, interface_idx, hub_port);
+            }
         }
     }
 
@@ -1340,6 +1363,7 @@ void update_their_descriptor_derivates() {
     relative_usages.clear();
     their_used_usages.clear();
     array_range_usages.clear();
+    rollover_usages.clear();
 
     for (auto& [interface, report_id_usage_map] : their_usages) {
         uint8_t hub_port = hub_ports[interface >> 8];
@@ -1366,6 +1390,9 @@ void update_their_descriptor_derivates() {
                             .usage_def = usage_def,
                         });
                     }
+                    if (usage == ROLLOVER_USAGE) {
+                        rollover_usages[interface][report_id].push_back(usage_def);
+                    }
                 } else {  // usage_maximum != 0, array range usage
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage_def.usage_maximum);
                     bool any_used = false;
@@ -1379,6 +1406,15 @@ void update_their_descriptor_derivates() {
                         if (state_ptr_n != NULL) {
                             any_used = true;
                             array_range_usages[interface][report_id].push_back(state_ptr_n);
+                        }
+                        if (actual_usage == ROLLOVER_USAGE) {
+                            rollover_usages[interface][report_id].push_back((usage_def_t){
+                                .size = usage_def.size,
+                                .bitpos = usage_def.bitpos,
+                                .is_array = true,
+                                .index = usage_def.logical_minimum + actual_usage - usage,
+                                .count = usage_def.count,
+                            });
                         }
                     }
                     if (any_used) {
