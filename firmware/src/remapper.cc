@@ -1053,7 +1053,10 @@ bool send_report(send_report_t do_send_report) {
 
     uint8_t report_id = outgoing_reports[or_head][0];
 
-    bool sent = do_send_report(0, outgoing_reports[or_head], report_sizes[report_id] + 1);
+    bool sent = false;
+    if (our_descriptor == &our_descriptors[our_descriptor_number]) {
+        sent = do_send_report(0, outgoing_reports[or_head], report_sizes[report_id] + 1);
+    }
 
     // XXX even if not sent?
     or_head = (or_head + 1) % OR_BUFSIZE;
