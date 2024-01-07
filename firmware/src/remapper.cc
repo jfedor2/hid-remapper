@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -50,7 +51,7 @@ std::vector<reverse_mapping_t> reverse_mapping_layers;
 std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
 std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
 
-std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_usage_def_t>>> their_used_usages;  // dev_addr+interface -> report_id -> (usage, usage_def)
+std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_usage_def_t>>> their_used_usages;  // dev_addr+interface -> report_id -> (usage, usage_def) vector
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<int32_t*>>> array_range_usages;          // dev_addr+interface -> report_id -> input_state ptr vector
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_def_t>>> rollover_usages;          // dev_addr+interface -> report_id -> usage_def vector
 
@@ -1450,6 +1451,17 @@ void update_their_descriptor_derivates() {
                     });
                 }
             }
+        }
+    }
+
+    // Some keyboards have the same usage as both non-array and array inputs.
+    // By reading the non-array ones first we get the right result regardless of which they actually use.
+    for (auto& [interface, report_id_usages_map] : their_used_usages) {
+        for (auto& [report_id, usages_vector] : report_id_usages_map) {
+            std::sort(usages_vector.begin(), usages_vector.end(),
+                [](const usage_usage_def_t& a, const usage_usage_def_t& b) {
+                    return (a.usage_def.is_array < b.usage_def.is_array);
+                });
         }
     }
 }
