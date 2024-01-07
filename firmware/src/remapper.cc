@@ -1510,7 +1510,7 @@ void set_monitor_enabled(bool enabled) {
 }
 
 void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid, uint8_t hub_port) {
-    hub_ports[interface >> 8] = hub_port;
+    hub_ports[interface >> 8] = (hub_port != 0) ? hub_port : 1;
     if (our_descriptor->device_connected != nullptr) {
         our_descriptor->device_connected(interface, vid, pid);
     }
