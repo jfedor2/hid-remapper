@@ -94,6 +94,12 @@ struct expr_elem_t {
     uint32_t val = 0;
 };
 
+struct tap_hold_state_t {
+    bool tap : 1;
+    bool hold : 1;
+    bool prev_hold : 1;
+};
+
 struct map_source_t {
     uint32_t usage;
     int32_t scaling = 1000;  // * 1000
@@ -102,8 +108,7 @@ struct map_source_t {
     bool tap = false;
     bool hold = false;
     int32_t* input_state;
-    bool* tap_state;
-    bool* hold_state;
+    tap_hold_state_t* tap_hold_state;
     uint8_t* sticky_state;
     bool is_relative = false;
     int32_t accumulated_scroll;
@@ -127,8 +132,7 @@ struct reverse_mapping_t {
 
 struct tap_hold_usage_t {
     int32_t* input_state;
-    bool* tap_state;
-    bool* hold_state;
+    tap_hold_state_t* tap_hold_state;
     uint64_t pressed_at;
 };
 
@@ -140,7 +144,7 @@ struct sticky_usage_t {
 
 struct tap_sticky_usage_t {
     uint8_t layer_mask;
-    bool* tap_state;
+    tap_hold_state_t* tap_hold_state;
     uint8_t* sticky_state;
 };
 
