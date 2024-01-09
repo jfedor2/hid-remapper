@@ -596,7 +596,7 @@ uint16_t handle_get_report1(uint8_t report_id, uint8_t* buffer, uint16_t reqlen)
                         i++;
                     }
                     my_mutex_exit(MutexId::MACROS);
-                    if (exhausted && (ret_idx > 0)) {
+                    if (exhausted && (ret_idx > 0) && (returned->usages[ret_idx - 1] == 0)) {
                         ret_idx--;
                     }
                     returned->nitems = ret_idx;
