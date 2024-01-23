@@ -516,6 +516,13 @@ void set_mapping_from_config() {
                 .size = 1,
                 .bitpos = (uint16_t) (target & 0xFFFF),
             });
+        } else if ((target & 0xFFFF0000) == DIGIPOT_USAGE_PAGE) {
+            rev_map.our_usages.push_back((out_usage_def_t){
+                .data = (uint8_t*) digipot_state,
+                .len = sizeof(digipot_state),
+                .size = 9,
+                .bitpos = (uint16_t) ((target & 0xFFFF) * 16),
+            });
         } else {
             auto search = our_usages_flat.find(target);
             if (search != our_usages_flat.end()) {

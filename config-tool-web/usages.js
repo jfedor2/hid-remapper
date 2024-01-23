@@ -498,6 +498,12 @@ const common_target_usages = {
     "0xfff4001b": { 'name': 'GPIO 27', 'class': 'other' },
     "0xfff4001c": { 'name': 'GPIO 28', 'class': 'other' },
     "0xfff4001d": { 'name': 'GPIO 29', 'class': 'other' },
+    "0xfff60000": { 'name': 'Analog 0', 'class': 'other' },
+    "0xfff60001": { 'name': 'Analog 1', 'class': 'other' },
+    "0xfff60002": { 'name': 'Analog 2', 'class': 'other' },
+    "0xfff60003": { 'name': 'Analog 3', 'class': 'other' },
+    "0xfff60004": { 'name': 'Analog 4', 'class': 'other' },
+    "0xfff60005": { 'name': 'Analog 5', 'class': 'other' },
 }
 
 Object.assign(usages[0], common_target_usages);

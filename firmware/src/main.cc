@@ -19,6 +19,8 @@
 #include "crc.h"
 #include "descriptor_parser.h"
 #include "globals.h"
+#include "i2c.h"
+#include "mcp4651.h"
 #include "our_descriptor.h"
 #include "platform.h"
 #include "remapper.h"
@@ -179,6 +181,9 @@ uint64_t get_unique_id() {
 int main() {
     my_mutexes_init();
     gpio_pins_init();
+#ifdef I2C_ENABLED
+    our_i2c_init();
+#endif
     tick_init();
     load_config(FLASH_CONFIG_IN_MEMORY);
     our_descriptor = &our_descriptors[our_descriptor_number];
@@ -211,6 +216,9 @@ int main() {
             }
             process_mapping(true);
             write_gpio();
+#ifdef MCP4651_ENABLED
+            mcp4651_write();
+#endif
         }
         tud_task();
         if (config_updated) {

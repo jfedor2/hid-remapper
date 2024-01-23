@@ -99,6 +99,8 @@ add_executable(remapper_dual_a
     src/pico_debug/adi.c
     dual_b_binary.c
     src/ps_auth.cc
+    $<$<STREQUAL:${PICO_BOARD},remapper_v7>:src/i2c.cc>
+    $<$<STREQUAL:${PICO_BOARD},remapper_v7>:src/mcp4651.cc>
 )
 target_include_directories(remapper_dual_a PRIVATE
     src
@@ -108,6 +110,7 @@ target_include_directories(remapper_dual_a PRIVATE
 target_link_libraries(remapper_dual_a
     pico_stdlib
     hardware_flash
+    $<$<STREQUAL:${PICO_BOARD},remapper_v7>:hardware_i2c>
     hardware_pio
     tinyusb_device
     tinyusb_board

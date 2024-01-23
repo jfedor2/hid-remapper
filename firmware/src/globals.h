@@ -55,4 +55,9 @@ extern const our_descriptor_def_t* our_descriptor;
 
 extern uint8_t gpio_out_state[4];
 
+#ifndef NDIGIPOTS
+#define NDIGIPOTS 6
+#endif
+extern uint16_t digipot_state[NDIGIPOTS];
+
 #endif

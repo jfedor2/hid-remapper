@@ -30,6 +30,11 @@ jobs:
           PICO_BOARD=remapper cmake ..
           make remapper_dual_a
           cd ..
+          mkdir build-board_v7
+          cd build-board_v7
+          PICO_BOARD=remapper_v7 cmake ..
+          make remapper_dual_a
+          cd ..
           mkdir build-feather
           cd build-feather
           PICO_BOARD=feather_host cmake ..
@@ -43,6 +48,7 @@ jobs:
           mkdir artifacts
           mv build/*.uf2 artifacts
           mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board.uf2
+          mv build-board_v7/remapper_dual_a.uf2 artifacts/remapper_board_v7.uf2
           mv build-feather/remapper.uf2 artifacts/remapper_feather.uf2
           mv build-waveshare_rp2040_pizero/remapper.uf2 artifacts/remapper_waveshare_rp2040_pizero.uf2
         working-directory: ./firmware
