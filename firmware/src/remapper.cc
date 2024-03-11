@@ -1237,6 +1237,10 @@ static inline bool is_rollover(const uint8_t* report, int len, uint16_t interfac
 }
 
 void do_handle_received_report(const uint8_t* report, int len, uint16_t interface, uint8_t external_report_id) {
+    if (len == 0) {
+        return;
+    }
+
     reports_received++;
 
     my_mutex_enter(MutexId::THEIR_USAGES);
