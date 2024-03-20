@@ -85,7 +85,8 @@ uint8_t const* tud_descriptor_device_cb() {
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
-    desc_configuration[25] = our_descriptor->descriptor_length;  // XXX there has to be a better way
+    desc_configuration[25] = TU_U16_LOW(our_descriptor->descriptor_length);  // XXX there has to be a better way
+    desc_configuration[26] = TU_U16_HIGH(our_descriptor->descriptor_length);
     return desc_configuration;
 }
 
