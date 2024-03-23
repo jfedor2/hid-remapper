@@ -8,7 +8,7 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 11;
+const CONFIG_VERSION = 12;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -23,6 +23,10 @@ const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
 const IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4;
 const GPIO_OUTPUT_MODE_FLAG = 1 << 5;
+
+const QUIRK_FLAG_RELATIVE_MASK = 0b10000000;
+const QUIRK_FLAG_SIGNED_MASK = 0b01000000;
+const QUIRK_SIZE_MASK = 0b00111111;
 
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 const EXPR_USAGE_PAGE = 0xFFF30000;
@@ -50,6 +54,9 @@ const CLEAR_EXPRESSIONS = 19;
 const APPEND_TO_EXPRESSION = 20;
 const GET_EXPRESSION = 21;
 const SET_MONITOR_ENABLED = 22;
+const CLEAR_QUIRKS = 23;
+const ADD_QUIRK = 24;
+const GET_QUIRK = 25;
 
 const ops = {
     "PUSH": 0,
@@ -93,6 +100,7 @@ const ops = {
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
 
 const UINT8 = Symbol('uint8');
+const UINT16 = Symbol('uint16');
 const UINT32 = Symbol('uint32');
 const INT32 = Symbol('int32');
 
@@ -129,10 +137,12 @@ let config = {
     expressions: [
         '', '', '', '', '', '', '', ''
     ],
+    quirks: [],
 };
 let monitor_enabled = false;
 let monitor_min_val = {};
 let monitor_max_val = {};
+let unique_id_counter = 0;
 const ignored_usages = new Set([
 ]);
 
@@ -149,6 +159,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("clear_bonds").addEventListener("click", clear_bonds);
     document.getElementById("monitor_clear").addEventListener("click", monitor_clear);
     document.getElementById("file_input").addEventListener("change", file_uploaded);
+    document.getElementById("add_quirk").addEventListener("click", add_empty_quirk);
 
     device_buttons_set_disabled_state(true);
 
@@ -219,8 +230,8 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8]);
+        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
+            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
         check_received_version(config_version);
 
         config['version'] = config_version;
@@ -314,6 +325,25 @@ async function load_from_device() {
             }
 
             config['expressions'].push(expression.join(' '));
+        }
+
+        config['quirks'] = [];
+
+        for (let quirk_i = 0; quirk_i < quirk_count; quirk_i++) {
+            await send_feature_command(GET_QUIRK, [[UINT32, quirk_i]]);
+            const [vendor_id, product_id, interface_, report_id, usage, bitpos, size_flags] =
+                await read_config_feature([UINT16, UINT16, UINT8, UINT8, UINT32, UINT16, UINT8]);
+            config['quirks'].push({
+                'vendor_id': '0x' + vendor_id.toString(16).padStart(4, '0'),
+                'product_id': '0x' + product_id.toString(16).padStart(4, '0'),
+                'interface': interface_,
+                'report_id': report_id,
+                'usage': '0x' + usage.toString(16).padStart(8, '0'),
+                'bitpos': bitpos,
+                'size': size_flags & QUIRK_SIZE_MASK,
+                'relative': (size_flags & QUIRK_FLAG_RELATIVE_MASK) != 0,
+                'signed': (size_flags & QUIRK_FLAG_SIGNED_MASK) != 0,
+            });
         }
 
         set_ui_state();
@@ -416,6 +446,22 @@ async function save_to_device() {
             }
 
             expr_i++;
+        }
+
+        await send_feature_command(CLEAR_QUIRKS);
+        for (const quirk of config['quirks']) {
+            const size_flags = (quirk['size'] & QUIRK_SIZE_MASK) |
+                (quirk['relative'] ? QUIRK_FLAG_RELATIVE_MASK : 0) |
+                (quirk['signed'] ? QUIRK_FLAG_SIGNED_MASK : 0);
+            await send_feature_command(ADD_QUIRK, [
+                [UINT16, parseInt(quirk['vendor_id'], 16)],
+                [UINT16, parseInt(quirk['product_id'], 16)],
+                [UINT8, quirk['interface']],
+                [UINT8, quirk['report_id']],
+                [UINT32, parseInt(quirk['usage'], 16)],
+                [UINT16, quirk['bitpos']],
+                [UINT8, size_flags],
+            ]);
         }
 
         await send_feature_command(PERSIST_CONFIG);
@@ -595,6 +641,9 @@ function set_ui_state() {
             mapping['target_port'] = 0;
         }
     }
+    if (config['version'] < 12) {
+        config['quirks'] = [];
+    }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
     }
@@ -603,6 +652,7 @@ function set_ui_state() {
     set_mappings_ui_state();
     set_macros_ui_state();
     set_expressions_ui_state();
+    set_quirks_ui_state();
     setup_usages_modals();
 }
 
@@ -728,6 +778,10 @@ async function send_feature_command(command, fields = [], version = CONFIG_VERSI
                 dataview.setUint8(pos, value);
                 pos += 1;
                 break;
+            case UINT16:
+                dataview.setUint16(pos, value, true);
+                pos += 2;
+                break;
             case UINT32:
                 dataview.setUint32(pos, value, true);
                 pos += 4;
@@ -754,6 +808,10 @@ async function read_config_feature(fields = []) {
             case UINT8:
                 ret.push(data.getUint8(pos));
                 pos += 1;
+                break;
+            case UINT16:
+                ret.push(data.getUint16(pos, true));
+                pos += 2;
                 break;
             case UINT32:
                 ret.push(data.getUint32(pos, true));
@@ -793,7 +851,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5, 6, 7, 8, 9, 10, 11].includes(config_version))) {
+    if (!([3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -809,7 +867,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 10, 9, 8, 7, 6, 5, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -1404,4 +1462,104 @@ async function monitor_tab_shown(event) {
 
 async function monitor_tab_hide(event) {
     await set_monitor_enabled(false);
+}
+
+function add_quirk(quirk) {
+    const template = document.getElementById("quirk_template");
+    const container = document.getElementById("quirks_container");
+    const clone = template.content.cloneNode(true).firstElementChild;
+    clone.querySelector(".delete_button").addEventListener("click", delete_quirk(quirk, clone));
+    const vendor_id_input = clone.querySelector('.vendor_id_input');
+    vendor_id_input.value = quirk['vendor_id'].replace(/^0[xX]/, '');
+    vendor_id_input.addEventListener("change", quirk_hex_change('vendor_id', quirk, vendor_id_input));
+    const product_id_input = clone.querySelector('.product_id_input');
+    product_id_input.value = quirk['product_id'].replace(/^0[xX]/, '');
+    product_id_input.addEventListener("change", quirk_hex_change('product_id', quirk, product_id_input));
+    const interface_input = clone.querySelector('.interface_input');
+    interface_input.value = quirk['interface'];
+    interface_input.addEventListener("change", quirk_number_change('interface', quirk, interface_input));
+    const report_id_input = clone.querySelector('.report_id_input');
+    report_id_input.value = quirk['report_id'];
+    report_id_input.addEventListener("change", quirk_number_change('report_id', quirk, report_id_input));
+    const usage_input = clone.querySelector('.usage_input');
+    usage_input.value = quirk['usage'].replace(/^0[xX]/, '');
+    usage_input.addEventListener("change", quirk_hex_change('usage', quirk, usage_input));
+    const size_input = clone.querySelector('.size_input');
+    size_input.value = quirk['size'];
+    size_input.addEventListener("change", quirk_number_change('size', quirk, size_input));
+    const bitpos_input = clone.querySelector('.bitpos_input');
+    bitpos_input.value = quirk['bitpos'];
+    bitpos_input.addEventListener("change", quirk_number_change('bitpos', quirk, bitpos_input));
+    const relative_checkbox = clone.querySelector(".relative_checkbox");
+    relative_checkbox.checked = quirk['relative'];
+    relative_checkbox.id = 'relative_checkbox' + unique_id_counter++;
+    relative_checkbox.addEventListener("change", quick_checkbox_onclick('relative', quirk, relative_checkbox));
+    clone.querySelector(".relative_checkbox_label").htmlFor = relative_checkbox.id;
+    const signed_checkbox = clone.querySelector(".signed_checkbox");
+    signed_checkbox.checked = quirk['signed'];
+    signed_checkbox.id = 'signed_checkbox' + unique_id_counter++;
+    signed_checkbox.addEventListener("change", quick_checkbox_onclick('signed', quirk, signed_checkbox));
+    clone.querySelector(".signed_checkbox_label").htmlFor = signed_checkbox.id;
+    container.appendChild(clone);
+}
+
+function quirk_hex_change(field_name, quirk, element) {
+    return function () {
+        if (/^[0-9a-fA-F]+$/.test(element.value)) {
+            element.classList.remove('is-invalid');
+            quirk[field_name] = '0x' + element.value;
+        } else {
+            element.classList.add('is-invalid');
+            quirk[field_name] = '0x0000';
+        }
+    };
+}
+
+function quirk_number_change(field_name, quirk, element) {
+    return function () {
+        const value = parseInt(element.value, 10);
+        if (isNaN(value)) {
+            element.classList.add('is-invalid');
+            quirk[field_name] = 0;
+        } else {
+            quirk[field_name] = value;
+            element.classList.remove('is-invalid');
+        }
+    };
+}
+
+function quick_checkbox_onclick(field_name, quirk, element) {
+    return function () {
+        quirk[field_name] = element.checked;
+    };
+}
+
+function add_empty_quirk() {
+    let quirk = {
+        "vendor_id": "0x0000",
+        "product_id": "0x0000",
+        "interface": 0,
+        "report_id": 0,
+        "usage": "0x00000000",
+        "size": 0,
+        "bitpos": 0,
+        "relative": false,
+        "signed": false
+    };
+    config['quirks'].push(quirk);
+    add_quirk(quirk);
+}
+
+function delete_quirk(quirk, element) {
+    return function () {
+        config['quirks'] = config['quirks'].filter(x => x !== quirk);
+        document.getElementById("quirks_container").removeChild(element);
+    };
+}
+
+function set_quirks_ui_state() {
+    clear_children(document.getElementById('quirks_container'));
+    for (const quirk of config['quirks']) {
+        add_quirk(quirk);
+    }
 }

@@ -159,6 +159,33 @@ for expr_index, expr in enumerate(config.get("expressions", [])):
         )
         device.send_feature_report(add_crc(data))
 
+data = struct.pack(
+    "<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, CLEAR_QUIRKS, *([0] * 26)
+)
+device.send_feature_report(add_crc(data))
+
+for quirk in config.get("quirks", []):
+    size_flags = (
+        (quirk["size"] & QUIRK_SIZE_MASK)
+        | (QUIRK_FLAG_RELATIVE_MASK if quirk["relative"] else 0)
+        | (QUIRK_FLAG_SIGNED_MASK if quirk["signed"] else 0)
+    )
+    data = struct.pack(
+        "<BBBHHBBLHB13B",
+        REPORT_ID_CONFIG,
+        CONFIG_VERSION,
+        ADD_QUIRK,
+        int(quirk["vendor_id"], 16),
+        int(quirk["product_id"], 16),
+        quirk["interface"],
+        quirk["report_id"],
+        int(quirk["usage"], 16),
+        quirk["bitpos"],
+        size_flags,
+        *([0] * 13)
+    )
+    device.send_feature_report(add_crc(data))
+
 
 data = struct.pack(
     "<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, PERSIST_CONFIG, *([0] * 26)

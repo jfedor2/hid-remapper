@@ -186,6 +186,21 @@
                 <div class="row mt-3">
                     <em>Changes to the emulated device type become active after disconnecting and reconnecting HID Remapper.</em>
                 </div>
+
+                <h5 class="mt-4">Custom usages</h5>
+
+                <div id="quirks_container">
+
+                </div>
+                <div class="mt-4">
+                    <button id="add_quirk" type="button" class="btn btn-primary">Add usage</button>
+                </div>
+
+                <div class="row mt-3">
+                    <em>If both Vendor ID and Product ID are zero, usage applies to all interfaces on all devices.<br>
+                    Set size to zero to remove an existing usage.<br>
+                    Custom usages are only applied after re-plugging the device or HID Remapper.</em>
+                </div>
             </div>
 
             <div class="tab-pane" id="nav-macros" role="tabpanel" tabindex="0">
@@ -389,6 +404,67 @@
             <div class="col-2 text-end monitor_last_value"></div>
             <div class="col-2 text-end monitor_min_value"></div>
             <div class="col-2 text-end monitor_max_value"></div>
+        </div>
+    </template>
+
+    <template id="quirk_template">
+        <div>
+            <div class="row">
+                <div class="col-1 pt-3">
+                    <button type="button" class="btn btn-primary delete_button">×</button>
+                </div>
+                <div class="col-3">
+                    <label class="col-form-label">Vendor ID</label>
+                    <div class="input-group">
+                        <span class="input-group-text">0x</span>
+                        <input type="text" class="form-control vendor_id_input text-end">
+                    </div>
+                </div>
+                <div class="col-3">
+                    <label class="col-form-label">Product ID</label>
+                    <div class="input-group">
+                        <span class="input-group-text">0x</span>
+                        <input type="text" class="form-control product_id_input text-end">
+                    </div>
+                </div>
+                <div class="col-2">
+                    <label class="col-form-label">Interface</label>
+                    <input type="number" min="0" max="255" class="form-control interface_input text-end">
+                </div>
+                <div class="col-2">
+                    <label class="col-form-label">Report ID</label>
+                    <input type="number" min="0" max="255" class="form-control report_id_input text-end">
+                </div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-1">
+                </div>
+                <div class="col-3 pt-4">
+                    <div class="form-check">
+                        <input class="form-check-input relative_checkbox" type="checkbox" value="">
+                        <label class="form-check-label relative_checkbox_label">Relative</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input signed_checkbox" type="checkbox" value="">
+                        <label class="form-check-label signed_checkbox_label">Signed</label>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <label class="col-form-label">Usage</label>
+                    <div class="input-group">
+                        <span class="input-group-text">0x</span>
+                        <input type="text" class="form-control usage_input text-end">
+                    </div>
+                </div>
+                <div class="col-2">
+                    <label class="col-form-label">Size</label>
+                    <input type="number" min="0" max="32" class="form-control size_input text-end">
+                </div>
+                <div class="col-2">
+                    <label class="col-form-label">Position</label>
+                    <input type="number" min="0" max="511" class="form-control bitpos_input text-end">
+                </div>
+            </div>
         </div>
     </template>
 

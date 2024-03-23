@@ -60,4 +60,6 @@ extern uint8_t gpio_out_state[4];
 #endif
 extern uint16_t digipot_state[NDIGIPOTS];
 
+extern std::vector<quirk_t> quirks;
+
 #endif

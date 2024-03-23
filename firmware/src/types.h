@@ -29,6 +29,9 @@ enum class ConfigCommand : int8_t {
     APPEND_TO_EXPRESSION = 20,
     GET_EXPRESSION = 21,
     SET_MONITOR_ENABLED = 22,
+    CLEAR_QUIRKS = 23,
+    ADD_QUIRK = 24,
+    GET_QUIRK = 25,
 };
 
 struct usage_def_t {
@@ -246,7 +249,34 @@ struct __attribute__((packed)) persist_config_v10_t {
 
 typedef persist_config_v10_t persist_config_v11_t;
 
-typedef persist_config_v11_t persist_config_t;
+#define QUIRK_FLAG_RELATIVE_MASK 0b10000000
+#define QUIRK_FLAG_SIGNED_MASK 0b01000000
+#define QUIRK_SIZE_MASK 0b00111111
+
+struct __attribute__((packed)) quirk_t {
+    uint16_t vendor_id;
+    uint16_t product_id;
+    uint8_t interface;
+    uint8_t report_id;
+    uint32_t usage;
+    uint16_t bitpos;
+    uint8_t size_flags;
+};
+
+struct __attribute__((packed)) persist_config_v12_t {
+    uint8_t version;
+    uint8_t flags;
+    uint32_t partial_scroll_timeout;
+    uint32_t mapping_count;
+    uint8_t interval_override;
+    uint32_t tap_hold_threshold;
+    uint8_t gpio_debounce_time_ms;
+    uint8_t our_descriptor_number;
+    uint8_t macro_entry_duration;
+    uint16_t quirk_count;
+};
+
+typedef persist_config_v12_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
     uint8_t version;
@@ -260,6 +290,7 @@ struct __attribute__((packed)) get_config_t {
     uint8_t gpio_debounce_time_ms;
     uint8_t our_descriptor_number;
     uint8_t macro_entry_duration;
+    uint16_t quirk_count;
 };
 
 struct __attribute__((packed)) set_config_t {
@@ -312,6 +343,7 @@ enum class MutexId : int8_t {
     THEIR_USAGES,
     MACROS,
     EXPRESSIONS,
+    QUIRKS,
     N
 };
 

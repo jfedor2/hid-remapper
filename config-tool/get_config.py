@@ -25,9 +25,9 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     gpio_debounce_time_ms,
     our_descriptor_number,
     macro_entry_duration,
-    *_,
+    quirk_count,
     crc,
-) = struct.unpack("<BBBLLLLBLBBB2BL", data)
+) = struct.unpack("<BBBLLLLBLBBBHL", data)
 check_crc(data, crc)
 
 config = {
@@ -44,6 +44,7 @@ config = {
     "mappings": [],
     "macros": [],
     "expressions": [],
+    "quirks": [],
 }
 
 for i in range(mapping_count):
@@ -153,5 +154,38 @@ for expression_i in range(NEXPRESSIONS):
         i += nelems
 
     config["expressions"].append(" ".join(expression))
+
+for quirk_i in range(quirk_count):
+    data = struct.pack(
+        "<BBBL22B", REPORT_ID_CONFIG, CONFIG_VERSION, GET_QUIRK, quirk_i, *([0] * 22)
+    )
+    device.send_feature_report(add_crc(data))
+    data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
+    (
+        report_id_,
+        vendor_id,
+        product_id,
+        interface,
+        report_id,
+        usage,
+        bitpos,
+        size_flags,
+        *_,
+        crc,
+    ) = struct.unpack("<BHHBBLHB15BL", data)
+    check_crc(data, crc)
+    config["quirks"].append(
+        {
+            "vendor_id": "{0:#06x}".format(vendor_id),
+            "product_id": "{0:#06x}".format(product_id),
+            "interface": interface,
+            "report_id": report_id,
+            "usage": "{0:#010x}".format(usage),
+            "size": size_flags & QUIRK_SIZE_MASK,
+            "bitpos": bitpos,
+            "relative": (size_flags & QUIRK_FLAG_RELATIVE_MASK) != 0,
+            "signed": (size_flags & QUIRK_FLAG_SIGNED_MASK) != 0,
+        }
+    )
 
 print(json.dumps(config, indent=4))

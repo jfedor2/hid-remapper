@@ -77,7 +77,7 @@ void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* re
         has_report_id_theirs[interface],
         report_descriptor,
         len);
-    apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len);
+    apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len, interface & 0xFF);
     assign_interface_index(interface);
 
     for (auto const& [report_id, size] : their_report_sizes_map[ReportType::OUTPUT]) {
