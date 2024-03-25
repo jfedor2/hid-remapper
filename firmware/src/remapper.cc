@@ -884,6 +884,7 @@ void process_mapping(bool auto_repeat) {
     }
 
     memcpy(input_state + PREV_STATE_OFFSET, input_state, used_state_slots * sizeof(input_state[0]));
+    memset(digipot_state, 0, sizeof(digipot_state));
 
     for (auto& rev_map : reverse_mapping) {
         uint32_t target = rev_map.target;
