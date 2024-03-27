@@ -107,6 +107,7 @@ uint8_t monitor_report_idx = 0;
 
 #define NREGISTERS 32
 int32_t registers[NREGISTERS] = { 0 };
+std::vector<register_ptrs_t> register_ptrs;
 uint8_t port_register = 0;
 
 uint64_t frame_counter = 0;
@@ -337,6 +338,7 @@ void set_mapping_from_config() {
     reverse_mapping_layers.clear();
     used_state_slots = 0;
     usage_state_ptr.clear();
+    register_ptrs.clear();
     memset(input_state, 0, sizeof(input_state));
     memset(tap_hold_state, 0, sizeof(tap_hold_state));
     memset(sticky_state, 0, sizeof(sticky_state));
@@ -346,6 +348,11 @@ void set_mapping_from_config() {
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
         uint8_t source_port = mapping.hub_ports & 0x0F;
+        if (((mapping.source_usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
+            ((mapping.source_usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) ||
+            ((mapping.source_usage & 0xFFFF0000) == GPIO_USAGE_PAGE)) {
+            source_port = 0;
+        }
         uint8_t target_port = (mapping.hub_ports >> 4) & 0x0F;
         if ((mapping.target_usage & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
             uint16_t layer = mapping.target_usage & 0xFFFF;
@@ -375,13 +382,20 @@ void set_mapping_from_config() {
                 .usage = mapping.source_usage,
                 .scaling = mapping.scaling,
                 .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
-                .layer_mask = layer_mask,
                 .tap = (mapping.flags & MAPPING_FLAG_TAP) != 0,
                 .hold = (mapping.flags & MAPPING_FLAG_HOLD) != 0,
+                .layer_mask = layer_mask,
                 .input_state = get_state_ptr(mapping.source_usage, source_port),
                 .tap_hold_state = get_tap_hold_state_ptr(mapping.source_usage, source_port),
                 .sticky_state = get_sticky_state_ptr(mapping.source_usage, source_port),
             });
+
+            if ((mapping.source_usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) {
+                register_ptrs.push_back((register_ptrs_t){
+                    .register_ptr = &registers[(mapping.source_usage & 0xFFFF) - 1],
+                    .state_ptr = get_state_ptr(mapping.source_usage, source_port),
+                });
+            }
         }
         // if a usage appears in an expression, consider it mapped
         if ((mapping.source_usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
@@ -863,6 +877,10 @@ void process_mapping(bool auto_repeat) {
         }
     }
 
+    for (auto const& reg_ptr : register_ptrs) {
+        *reg_ptr.state_ptr = *reg_ptr.register_ptr;
+    }
+
     // queue triggered macros
     for (auto const& rev_map : reverse_mapping_macros) {
         uint16_t macro = (rev_map.target & 0xFFFF) - 1;
@@ -891,23 +909,19 @@ void process_mapping(bool auto_repeat) {
         if (rev_map.is_relative) {
             for (auto& map_source : rev_map.sources) {
                 int32_t value = 0;
-                if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
-                    if (layer_state_mask & map_source.layer_mask) {
-                        value = *map_source.input_state;
-                    }
-                } else if ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) {
-                    uint32_t reg_number = (map_source.usage & 0xFFFF) - 1;
-                    if (reg_number < NREGISTERS) {
-                        value = registers[reg_number];
-                    }
-                } else {
-                    if (auto_repeat || map_source.is_relative) {
-                        if (map_source.sticky) {
-                            value = !!(*map_source.sticky_state & map_source.layer_mask) * map_source.scaling;
-                        } else {
-                            if (layer_state_mask & map_source.layer_mask) {
-                                int32_t state = map_source.hold ? map_source.tap_hold_state->hold : *map_source.input_state;
-                                value = (map_source.is_relative ? state : !!state) * map_source.scaling;
+                if (auto_repeat || map_source.is_relative) {
+                    if (map_source.sticky) {
+                        value = !!(*map_source.sticky_state & map_source.layer_mask) * map_source.scaling;
+                    } else {
+                        if (layer_state_mask & map_source.layer_mask) {
+                            value = map_source.hold ? map_source.tap_hold_state->hold : *map_source.input_state;
+                            if (map_source.is_binary) {
+                                value = !!value;
+                            }
+                            value *= map_source.scaling;
+                            if (((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
+                                ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE)) {
+                                value /= 1000;
                             }
                         }
                     }
@@ -923,34 +937,31 @@ void process_mapping(bool auto_repeat) {
         } else {  // our_usage is absolute
             int32_t value = 0;
             for (auto const& map_source : rev_map.sources) {
-                if ((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) {
-                    if (layer_state_mask & map_source.layer_mask) {
-                        value = *map_source.input_state / 1000;
-                    }
-                } else if ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) {
-                    uint32_t reg_number = (map_source.usage & 0xFFFF) - 1;
-                    if (reg_number < NREGISTERS) {
-                        value = registers[reg_number] / 1000;
+                if (map_source.sticky) {
+                    if (*map_source.sticky_state & map_source.layer_mask) {
+                        value = 1;
                     }
                 } else {
-                    if (map_source.sticky) {
-                        if (*map_source.sticky_state & map_source.layer_mask) {
+                    if ((layer_state_mask & map_source.layer_mask)) {
+                        if ((map_source.tap && map_source.tap_hold_state->tap) ||
+                            (map_source.hold && map_source.tap_hold_state->hold)) {
                             value = 1;
                         }
-                    } else {
-                        if ((layer_state_mask & map_source.layer_mask)) {
-                            if ((map_source.tap && map_source.tap_hold_state->tap) ||
-                                (map_source.hold && map_source.tap_hold_state->hold)) {
-                                value = 1;
-                            }
-                            if (!map_source.tap && !map_source.hold) {
-                                if (map_source.is_relative) {
-                                    if (*map_source.input_state * map_source.scaling > 0) {
-                                        value = 1;
+                        if (!map_source.tap && !map_source.hold) {
+                            if (map_source.is_relative) {
+                                if (*map_source.input_state * map_source.scaling > 0) {
+                                    value = 1;
+                                }
+                            } else {
+                                if (*map_source.input_state) {
+                                    value = *map_source.input_state;
+                                    if (map_source.is_binary) {
+                                        value = !!value;
                                     }
-                                } else {
-                                    if (*map_source.input_state) {
-                                        value = *map_source.input_state;
+                                    value = (int64_t) value * map_source.scaling / 1000;
+                                    if (((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
+                                        ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE)) {
+                                        value /= 1000;
                                     }
                                 }
                             }
@@ -1360,6 +1371,7 @@ void rlencode(const std::set<uint64_t>& usage_ranges, std::vector<usage_rle_t>& 
 
 void update_their_descriptor_derivates() {
     std::unordered_set<uint32_t> relative_usage_set;
+    std::unordered_set<uint32_t> binary_usage_set;
     std::set<uint64_t> their_usage_ranges_set;
 
     relative_usages.clear();
@@ -1383,6 +1395,9 @@ void update_their_descriptor_derivates() {
                             relative_usages.push_back(state_ptr_n);
                         }
                         relative_usage_set.insert(usage);
+                    }
+                    if (usage_def.size == 1) {
+                        binary_usage_set.insert(usage);
                     }
                     if ((state_ptr_0 != NULL) || (state_ptr_n != NULL)) {
                         usage_def.input_state_0 = state_ptr_0;
@@ -1436,6 +1451,7 @@ void update_their_descriptor_derivates() {
     for (auto& rev_map : reverse_mapping) {
         for (auto& map_source : rev_map.sources) {
             map_source.is_relative = relative_usage_set.count(map_source.usage) > 0;
+            map_source.is_binary = binary_usage_set.count(map_source.usage) > 0;
         }
         auto search = their_out_usages_flat.find(rev_map.target);
         if (search != their_out_usages_flat.end()) {

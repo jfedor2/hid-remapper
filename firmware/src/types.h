@@ -104,13 +104,14 @@ struct map_source_t {
     uint32_t usage;
     int32_t scaling = 1000;  // * 1000
     bool sticky = false;
-    uint8_t layer_mask = 1;
     bool tap = false;
     bool hold = false;
+    bool is_relative = false;
+    bool is_binary = false;
+    uint8_t layer_mask = 1;
     int32_t* input_state;
     tap_hold_state_t* tap_hold_state;
     uint8_t* sticky_state;
-    bool is_relative = false;
     int32_t accumulated_scroll;
     uint64_t last_scroll_timestamp;  // XXX we can make this 32 or less bits
 };
@@ -151,6 +152,11 @@ struct tap_sticky_usage_t {
 struct usage_rle_t {
     uint32_t usage;
     uint32_t count;
+};
+
+struct register_ptrs_t {
+    int32_t* register_ptr;
+    int32_t* state_ptr;
 };
 
 struct __attribute__((packed)) set_feature_t {
