@@ -56,7 +56,8 @@ std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<int32_t*>>>
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_def_t>>> rollover_usages;          // dev_addr+interface -> report_id -> usage_def vector
 
 std::vector<sticky_usage_t> sticky_usages;
-std::vector<tap_sticky_usage_t> tap_sticky_usages;
+std::vector<tap_hold_sticky_usage_t> tap_sticky_usages;
+std::vector<tap_hold_sticky_usage_t> hold_sticky_usages;
 std::vector<tap_hold_usage_t> tap_hold_usages;
 
 // report_id -> ...
@@ -328,6 +329,7 @@ void set_mapping_from_config() {
     std::unordered_map<uint64_t, std::vector<map_source_t>> reverse_mapping_map;  // hub_port+target -> sources list
     std::unordered_map<uint64_t, uint8_t> sticky_usage_map;
     std::unordered_map<uint64_t, uint8_t> tap_sticky_usage_map;
+    std::unordered_map<uint64_t, uint8_t> hold_sticky_usage_map;
     std::unordered_set<uint64_t> tap_hold_usage_set;
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
@@ -416,7 +418,12 @@ void set_mapping_from_config() {
         if ((mapping.flags & MAPPING_FLAG_STICKY) != 0) {
             if (mapping.flags & MAPPING_FLAG_TAP) {
                 tap_sticky_usage_map[((uint64_t) source_port << 32) | mapping.source_usage] |= layer_mask;
-            } else {
+            }
+            if (mapping.flags & MAPPING_FLAG_HOLD) {
+                hold_sticky_usage_map[((uint64_t) source_port << 32) | mapping.source_usage] |= layer_mask;
+            }
+            if (((mapping.flags & MAPPING_FLAG_TAP) == 0) &&
+                ((mapping.flags & MAPPING_FLAG_HOLD) == 0)) {
                 sticky_usage_map[((uint64_t) source_port << 32) | mapping.source_usage] |= layer_mask;
             }
         }
@@ -450,6 +457,7 @@ void set_mapping_from_config() {
     sticky_usages.clear();
     tap_hold_usages.clear();
     tap_sticky_usages.clear();
+    hold_sticky_usages.clear();
 
     for (auto const& [hub_port_usage, layer_mask] : sticky_usage_map) {
         uint32_t usage = hub_port_usage & 0xFFFFFFFF;
@@ -467,11 +475,23 @@ void set_mapping_from_config() {
     for (auto const& [hub_port_usage, layer_mask] : tap_sticky_usage_map) {
         uint32_t usage = hub_port_usage & 0xFFFFFFFF;
         uint8_t hub_port = hub_port_usage >> 32;
-        tap_sticky_usages.push_back((tap_sticky_usage_t){
+        tap_sticky_usages.push_back((tap_hold_sticky_usage_t){
             .layer_mask = layer_mask,
             .tap_hold_state = get_tap_hold_state_ptr(usage, hub_port),
             .sticky_state = get_sticky_state_ptr(usage, hub_port),
         });
+    }
+
+    for (auto const& [hub_port_usage, layer_mask] : hold_sticky_usage_map) {
+        uint32_t usage = hub_port_usage & 0xFFFFFFFF;
+        uint8_t hub_port = hub_port_usage >> 32;
+        if (get_state_ptr(usage, hub_port) != NULL) {
+            hold_sticky_usages.push_back((tap_hold_sticky_usage_t){
+                .layer_mask = layer_mask,
+                .tap_hold_state = get_tap_hold_state_ptr(usage, hub_port),
+                .sticky_state = get_sticky_state_ptr(usage, hub_port),
+            });
+        }
     }
 
     for (auto const hub_port_usage : tap_hold_usage_set) {
@@ -804,16 +824,16 @@ void process_mapping(bool auto_repeat) {
     frame_counter++;
 
     for (auto& tap_hold : tap_hold_usages) {
+        if ((*tap_hold.input_state != 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) == 0)) {
+            tap_hold.pressed_at = now;
+        }
         tap_hold.tap_hold_state->tap =
             (*tap_hold.input_state == 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) != 0) &&
             (now - tap_hold.pressed_at < tap_hold_threshold);
         tap_hold.tap_hold_state->prev_hold = tap_hold.tap_hold_state->hold;
         tap_hold.tap_hold_state->hold =
-            (*tap_hold.input_state != 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) != 0) &&
+            (*tap_hold.input_state != 0) &&
             (now - tap_hold.pressed_at >= tap_hold_threshold);
-        if ((*tap_hold.input_state != 0) && (*(tap_hold.input_state + PREV_STATE_OFFSET) == 0)) {
-            tap_hold.pressed_at = now;
-        }
     }
 
     for (auto const& sticky : sticky_usages) {
@@ -826,6 +846,13 @@ void process_mapping(bool auto_repeat) {
     for (auto& tap_sticky : tap_sticky_usages) {
         if ((layer_state_mask & tap_sticky.layer_mask) && tap_sticky.tap_hold_state->tap) {
             *tap_sticky.sticky_state ^= (layer_state_mask & tap_sticky.layer_mask);
+        }
+    }
+
+    for (auto& hold_sticky : hold_sticky_usages) {
+        if ((layer_state_mask & hold_sticky.layer_mask) &&
+            hold_sticky.tap_hold_state->hold && !hold_sticky.tap_hold_state->prev_hold) {
+            *hold_sticky.sticky_state ^= (layer_state_mask & hold_sticky.layer_mask);
         }
     }
 
@@ -844,8 +871,9 @@ void process_mapping(bool auto_repeat) {
                 // This part is responsible for deactivating a layer if it was activated
                 // by a sticky mapping and the user pressed the button again.
                 // There must be a better way of handling this.
-                if (((!map_source.tap && (*(map_source.input_state + PREV_STATE_OFFSET) == 0) && (*map_source.input_state != 0)) ||
-                        (map_source.tap && map_source.tap_hold_state->tap)) &&
+                if (((!map_source.tap && !map_source.hold && (*(map_source.input_state + PREV_STATE_OFFSET) == 0) && (*map_source.input_state != 0)) ||
+                        (map_source.tap && map_source.tap_hold_state->tap) ||
+                        (map_source.hold && map_source.tap_hold_state->hold && !map_source.tap_hold_state->prev_hold)) &&
                     (*map_source.sticky_state & map_source.layer_mask) &&
                     (layer_state_mask & (1 << i))) {
                     *map_source.sticky_state &= ~map_source.layer_mask;

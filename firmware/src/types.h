@@ -143,7 +143,7 @@ struct sticky_usage_t {
     uint8_t layer_mask;
 };
 
-struct tap_sticky_usage_t {
+struct tap_hold_sticky_usage_t {
     uint8_t layer_mask;
     tap_hold_state_t* tap_hold_state;
     uint8_t* sticky_state;
