@@ -6,6 +6,9 @@
 #include <bsp/board_api.h>
 #include <tusb.h>
 
+#ifdef ADC_ENABLED
+#include <hardware/adc.h>
+#endif
 #include <hardware/flash.h>
 #include <hardware/gpio.h>
 #include <pico/bootrom.h>
@@ -29,6 +32,8 @@
 #define CONFIG_OFFSET_IN_FLASH (PICO_FLASH_SIZE_BYTES - PERSISTED_CONFIG_SIZE)
 #define FLASH_CONFIG_IN_MEMORY (((uint8_t*) XIP_BASE) + CONFIG_OFFSET_IN_FLASH)
 
+#define ADC_USAGE_PAGE 0xFFF80000
+
 uint64_t next_print = 0;
 
 mutex_t mutexes[(uint8_t) MutexId::N];
@@ -39,6 +44,10 @@ uint32_t gpio_out_mask = 0;
 uint32_t prev_gpio_state = 0;
 uint64_t last_gpio_change[32] = { 0 };
 bool set_gpio_dir_pending = false;
+
+#ifdef ADC_ENABLED
+uint16_t prev_adc_state[NADCS] = { 0 };
+#endif
 
 void print_stats_maybe() {
     uint64_t now = time_us_64();
@@ -82,6 +91,22 @@ void set_gpio_dir() {
         }
     }
 }
+
+#ifdef ADC_ENABLED
+void adc_pins_init() {
+    adc_init();
+    for (int n = 26; n < 26 + NADCS; n++) {
+        adc_gpio_init(n);
+    }
+
+#ifdef PICO_SMPS_MODE_PIN
+    // (This only does anything on a Pico, but won't hurt on custom board v8.)
+    gpio_init(PICO_SMPS_MODE_PIN);
+    gpio_set_dir(PICO_SMPS_MODE_PIN, GPIO_OUT);
+    gpio_put(PICO_SMPS_MODE_PIN, true);
+#endif
+}
+#endif
 
 bool read_gpio(uint64_t now) {
     uint32_t gpio_state = gpio_get_all() & gpio_in_mask;
@@ -128,6 +153,26 @@ void write_gpio() {
     }
     memset(gpio_out_state, 0, sizeof(gpio_out_state));
 }
+
+#ifdef ADC_ENABLED
+bool read_adc() {
+    bool changed = false;
+    for (int i = 0; i < NADCS; i++) {
+        adc_select_input(i);
+        uint16_t state = adc_read();
+        if (state != prev_adc_state[i]) {
+            changed = true;
+            prev_adc_state[i] = state;
+        }
+        uint32_t usage = ADC_USAGE_PAGE | i;
+        set_input_state(usage, state);
+        if (monitor_enabled) {
+            monitor_usage(usage, state, 0);
+        }
+    }
+    return changed;
+}
+#endif
 
 void do_persist_config(uint8_t* buffer) {
 #if !PICO_COPY_TO_RAM
@@ -184,6 +229,9 @@ int main() {
 #ifdef I2C_ENABLED
     our_i2c_init();
 #endif
+#ifdef ADC_ENABLED
+    adc_pins_init();
+#endif
     tick_init();
     load_config(FLASH_CONFIG_IN_MEMORY);
     our_descriptor = &our_descriptors[our_descriptor_number];
@@ -214,6 +262,9 @@ int main() {
             if (gpio_state_changed) {
                 activity_led_on();
             }
+#ifdef ADC_ENABLED
+            read_adc();
+#endif
             process_mapping(true);
             write_gpio();
 #ifdef MCP4651_ENABLED
