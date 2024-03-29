@@ -20,6 +20,8 @@ The v6 board has a built-in four port USB hub and eighteen 3.5mm connectors wire
 
 The v7 board (not pictured above) is a companion device for accessibility controllers like the PlayStation Access and the Xbox Adaptive Controller. It has four analog and ten digital outputs that can be connected to the 3.5mm input ports on those controllers. More information [here](v7).
 
+The v8 board (not pictured above) has one 3.5mm TRRS jack that can be used for analog inputs. For example it could be used to add analog stick inputs to the Hori Flex controller. The jack also works for one or two digital buttons or switches. More information [here](v8).
+
 ## How to order the boards
 
 The process of ordering the boards is the same for all versions. You go to JLCPCB's [website](https://jlcpcb.com/), upload the Gerber zip file, enable the "PCB Assembly" option and upload the BOM and CPL files. All the options can be left at their default values. Then click through the rest of the process, making sure that all the components are in stock.
