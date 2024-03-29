@@ -90,6 +90,7 @@ enum class Op : int8_t {
     ROUND = 33,
     PORT = 34,
     DPAD = 35,
+    EOL = 36,
 };
 
 struct expr_elem_t {

@@ -95,6 +95,7 @@ const ops = {
     "ROUND": 33,
     "PORT": 34,
     "DPAD": 35,
+    "EOL": 36,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
@@ -585,6 +586,9 @@ function set_expressions_ui_state() {
         if (/^[0-9-]/.test(op)) {
             return (parseInt(op, 10) / 1000).toString();
         }
+        if (op.toLowerCase() == 'eol') {
+            return '\n';
+        }
         return op;
     }
 
@@ -594,8 +598,13 @@ function set_expressions_ui_state() {
             break;
         }
 
-        document.getElementById('expression_' + expr_i).querySelector('.expression_input').value =
-            expr.split(/\s+/).map(json_to_ui).join(' ');
+        const expression_input = document.getElementById('expression_' + expr_i).querySelector('.expression_input');
+        const expression_text = expr.split(/\s+/).map(json_to_ui).join(' ').replace(/ \n /g, '\n');
+        expression_input.value = expression_text;
+
+        const eols = expression_text.match(/\n/g);
+        // This doesn't take wrapped lines into consideration.
+        expression_input.rows = eols == null ? 1 : eols.length + 1;
 
         expr_i++;
     }
@@ -962,7 +971,7 @@ function expression_onchange(i) {
         const expr_input = document.getElementById('expression_' + i).querySelector('.expression_input');
         try {
             config['expressions'][i] =
-                expr_input.value.split(/\s+/).filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
+                expr_input.value.replace(/\n/g, " eol ").split(/\s+/).filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
             expr_input.classList.remove('is-invalid');
         } catch (e) {
             expr_input.classList.add('is-invalid');

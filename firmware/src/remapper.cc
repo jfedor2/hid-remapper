@@ -188,6 +188,7 @@ bool is_expr_valid(uint8_t expr) {
         // should we have a data structure with each op's input/output instead?
         switch (elem.op) {
             case Op::DEBUG:
+            case Op::EOL:
                 break;
             case Op::PUSH:
             case Op::PUSH_USAGE:
@@ -800,6 +801,8 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::DPAD:
                 stack[ptr - 3] = 1000 * dpad(stack[ptr - 3], stack[ptr - 2], stack[ptr - 1], stack[ptr]);
                 ptr -= 3;
+                break;
+            case Op::EOL:
                 break;
             default:
                 printf("unknown op!\n");

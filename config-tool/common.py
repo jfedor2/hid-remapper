@@ -101,6 +101,7 @@ ops = {
     "ROUND": 33,
     "PORT": 34,
     "DPAD": 35,
+    "EOL": 36,
 }
 
 opcodes = {v: k for k, v in ops.items()}
