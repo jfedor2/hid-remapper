@@ -348,6 +348,7 @@ async function load_from_device() {
         }
 
         set_ui_state();
+        validate_ui_expressions();
     } catch (e) {
         display_error(e);
     }
