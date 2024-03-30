@@ -475,11 +475,13 @@ void set_mapping_from_config() {
     for (auto const& [hub_port_usage, layer_mask] : tap_sticky_usage_map) {
         uint32_t usage = hub_port_usage & 0xFFFFFFFF;
         uint8_t hub_port = hub_port_usage >> 32;
-        tap_sticky_usages.push_back((tap_hold_sticky_usage_t){
-            .layer_mask = layer_mask,
-            .tap_hold_state = get_tap_hold_state_ptr(usage, hub_port),
-            .sticky_state = get_sticky_state_ptr(usage, hub_port),
-        });
+        if (get_state_ptr(usage, hub_port) != NULL) {
+            tap_sticky_usages.push_back((tap_hold_sticky_usage_t){
+                .layer_mask = layer_mask,
+                .tap_hold_state = get_tap_hold_state_ptr(usage, hub_port),
+                .sticky_state = get_sticky_state_ptr(usage, hub_port),
+            });
+        }
     }
 
     for (auto const& [hub_port_usage, layer_mask] : hold_sticky_usage_map) {
@@ -524,12 +526,13 @@ void set_mapping_from_config() {
             for (auto const& [usage, usage_def] : usage_map) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
                 if (unmapped_layers) {
-                    assign_state_slot(usage, 0);
-                    reverse_mapping_map[usage].push_back((map_source_t){
-                        .usage = usage,
-                        .layer_mask = unmapped_layers,
-                        .input_state = get_state_ptr(usage, 0),
-                    });
+                    if (assign_state_slot(usage, 0)) {
+                        reverse_mapping_map[usage].push_back((map_source_t){
+                            .usage = usage,
+                            .layer_mask = unmapped_layers,
+                            .input_state = get_state_ptr(usage, 0),
+                        });
+                    }
                 }
             }
         }
