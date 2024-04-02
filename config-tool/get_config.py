@@ -16,6 +16,7 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     report_id,
     version,
     flags,
+    unmapped_passthrough_layer_mask,
     partial_scroll_timeout,
     mapping_count,
     our_usage_count,
@@ -26,13 +27,14 @@ data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     our_descriptor_number,
     macro_entry_duration,
     quirk_count,
+    *_,
     crc,
-) = struct.unpack("<BBBLLLLBLBBBHL", data)
+) = struct.unpack("<BBBBLHLLBLBBBHBL", data)
 check_crc(data, crc)
 
 config = {
     "version": version,
-    "unmapped_passthrough_layers": mask_to_layer_list(flags & ((1 << NLAYERS) - 1)),
+    "unmapped_passthrough_layers": mask_to_layer_list(unmapped_passthrough_layer_mask),
     "partial_scroll_timeout": partial_scroll_timeout,
     "interval_override": interval_override,
     "tap_hold_threshold": tap_hold_threshold,

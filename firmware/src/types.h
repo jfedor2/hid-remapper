@@ -267,8 +267,9 @@ struct __attribute__((packed)) quirk_t {
 struct __attribute__((packed)) persist_config_v12_t {
     uint8_t version;
     uint8_t flags;
+    uint8_t unmapped_passthrough_layer_mask;
     uint32_t partial_scroll_timeout;
-    uint32_t mapping_count;
+    uint16_t mapping_count;
     uint8_t interval_override;
     uint32_t tap_hold_threshold;
     uint8_t gpio_debounce_time_ms;
@@ -282,8 +283,9 @@ typedef persist_config_v12_t persist_config_t;
 struct __attribute__((packed)) get_config_t {
     uint8_t version;
     uint8_t flags;
+    uint8_t unmapped_passthrough_layer_mask;
     uint32_t partial_scroll_timeout;
-    uint32_t mapping_count;
+    uint16_t mapping_count;
     uint32_t our_usage_count;
     uint32_t their_usage_count;
     uint8_t interval_override;
@@ -296,6 +298,7 @@ struct __attribute__((packed)) get_config_t {
 
 struct __attribute__((packed)) set_config_t {
     uint8_t flags;
+    uint8_t unmapped_passthrough_layer_mask;
     uint32_t partial_scroll_timeout;
     uint8_t interval_override;
     uint32_t tap_hold_threshold;

@@ -454,8 +454,7 @@ void load_config(const uint8_t* persisted_config) {
     }
 
     persist_config_v12_t* config = (persist_config_v12_t*) persisted_config;
-    unmapped_passthrough_layer_mask =
-        (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
+    unmapped_passthrough_layer_mask = config->unmapped_passthrough_layer_mask;
     ignore_auth_dev_inputs = config->flags & (1 << CONFIG_FLAG_IGNORE_AUTH_DEV_INPUTS_BIT);
     gpio_output_mode = !!(config->flags & (1 << CONFIG_FLAG_GPIO_OUTPUT_MODE_BIT));
     partial_scroll_timeout = config->partial_scroll_timeout;
@@ -524,10 +523,9 @@ void load_config(const uint8_t* persisted_config) {
 void fill_get_config(get_config_t* config) {
     config->version = CONFIG_VERSION;
     config->flags = 0;
-    config->flags |=
-        (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->flags |= ignore_auth_dev_inputs << CONFIG_FLAG_IGNORE_AUTH_DEV_INPUTS_BIT;
     config->flags |= gpio_output_mode << CONFIG_FLAG_GPIO_OUTPUT_MODE_BIT;
+    config->unmapped_passthrough_layer_mask = unmapped_passthrough_layer_mask;
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->tap_hold_threshold = tap_hold_threshold;
     config->gpio_debounce_time_ms = gpio_debounce_time / 1000;
@@ -545,10 +543,9 @@ void fill_get_config(get_config_t* config) {
 void fill_persist_config(persist_config_t* config) {
     config->version = CONFIG_VERSION;
     config->flags = 0;
-    config->flags |=
-        (unmapped_passthrough_layer_mask << CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT) & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK;
     config->flags |= ignore_auth_dev_inputs << CONFIG_FLAG_IGNORE_AUTH_DEV_INPUTS_BIT;
     config->flags |= gpio_output_mode << CONFIG_FLAG_GPIO_OUTPUT_MODE_BIT;
+    config->unmapped_passthrough_layer_mask = unmapped_passthrough_layer_mask;
     config->partial_scroll_timeout = partial_scroll_timeout;
     config->tap_hold_threshold = tap_hold_threshold;
     config->gpio_debounce_time_ms = gpio_debounce_time / 1000;
@@ -756,8 +753,7 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                     break;
                 case ConfigCommand::SET_CONFIG: {
                     set_config_t* config = (set_config_t*) config_buffer->data;
-                    unmapped_passthrough_layer_mask =
-                        (config->flags & CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK) >> CONFIG_FLAG_UNMAPPED_PASSTHROUGH_BIT;
+                    unmapped_passthrough_layer_mask = config->unmapped_passthrough_layer_mask;
                     ignore_auth_dev_inputs = config->flags & (1 << CONFIG_FLAG_IGNORE_AUTH_DEV_INPUTS_BIT);
                     gpio_output_mode = !!(config->flags & (1 << CONFIG_FLAG_GPIO_OUTPUT_MODE_BIT));
                     partial_scroll_timeout = config->partial_scroll_timeout;

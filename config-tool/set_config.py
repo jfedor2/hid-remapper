@@ -35,25 +35,24 @@ ignore_auth_dev_inputs = config.get("ignore_auth_dev_inputs", False)
 macro_entry_duration = config.get("macro_entry_duration", 1) - 1
 gpio_output_mode = config.get("gpio_output_mode", 0)
 
-flags = (
-    unmapped_passthrough_layer_mask
-    | (IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0)
-    | (GPIO_OUTPUT_MODE_FLAG if gpio_output_mode == 1 else 0)
-)
+flags = 0
+flags |= IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0
+flags |= GPIO_OUTPUT_MODE_FLAG if gpio_output_mode == 1 else 0
 
 data = struct.pack(
-    "<BBBBLBLBBB13B",
+    "<BBBBBLBLBBB12B",
     REPORT_ID_CONFIG,
     CONFIG_VERSION,
     SET_CONFIG,
     flags,
+    unmapped_passthrough_layer_mask,
     partial_scroll_timeout,
     interval_override,
     tap_hold_threshold,
     gpio_debounce_time_ms,
     our_descriptor_number,
     macro_entry_duration,
-    *([0] * 13)
+    *([0] * 12)
 )
 device.send_feature_report(add_crc(data))
 

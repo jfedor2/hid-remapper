@@ -17,7 +17,7 @@ const DEFAULT_GPIO_DEBOUNCE_TIME = 5;
 const DEFAULT_SCALING = 1000;
 const DEFAULT_MACRO_ENTRY_DURATION = 1;
 
-const NLAYERS = 4;
+const NLAYERS = 8;
 const NMACROS = 32;
 const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
@@ -111,7 +111,7 @@ let target_modal = null;
 let extra_usages = { 'source': [], 'target': [] };
 let config = {
     'version': CONFIG_VERSION,
-    'unmapped_passthrough_layers': [0, 1, 2, 3],
+    'unmapped_passthrough_layers': [0, 1, 2, 3, 4, 5, 6, 7],
     'partial_scroll_timeout': DEFAULT_PARTIAL_SCROLL_TIMEOUT,
     'tap_hold_threshold': DEFAULT_TAP_HOLD_THRESHOLD,
     'gpio_debounce_time_ms': DEFAULT_GPIO_DEBOUNCE_TIME,
@@ -231,12 +231,12 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
+        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
+            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
         check_received_version(config_version);
 
         config['version'] = config_version;
-        config['unmapped_passthrough_layers'] = mask_to_layer_list(flags & ((1 << NLAYERS) - 1));
+        config['unmapped_passthrough_layers'] = mask_to_layer_list(unmapped_passthrough_layer_mask);
         config['partial_scroll_timeout'] = partial_scroll_timeout;
         config['tap_hold_threshold'] = tap_hold_threshold;
         config['gpio_debounce_time_ms'] = gpio_debounce_time_ms;
@@ -362,11 +362,11 @@ async function save_to_device() {
 
     try {
         await send_feature_command(SUSPEND);
-        const flags = layer_list_to_mask(config['unmapped_passthrough_layers']) |
-            (config['ignore_auth_dev_inputs'] ? IGNORE_AUTH_DEV_INPUTS_FLAG : 0) |
+        const flags = (config['ignore_auth_dev_inputs'] ? IGNORE_AUTH_DEV_INPUTS_FLAG : 0) |
             (config['gpio_output_mode'] ? GPIO_OUTPUT_MODE_FLAG : 0);
         await send_feature_command(SET_CONFIG, [
             [UINT8, flags],
+            [UINT8, layer_list_to_mask(config['unmapped_passthrough_layers'])],
             [UINT32, config['partial_scroll_timeout']],
             [UINT8, config['interval_override']],
             [UINT32, config['tap_hold_threshold']],
@@ -504,8 +504,8 @@ async function do_get_usages_from_device(command, rle_count) {
 async function get_usages_from_device() {
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration] =
-            await read_config_feature([UINT8, UINT8, UINT32, UINT32, UINT32, UINT32, UINT32, UINT8, UINT8, UINT8]);
+        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
+            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
         check_received_version(config_version);
 
         extra_usages['target'] =
