@@ -572,7 +572,7 @@ function set_macro_previews() {
     for (let i = 0; i < NMACROS; i++) {
         const macro_element = document.getElementById('macro_' + i);
         const preview = Array.from(macro_element.querySelectorAll('.macro_entry'),
-            (entry_element) => Array.from(entry_element.querySelectorAll('.macro_item_usage'),
+            (entry_element) => Array.from(entry_element.querySelectorAll('.macro_item_usage .button_label'),
                 (item_element) => item_element.innerText == "Nothing" ? "∅" : item_element.innerText
             ).join('+')).join(', ');
         macro_element.querySelector('.macro_preview').innerText = preview;
