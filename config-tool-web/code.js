@@ -23,6 +23,7 @@ const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
 const IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4;
 const GPIO_OUTPUT_MODE_FLAG = 1 << 5;
+const HUB_PORT_NONE = 255;
 
 const QUIRK_FLAG_RELATIVE_MASK = 0b10000000;
 const QUIRK_FLAG_SIGNED_MASK = 0b01000000;
@@ -1426,15 +1427,23 @@ function input_report_received(event) {
 }
 
 function update_monitor_ui(usage, value, hub_port) {
-    let element = document.getElementById('monitor_usage_' + usage);
+    const element_id = 'monitor_usage_' + usage + '_' + hub_port;
+    let element = document.getElementById(element_id);
     if (element == null) {
         const template = document.getElementById("monitor_template");
         const container = document.getElementById("monitor_container");
         element = template.content.cloneNode(true).firstElementChild;
-        element.querySelector('.monitor_usage').innerText = usage;
+        element.querySelector('.monitor_usage .usage_label').innerText = usage;
+        const port_badge = element.querySelector('.monitor_usage .hub_port_badge');
+        port_badge.innerText = hub_port;
+        if ((hub_port == 0) || (hub_port == HUB_PORT_NONE)) {
+            port_badge.classList.add('d-none');
+        } else {
+            port_badge.classList.remove('d-none');
+        }
         element.querySelector('.monitor_readable_name').innerText = readable_usage_name(usage, false);
         element.querySelector('.map_this_button').addEventListener("click", map_this_onclick(usage));
-        element.id = 'monitor_usage_' + usage;
+        element.id = element_id;
         container.appendChild(element);
     }
 

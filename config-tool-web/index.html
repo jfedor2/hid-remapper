@@ -436,7 +436,10 @@
     <template id="monitor_template">
         <div class="row monitor_row p-1 my-2 rounded">
             <div class="col-1"><button type="button" title="map this" class="btn btn-sm btn-primary map_this_button" style="padding: 0rem 0.4rem;">+</button></div>
-            <div class="col-2 text-center monitor_usage font-monospace"></div>
+            <div class="col-2 text-center monitor_usage position-relative">
+                <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
+                <span class="font-monospace usage_label"></span>
+            </div>
             <div class="col-3 text-center monitor_readable_name"></div>
             <div class="col-2 text-end monitor_last_value"></div>
             <div class="col-2 text-end monitor_min_value"></div>

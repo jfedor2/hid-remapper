@@ -113,6 +113,7 @@ uint8_t port_register = 0;
 
 uint64_t frame_counter = 0;
 
+#define HUB_PORT_NONE 255
 #define NPORTS 15
 std::unordered_map<uint8_t, uint8_t> hub_ports;  // dev_addr -> hub_port
 
@@ -1193,9 +1194,11 @@ inline void read_input_range(const uint8_t* report, int len, uint32_t source_usa
             if (state_ptr_0 != NULL) {
                 *state_ptr_0 |= 1 << interface_idx;
             }
-            int32_t* state_ptr_n = get_state_ptr(actual_usage, hub_port);
-            if (state_ptr_n != NULL) {
-                *state_ptr_n = 1 << interface_idx;  // set the bit because in do_handle_received_report we clear it not knowing if it's "0" or "n"
+            if (hub_port != HUB_PORT_NONE) {
+                int32_t* state_ptr_n = get_state_ptr(actual_usage, hub_port);
+                if (state_ptr_n != NULL) {
+                    *state_ptr_n = 1 << interface_idx;  // set the bit because in do_handle_received_report we clear it not knowing if it's "0" or "n"
+                }
             }
         }
     }
@@ -1333,6 +1336,9 @@ void do_handle_received_report(const uint8_t* report, int len, uint16_t interfac
 }
 
 void handle_received_midi(uint8_t hub_port, uint8_t* midi_msg) {
+    if (hub_port == 0) {
+        hub_port = HUB_PORT_NONE;
+    }
     uint32_t usage = 0;
     int32_t val = 0;
     // ignore cable number and CIN
@@ -1361,7 +1367,9 @@ void handle_received_midi(uint8_t hub_port, uint8_t* midi_msg) {
     }
     if (usage != 0) {
         set_input_state(usage, val, 0);
-        set_input_state(usage, val, hub_port);
+        if (hub_port != HUB_PORT_NONE) {
+            set_input_state(usage, val, hub_port);
+        }
         if (monitor_enabled) {
             monitor_usage(usage, val, hub_port);
         }
@@ -1573,7 +1581,7 @@ void set_monitor_enabled(bool enabled) {
 }
 
 void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid, uint8_t hub_port) {
-    hub_ports[interface >> 8] = (hub_port != 0) ? hub_port : 1;
+    hub_ports[interface >> 8] = (hub_port != 0) ? hub_port : HUB_PORT_NONE;
     if (our_descriptor->device_connected != nullptr) {
         our_descriptor->device_connected(interface, vid, pid);
     }
