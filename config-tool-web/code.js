@@ -17,7 +17,7 @@ const DEFAULT_GPIO_DEBOUNCE_TIME = 5;
 const DEFAULT_SCALING = 1000;
 const DEFAULT_MACRO_ENTRY_DURATION = 1;
 
-const NLAYERS = 4;
+const NLAYERS = 12;
 const NMACROS = 32;
 const NEXPRESSIONS = 8;
 const MACRO_ITEMS_IN_PACKET = 6;
@@ -102,7 +102,7 @@ let target_modal = null;
 let extra_usages = { 'source': [], 'target': [] };
 let config = {
     'version': CONFIG_VERSION,
-    'unmapped_passthrough_layers': [0, 1, 2, 3],
+    'unmapped_passthrough_layers': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
     'partial_scroll_timeout': DEFAULT_PARTIAL_SCROLL_TIMEOUT,
     'tap_hold_threshold': DEFAULT_TAP_HOLD_THRESHOLD,
     'gpio_debounce_time_ms': DEFAULT_GPIO_DEBOUNCE_TIME,
