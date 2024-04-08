@@ -28,7 +28,7 @@ const uint8_t H_RESOLUTION_BITMASK = (1 << 2);
 const uint32_t V_SCROLL_USAGE = 0x00010038;
 const uint32_t H_SCROLL_USAGE = 0x000C0238;
 
-const uint8_t NLAYERS = 12;
+const uint8_t NLAYERS = 8;
 const uint32_t LAYERS_USAGE_PAGE = 0xFFF10000;
 const uint32_t MACRO_USAGE_PAGE = 0xFFF20000;
 const uint32_t EXPR_USAGE_PAGE = 0xFFF30000;
