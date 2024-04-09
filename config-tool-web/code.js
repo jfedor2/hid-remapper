@@ -818,12 +818,13 @@ async function check_device_version() {
             }
             display_error_html('<p>Incompatible version (' + version + ').</p>' +
                 '<p>Please consider upgrading your HID Remapper firmware to the <a href="https://github.com/jfedor2/hid-remapper/releases/latest">latest version</a>.</p>' +
-                '<p class="mb-0">Alternatively, click <a href="v' + version + '/">here</a> for an older version of the configuration tool that should be compatible with your device.</p>');
+                '<p>Alternatively, click <a href="v' + version + '/">here</a> for an older version of the configuration tool that should be compatible with your device.</p>' +
+                '<p class="mb-0">(You can also use the older version of the configuration tool to put your HID Remapper in firmware flashing mode and upgrade the firmware.)</p>');
             return false;
         }
     }
 
-    display_error_html('<p>Incompatible version.</p><p class="mb-0">Please consider upgrading your HID Remapper firmware to the <a href="https://github.com/jfedor2/hid-remapper/releases/latest">latest version</a>.</p>');
+    display_error_html('<p>Incompatible version.</p><p class="mb-0">You might have a newer version of the firmware on your HID Remapper than this configuration tool was made for.</p>');
     return false;
 }
 
