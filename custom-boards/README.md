@@ -2,7 +2,7 @@
 
 This document describes how to have custom HID Remapper boards manufactured using the provided design files at a service like JLCPCB. If you'd rather make the device using a Raspberry Pi Pico, see [here](../HARDWARE.md) for details on that option.
 
-There are seven versions, imaginatively named v1-v7. v1, v2, v5, v6 and v7 are equivalent to the dual Pico variant when it comes to internal architecture and device compatibility. v3 and v4 are equivalent to the single Pico variant.
+There are eight versions, imaginatively named v1-v8. v1, v2, v5, v6 and v7 are equivalent to the dual Pico variant when it comes to internal architecture and device compatibility. v3 and v4 are equivalent to the single Pico variant. v8 uses a single RP2040 chip, but it doesn't have USB inputs.
 
 ![Custom HID Remapper boards](../images/custom-boards.jpg)
 
@@ -32,7 +32,7 @@ If you want to use some other service than JLCPCB, you will likely need to adapt
 
 ### Firmware flashing mode
 
-v1 and v3-v7 boards have buttons labeled "BOOT\_A" and "BOOT", respectively. These work the same as the BOOTSEL button on a Raspberry Pi Pico. You hold the button while connecting it to a computer to put the board in firmware flashing mode. The v2 board doesn't have a button, but it has the equivalent pin broken out. Short the BOOT pin on the A side to GND while connecting the board to a computer to put it in firmware flashing mode. Then copy the UF2 file to the drive that appears.
+v1 and v3-v8 boards have buttons labeled "BOOT\_A" and "BOOT", respectively. These work the same as the BOOTSEL button on a Raspberry Pi Pico. You hold the button while connecting it to a computer to put the board in firmware flashing mode. The v2 board doesn't have a button, but it has the equivalent pin broken out. Short the BOOT pin on the A side to GND while connecting the board to a computer to put it in firmware flashing mode. Then copy the UF2 file to the drive that appears.
 
 If the board is already flashed with some version of the HID Remapper firmware then you can also put it in firmware flashing mode by going to the web config tool and pressing the "Flash firmware" button. This is useful when you want to upgrade the firmware on a device that is not easily accessible.
 
@@ -54,6 +54,10 @@ The procedure for the v7 board is the same as for v1, v2, v5 and v6, but you nee
 ### v3 and v4
 
 Flash the board with [remapper\_feather.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_feather.uf2) file by putting it in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
+
+### v8
+
+Flash the board with [remapper\_board\_v8.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v8.uf2) file by putting it in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
 
 ## Acknowledgements
 
