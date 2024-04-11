@@ -244,6 +244,22 @@ const uint8_t our_report_descriptor_absolute[] = {
     0x91, 0x03,                //   Output (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
     0xC0,                      // End Collection
 
+    0x05, 0x01,    // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x80,    // Usage (Sys Control)
+    0xA1, 0x01,    // Collection (Application)
+    0x85, 0x04,    //  Report ID (4)
+    0x75, 0x02,    //  Report Size (2)
+    0x95, 0x01,    //  Report Count (1)
+    0x15, 0x01,    //  Logical Minimum (1)
+    0x25, 0x03,    //  Logical Maximum (3)
+    0x09, 0x82,    //  Usage (Sys Sleep)
+    0x09, 0x81,    //  Usage (Sys Power Down)
+    0x09, 0x83,    //  Usage (Sys Wake Up)
+    0x81, 0x60,    //  Input (Data,Array,Abs,No Wrap,Linear,No Preferred State,Null State)
+    0x75, 0x06,    //  Report Size (6)
+    0x81, 0x03,    //  Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,          // End Collection
+
     0x05, 0x0C,                // Usage Page (Consumer)
     0x09, 0x01,                // Usage (Consumer Control)
     0xA1, 0x01,                // Collection (Application)
