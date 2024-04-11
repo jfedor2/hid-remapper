@@ -125,6 +125,8 @@ struct out_usage_def_t {
     uint16_t len;
     uint8_t size;
     uint16_t bitpos;
+    uint8_t array_count;
+    uint32_t array_index;
 };
 
 struct reverse_mapping_t {

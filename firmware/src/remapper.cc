@@ -60,6 +60,8 @@ std::vector<tap_hold_sticky_usage_t> tap_sticky_usages;
 std::vector<tap_hold_sticky_usage_t> hold_sticky_usages;
 std::vector<tap_hold_usage_t> tap_hold_usages;
 
+std::vector<usage_usage_def_t> our_array_range_usages;
+
 // report_id -> ...
 uint8_t* reports[MAX_INPUT_REPORT_ID + 1];
 uint8_t* prev_reports[MAX_INPUT_REPORT_ID + 1];
@@ -524,6 +526,21 @@ void set_mapping_from_config() {
             }
         }
 
+        for (auto const& array_usage : our_array_range_usages) {
+            for (uint32_t usage = array_usage.usage; usage <= array_usage.usage_def.usage_maximum; usage++) {
+                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
+                if (unmapped_layers) {
+                    if (assign_state_slot(usage, 0)) {
+                        reverse_mapping_map[usage].push_back((map_source_t){
+                            .usage = usage,
+                            .layer_mask = unmapped_layers,
+                            .input_state = get_state_ptr(usage, 0),
+                        });
+                    }
+                }
+            }
+        }
+
         for (auto const& [report_id, usage_map] : their_usages[OUR_OUT_INTERFACE]) {
             for (auto const& [usage, usage_def] : usage_map) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
@@ -563,16 +580,33 @@ void set_mapping_from_config() {
                 .bitpos = (uint16_t) ((target & 0xFFFF) * 16),
             });
         } else {
-            auto search = our_usages_flat.find(target);
-            if (search != our_usages_flat.end()) {
-                const usage_def_t& our_usage = search->second;
-                rev_map.our_usages.push_back((out_usage_def_t){
-                    .data = reports[our_usage.report_id],
-                    .len = report_sizes[our_usage.report_id],
-                    .size = our_usage.size,
-                    .bitpos = our_usage.bitpos,
-                });
-                rev_map.is_relative = our_usage.is_relative;
+            bool handled = false;
+            for (auto const& array_usage : our_array_range_usages) {
+                if ((target >= array_usage.usage) && (target <= array_usage.usage_def.usage_maximum)) {
+                    rev_map.our_usages.push_back((out_usage_def_t){
+                        .data = reports[array_usage.usage_def.report_id],
+                        .len = report_sizes[array_usage.usage_def.report_id],
+                        .size = array_usage.usage_def.size,
+                        .bitpos = array_usage.usage_def.bitpos,
+                        .array_count = array_usage.usage_def.count,
+                        .array_index = array_usage.usage_def.logical_minimum + target - array_usage.usage,
+                    });
+                    handled = true;
+                    break;
+                }
+            }
+            if (!handled) {
+                auto search = our_usages_flat.find(target);
+                if (search != our_usages_flat.end()) {
+                    const usage_def_t& our_usage = search->second;
+                    rev_map.our_usages.push_back((out_usage_def_t){
+                        .data = reports[our_usage.report_id],
+                        .len = report_sizes[our_usage.report_id],
+                        .size = our_usage.size,
+                        .bitpos = our_usage.bitpos,
+                    });
+                    rev_map.is_relative = our_usage.is_relative;
+                }
             }
         }
         if ((target & 0xFFFF0000) == MACRO_USAGE_PAGE) {
@@ -1006,10 +1040,20 @@ void process_mapping(bool auto_repeat) {
             }
             if (value) {
                 for (auto const& out_usage_def : rev_map.our_usages) {
-                    if (out_usage_def.size == 1) {
-                        value = 1;
+                    if (out_usage_def.array_count == 0) {
+                        uint32_t effective_value = out_usage_def.size == 1 ? 1 : value;
+                        put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos, out_usage_def.size, effective_value);
+                    } else {  // array range
+                        for (int i = 0; i < out_usage_def.array_count; i++) {
+                            int32_t existing_val = get_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos + i * out_usage_def.size, out_usage_def.size);
+                            // theoretically zero could be a valid index, but let's ignore that for now
+                            if (existing_val == 0) {
+                                put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos + i * out_usage_def.size, out_usage_def.size, out_usage_def.array_index);
+                                break;
+                            }
+                        }
+                        // we don't do RollOver
                     }
-                    put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos, out_usage_def.size, value);
                 }
             }
         }
@@ -1021,10 +1065,29 @@ void process_mapping(bool auto_repeat) {
             if ((usage & 0xFFFF0000) == GPIO_USAGE_PAGE) {
                 put_bits(gpio_out_state, sizeof(gpio_out_state), (uint16_t) (usage & 0xFFFF), 1, 1);
             } else {
-                auto search = our_usages_flat.find(usage);
-                if (search != our_usages_flat.end()) {
-                    const usage_def_t& our_usage = search->second;
-                    put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, 1);
+                bool handled = false;
+                for (auto const& array_usage : our_array_range_usages) {
+                    if ((usage >= array_usage.usage) && (usage <= array_usage.usage_def.usage_maximum)) {
+                        const uint8_t report_id = array_usage.usage_def.report_id;
+                        for (unsigned int i = 0; i < array_usage.usage_def.count; i++) {
+                            int32_t existing_val = get_bits(reports[report_id], report_sizes[report_id], array_usage.usage_def.bitpos + i * array_usage.usage_def.size, array_usage.usage_def.size);
+                            // theoretically zero could be a valid index, but let's ignore that for now
+                            if (existing_val == 0) {
+                                put_bits(reports[report_id], report_sizes[report_id], array_usage.usage_def.bitpos + i * array_usage.usage_def.size, array_usage.usage_def.size, array_usage.usage_def.logical_minimum + usage - array_usage.usage);
+                                break;
+                            }
+                        }
+                        // we don't do RollOver
+                        handled = true;
+                        break;
+                    }
+                }
+                if (!handled) {
+                    auto search = our_usages_flat.find(usage);
+                    if (search != our_usages_flat.end()) {
+                        const usage_def_t& our_usage = search->second;
+                        put_bits((uint8_t*) reports[our_usage.report_id], report_sizes[our_usage.report_id], our_usage.bitpos, our_usage.size, 1);
+                    }
                 }
             }
         }
@@ -1553,13 +1616,22 @@ void parse_our_descriptor() {
     std::set<uint64_t> our_usage_ranges_set;
     for (auto const& [report_id, usage_map] : our_usages) {
         for (auto const& [usage, usage_def] : usage_map) {
-            our_usages_flat[usage] = usage_def;
-            our_usage_ranges_set.insert(((uint64_t) usage << 32) | (usage_def.usage_maximum ? usage_def.usage_maximum : usage));
+            if (usage_def.usage_maximum == 0) {
+                our_usages_flat[usage] = usage_def;
+                our_usage_ranges_set.insert(((uint64_t) usage << 32) | (usage_def.usage_maximum ? usage_def.usage_maximum : usage));
 
-            if (usage_def.is_relative) {
-                put_bits(report_masks_relative[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
-            } else {
-                put_bits(report_masks_absolute[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
+                if (usage_def.is_relative) {
+                    put_bits(report_masks_relative[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
+                } else {
+                    put_bits(report_masks_absolute[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size, 0xFFFFFFFF);
+                }
+            } else {  // array range
+                our_array_range_usages.push_back((usage_usage_def_t){
+                    .usage = usage,
+                    .usage_def = usage_def,
+                });
+                our_usage_ranges_set.insert(((uint64_t) usage << 32) | usage_def.usage_maximum);
+                put_bits(report_masks_absolute[report_id], report_sizes[report_id], usage_def.bitpos, usage_def.size * usage_def.count, 0xFFFFFFFF);
             }
         }
     }
