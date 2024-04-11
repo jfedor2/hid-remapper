@@ -272,6 +272,11 @@ int main() {
 #endif
         }
         tud_task();
+        if (boot_protocol_updated) {
+            parse_our_descriptor();
+            boot_protocol_updated = false;
+            config_updated = true;
+        }
         if (config_updated) {
             set_mapping_from_config();
             config_updated = false;

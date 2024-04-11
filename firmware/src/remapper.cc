@@ -1591,13 +1591,35 @@ void update_their_descriptor_derivates() {
 void parse_our_descriptor() {
     std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_feature_usages;
 
+    our_usages.clear();
+    our_usages_rle.clear();
+    their_usages.erase(OUR_OUT_INTERFACE);
+    has_report_id_theirs.erase(OUR_OUT_INTERFACE);
+    our_usages_flat.clear();
+    our_array_range_usages.clear();
+
+    for (unsigned int i = 0; i < report_ids.size(); i++) {
+        uint8_t report_id = report_ids[i];
+        delete[] reports[report_id];
+        delete[] prev_reports[report_id];
+        delete[] report_masks_relative[report_id];
+        delete[] report_masks_absolute[report_id];
+    }
+
+    report_ids.clear();
+    memset(report_sizes, 0, sizeof(report_sizes));
+    memset(reports, 0, sizeof(reports));
+    memset(prev_reports, 0, sizeof(prev_reports));
+    memset(report_masks_relative, 0, sizeof(report_masks_relative));
+    memset(report_masks_absolute, 0, sizeof(report_masks_absolute));
+
     auto report_sizes_map = parse_descriptor(
         our_usages,
         their_usages[OUR_OUT_INTERFACE],
         our_feature_usages,
         has_report_id_theirs[OUR_OUT_INTERFACE],
-        our_descriptor->descriptor,
-        our_descriptor->descriptor_length);
+        boot_protocol_keyboard ? boot_kb_report_descriptor : our_descriptor->descriptor,
+        boot_protocol_keyboard ? boot_kb_report_descriptor_length : our_descriptor->descriptor_length);
 
     for (auto const& [report_id, size] : report_sizes_map[ReportType::INPUT]) {
         report_sizes[report_id] = size;

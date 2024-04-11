@@ -62,4 +62,7 @@ extern uint16_t digipot_state[NDIGIPOTS];
 
 extern std::vector<quirk_t> quirks;
 
+extern bool boot_protocol_keyboard;
+extern bool boot_protocol_updated;
+
 #endif

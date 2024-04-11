@@ -45,4 +45,7 @@ extern const our_descriptor_def_t our_descriptors[];
 extern const uint8_t config_report_descriptor[];
 extern const uint32_t config_report_descriptor_length;
 
+extern const uint8_t boot_kb_report_descriptor[];
+extern const uint32_t boot_kb_report_descriptor_length;
+
 #endif
