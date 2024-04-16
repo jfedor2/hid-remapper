@@ -506,6 +506,7 @@ uint16_t kb_mouse_handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t
 
 const our_descriptor_def_t our_descriptors[] = {
     {
+        .idx = 0,
         .descriptor = our_report_descriptor_kb_mouse,
         .descriptor_length = sizeof(our_report_descriptor_kb_mouse),
         .handle_received_report = do_handle_received_report,
@@ -513,6 +514,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_set_report = kb_mouse_handle_set_report,
     },
     {
+        .idx = 1,
         .descriptor = our_report_descriptor_absolute,
         .descriptor_length = sizeof(our_report_descriptor_absolute),
         .handle_received_report = do_handle_received_report,
@@ -520,6 +522,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_set_report = kb_mouse_handle_set_report,
     },
     {
+        .idx = 2,
         .descriptor = our_report_descriptor_gamepad,
         .descriptor_length = sizeof(our_report_descriptor_gamepad),
         .vid = 0x0F0D,
@@ -527,6 +530,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
     },
     {
+        .idx = 3,
         .descriptor = our_report_descriptor_ps4,
         .descriptor_length = sizeof(our_report_descriptor_ps4),
         .device_connected = ps4_device_connected,
@@ -539,6 +543,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_set_report_complete = ps4_handle_set_report_complete,
     },
     {
+        .idx = 4,
         .descriptor = our_report_descriptor_stadia,
         .descriptor_length = sizeof(our_report_descriptor_stadia),
         .vid = 0x18D1,

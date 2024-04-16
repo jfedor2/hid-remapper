@@ -25,6 +25,7 @@ typedef void (*handle_get_report_response_t)(uint16_t interface, uint8_t report_
 typedef void (*handle_set_report_complete_t)(uint16_t interface, uint8_t report_id);
 
 struct our_descriptor_def_t {
+    uint8_t idx;
     const uint8_t* descriptor;
     uint32_t descriptor_length;
     uint16_t vid = 0;
