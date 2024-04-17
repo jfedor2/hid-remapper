@@ -555,7 +555,7 @@ function set_macros_ui_state() {
             for (const item of entry) {
                 const item_element = add_macro_item(entry_element);
                 const usage_button_element = item_element.querySelector('.macro_item_usage');
-                usage_button_element.innerText = readable_target_usage_name(item);
+                usage_button_element.querySelector('.button_label').innerText = readable_target_usage_name(item);
                 usage_button_element.title = item;
                 usage_button_element.setAttribute('data-hid-usage', item);
             }
