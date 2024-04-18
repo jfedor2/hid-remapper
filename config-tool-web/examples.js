@@ -3538,6 +3538,103 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': 'custom board v8: analog stick',
+        'config': {
+            "version": 12,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 4,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0xfff80000 input_state eol -2048000 add eol 100 mul eol 128000 add eol 0 255000 clamp",
+                "0xfff80001 input_state eol -2048000 add eol -100 mul eol 128000 add eol 0 255000 clamp",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
