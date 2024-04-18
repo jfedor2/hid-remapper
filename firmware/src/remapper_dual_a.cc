@@ -34,7 +34,7 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
     switch ((DualCommand) data[0]) {
         case DualCommand::DEVICE_CONNECTED: {
             device_connected_t* msg = (device_connected_t*) data;
-            parse_descriptor(msg->vid, msg->pid, msg->report_descriptor, len - sizeof(device_connected_t), (uint16_t) (msg->dev_addr << 8) | msg->interface);
+            parse_descriptor(msg->vid, msg->pid, msg->report_descriptor, len - sizeof(device_connected_t), (uint16_t) (msg->dev_addr << 8) | msg->interface, msg->itf_num);
             device_connected_callback((uint16_t) (msg->dev_addr << 8) | msg->interface, msg->vid, msg->pid, msg->hub_port);
             break;
         }

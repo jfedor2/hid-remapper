@@ -25,7 +25,7 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
 extern "C" {
 #endif
 
-void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface);
+void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t itf_num);
 void clear_descriptor_data(uint8_t dev_addr);
 
 #ifdef __cplusplus

@@ -26,6 +26,7 @@ struct __attribute__((packed)) device_connected_t {
     uint8_t dev_addr;
     uint8_t interface;
     uint8_t hub_port;
+    uint8_t itf_num;
     uint8_t report_descriptor[0];
 };
 

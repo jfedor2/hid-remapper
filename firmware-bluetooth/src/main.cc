@@ -877,7 +877,7 @@ int main() {
 
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
-            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8);
+            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
         }
 
         if (config_updated) {
