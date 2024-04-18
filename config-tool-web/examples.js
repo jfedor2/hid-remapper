@@ -3219,6 +3219,325 @@ const examples = [
                 ""
             ]
         }
+    },
+    {
+        'description': 'mirrorboard: a one-handed keyboard layout',
+        'config': {
+            "version": 12,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0xfff10001",
+                    "source_usage": "0x00070039",
+                    "scaling": 1000,
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007002a",
+                    "source_usage": "0x00070035",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070028",
+                    "source_usage": "0x0007002c",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070013",
+                    "source_usage": "0x00070014",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070012",
+                    "source_usage": "0x0007001a",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007000c",
+                    "source_usage": "0x00070008",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070018",
+                    "source_usage": "0x00070015",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007001c",
+                    "source_usage": "0x00070017",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070017",
+                    "source_usage": "0x0007001c",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070034",
+                    "source_usage": "0x00070004",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007000f",
+                    "source_usage": "0x00070016",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007000e",
+                    "source_usage": "0x00070007",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007000d",
+                    "source_usage": "0x00070009",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007000b",
+                    "source_usage": "0x0007000a",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0007000a",
+                    "source_usage": "0x0007000b",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070037",
+                    "source_usage": "0x0007001d",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070036",
+                    "source_usage": "0x0007001b",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070010",
+                    "source_usage": "0x00070006",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00070011",
+                    "source_usage": "0x00070019",
+                    "scaling": 1000,
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
