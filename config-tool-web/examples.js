@@ -3635,8 +3635,7 @@ const examples = [
             ],
             "quirks": []
         }
-    }
-    ,
+    },
     {
         'description': 'custom board v8: analog stick as mouse',
         'config': {
@@ -3732,6 +3731,284 @@ const examples = [
                 ""
             ],
             "quirks": []
+        }
+    },
+    {
+        'description': 'custom usages for DualSense: touchpad works as mouse',
+        'config': {
+            "version": 12,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x0009000e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0xfffa0003 prev_input_state -1000 mul eol 0xfffa0003 input_state eol add eol 0xfffa0002 input_state_binary not eol mul eol 0xfffa0002 prev_input_state_binary not eol mul eol 0xfffa0001 input_state eol 0xfffa0001 prev_input_state eol eq mul eol eol 0xfffa0007 prev_input_state -1000 mul eol 0xfffa0007 input_state eol add eol 0xfffa0006 input_state_binary not eol mul eol 0xfffa0006 prev_input_state_binary not eol mul eol 0xfffa0005 input_state eol 0xfffa0005 prev_input_state eol eq mul eol eol add",
+                "0xfffa0004 prev_input_state -1000 mul eol 0xfffa0004 input_state eol add eol 0xfffa0002 input_state_binary not eol mul eol 0xfffa0002 prev_input_state_binary not eol mul eol 0xfffa0001 input_state eol 0xfffa0001 prev_input_state eol eq mul eol eol 0xfffa0008 prev_input_state -1000 mul eol 0xfffa0008 input_state eol add eol 0xfffa0006 input_state_binary not eol mul eol 0xfffa0006 prev_input_state_binary not eol mul eol 0xfffa0005 input_state eol 0xfffa0005 prev_input_state eol eq mul eol eol add",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": [
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xff000020",
+                    "bitpos": 0,
+                    "size": 0,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xff000022",
+                    "bitpos": 0,
+                    "size": 0,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0001",
+                    "bitpos": 256,
+                    "size": 7,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0002",
+                    "bitpos": 263,
+                    "size": 1,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0003",
+                    "bitpos": 264,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0004",
+                    "bitpos": 276,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0005",
+                    "bitpos": 288,
+                    "size": 7,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0006",
+                    "bitpos": 295,
+                    "size": 1,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0007",
+                    "bitpos": 296,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0008",
+                    "bitpos": 308,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0009",
+                    "bitpos": 120,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000a",
+                    "bitpos": 136,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000b",
+                    "bitpos": 152,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000c",
+                    "bitpos": 168,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000d",
+                    "bitpos": 184,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000e",
+                    "bitpos": 200,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                }
+            ]
         }
     }
 ];
