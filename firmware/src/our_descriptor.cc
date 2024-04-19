@@ -136,6 +136,20 @@ const uint8_t our_report_descriptor_kb_mouse[] = {
     0x95, 0x01,                //   Report Count (1)
     0x81, 0x02,                //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,                      // End Collection
+
+    0x05, 0x01,  // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x80,  // Usage (Sys Control)
+    0xA1, 0x01,  // Collection (Application)
+    0x85, 0x04,  //   Report ID (4)
+    0x75, 0x01,  //   Report Size (1)
+    0x95, 0x03,  //   Report Count (3)
+    0x09, 0x81,  //   Usage (Sys Power Down)
+    0x09, 0x82,  //   Usage (Sys Sleep)
+    0x09, 0x83,  //   Usage (Sys Wake Up)
+    0x81, 0x02,  //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x05,  //   Report Count (5)
+    0x81, 0x03,  //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,        // End Collection
 };
 
 const uint8_t our_report_descriptor_absolute[] = {
