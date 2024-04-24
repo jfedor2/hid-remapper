@@ -3794,6 +3794,45 @@ const examples = [
                     "hold": false,
                     "source_port": 0,
                     "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010039",
+                    "source_usage": "0xfff30004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
                 }
             ],
             "macros": [
@@ -3831,10 +3870,10 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0xfff80000 input_state eol -2048000 add eol 100 mul eol 128000 add eol 0 255000 clamp",
-                "0xfff80001 input_state eol -2048000 add eol -100 mul eol 128000 add eol 0 255000 clamp",
-                "",
-                "",
+                "0xfff80000 input_state eol -2048000 add eol 100 mul eol 128000 add eol 1000 255000 clamp",
+                "0xfff80001 input_state eol -2048000 add eol -100 mul eol 128000 add eol 1000 255000 clamp",
+                "128000",
+                "8000",
                 "",
                 "",
                 "",
