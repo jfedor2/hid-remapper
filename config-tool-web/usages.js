@@ -527,6 +527,29 @@ const usages = {
         "0x00090007": { 'name': 'View', 'class': 'mouse' },
         "0x00090008": { 'name': 'Menu', 'class': 'mouse' },
     },
+    6: {
+        "0x00010030": { 'name': 'X', 'class': 'mouse' },
+        "0x00010031": { 'name': 'Y', 'class': 'mouse' },
+        "0x00010032": { 'name': 'Z', 'class': 'mouse' },
+        "0x00010033": { 'name': 'RX', 'class': 'mouse' },
+        "0x00010034": { 'name': 'RY', 'class': 'mouse' },
+        "0x00010035": { 'name': 'RZ', 'class': 'mouse' },
+        "0x00090001": { 'name': 'Menu', 'class': 'mouse' },
+        "0x00090002": { 'name': 'Fit', 'class': 'mouse' },
+        "0x00090003": { 'name': 'Top view', 'class': 'mouse' },
+        "0x00090005": { 'name': 'Right view', 'class': 'mouse' },
+        "0x00090006": { 'name': 'Front view', 'class': 'mouse' },
+        "0x00090009": { 'name': 'Roll view', 'class': 'mouse' },
+        "0x0009000d": { 'name': '1', 'class': 'mouse' },
+        "0x0009000e": { 'name': '2', 'class': 'mouse' },
+        "0x0009000f": { 'name': '3', 'class': 'mouse' },
+        "0x00090010": { 'name': '4', 'class': 'mouse' },
+        "0x00090017": { 'name': 'Escape', 'class': 'mouse' },
+        "0x00090018": { 'name': 'Alt', 'class': 'mouse' },
+        "0x00090019": { 'name': 'Shift', 'class': 'mouse' },
+        "0x0009001a": { 'name': 'Control', 'class': 'mouse' },
+        "0x0009001b": { 'name': 'Rotation toggle', 'class': 'mouse' },
+    },
 };
 
 const common_target_usages = {
@@ -613,6 +636,7 @@ Object.assign(usages[2], common_target_usages);
 Object.assign(usages[3], common_target_usages);
 Object.assign(usages[4], common_target_usages);
 Object.assign(usages[5], common_target_usages);
+Object.assign(usages[6], common_target_usages);
 usages[1] = usages[0]; // absolute mouse & keyboard is the same as regular mouse & keyboard
 
 export default usages;

@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "types.h"
+
 #define CONFIG_SIZE 32
 #define RESOLUTION_MULTIPLIER 120
 
@@ -11,9 +13,9 @@
 #define REPORT_ID_CONFIG 100
 #define REPORT_ID_MONITOR 101
 
-#define MAX_INPUT_REPORT_ID 3
+#define MAX_INPUT_REPORT_ID 22
 
-#define NOUR_DESCRIPTORS 6
+#define NOUR_DESCRIPTORS 7
 
 typedef void (*device_connected_t)(uint16_t interface, uint16_t vid, uint16_t pid);
 typedef void (*device_disconnected_t)(uint8_t dev_addr);
@@ -27,6 +29,7 @@ typedef void (*handle_set_report_complete_t)(uint16_t interface, uint8_t report_
 typedef void (*clear_report_t)(uint8_t* report, uint8_t report_id, uint16_t len);
 typedef int32_t (*default_value_t)(uint32_t usage);
 typedef void (*sanitize_report_t)(uint8_t report_id, uint8_t* buffer, uint16_t len);
+typedef void (*needs_to_be_sent_t)(uint8_t** reports, uint8_t** prev_reports, uint16_t* report_sizes, bool* report_to_be_sent, uint64_t frame_counter);
 
 struct our_descriptor_def_t {
     uint8_t idx;
@@ -46,6 +49,7 @@ struct our_descriptor_def_t {
     clear_report_t clear_report = nullptr;
     default_value_t default_value = nullptr;
     sanitize_report_t sanitize_report = nullptr;
+    needs_to_be_sent_t needs_to_be_sent = nullptr;
 };
 
 extern const our_descriptor_def_t our_descriptors[];

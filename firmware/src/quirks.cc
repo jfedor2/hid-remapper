@@ -749,6 +749,24 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
         usage_map[2][0x00010035].is_relative = false;
     }
 
+    // Try to catch all other SpaceMouse models.
+    if (((vendor_id == VENDOR_ID_3DCONNEXION) || (vendor_id = 0x046d)) &&
+        usage_map.count(1) &&
+        usage_map.count(2) &&
+        usage_map[1].count(0x00010030) &&
+        usage_map[1].count(0x00010031) &&
+        usage_map[1].count(0x00010032) &&
+        usage_map[2].count(0x00010033) &&
+        usage_map[2].count(0x00010034) &&
+        usage_map[2].count(0x00010035)) {
+        usage_map[1][0x00010030].is_relative = false;
+        usage_map[1][0x00010031].is_relative = false;
+        usage_map[1][0x00010032].is_relative = false;
+        usage_map[2][0x00010033].is_relative = false;
+        usage_map[2][0x00010034].is_relative = false;
+        usage_map[2][0x00010035].is_relative = false;
+    }
+
     // apply user-defined quirks
     my_mutex_enter(MutexId::QUIRKS);
     for (uint16_t i = 0; i < quirks.size(); i++) {
