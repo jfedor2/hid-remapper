@@ -2360,7 +2360,7 @@ const examples = [
     {
         'description': 'keyboard adapter for PS4: arrows=D-pad, WASD=left stick, numpad=right stick',
         'config': {
-            "version": 11,
+            "version": 12,
             "unmapped_passthrough_layers": [
                 0,
                 1,
@@ -2373,6 +2373,8 @@ const examples = [
             "interval_override": 0,
             "our_descriptor_number": 3,
             "ignore_auth_dev_inputs": true,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
             "mappings": [
                 {
                     "target_usage": "0x00010039",
@@ -2506,7 +2508,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00090008",
-                    "source_usage": "0xfff5000a",
+                    "source_usage": "0x0007000f",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2519,8 +2521,8 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010034",
-                    "source_usage": "0xfff5000b",
-                    "scaling": 1000,
+                    "source_usage": "0x0007000f",
+                    "scaling": 255000,
                     "layers": [
                         0
                     ],
@@ -2545,7 +2547,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00090007",
-                    "source_usage": "0xfff5000c",
+                    "source_usage": "0x00070033",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -2558,8 +2560,8 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010033",
-                    "source_usage": "0xfff5000d",
-                    "scaling": 1000,
+                    "source_usage": "0x00070033",
+                    "scaling": 255000,
                     "layers": [
                         0
                     ],
@@ -2683,17 +2685,16 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0x00070050 input_state_binary 0x0007004f input_state_binary 0x00070052 input_state_binary 0x00070051 input_state_binary dpad",
-                "0x00070004 input_state_binary 0x00070007 input_state_binary 0x0007001a input_state_binary 0x00070016 input_state_binary dpad 45000 mul dup 360000 eq not 3000 store 4000 store",
-                "4000 recall sin 127000 mul 3000 recall mul 128000 add",
-                "4000 recall cos -127000 mul 3000 recall mul 128000 add",
-                "0x0007005c input_state_binary 0x0007005e input_state_binary 0x00070060 input_state_binary 0x0007005d input_state_binary dpad 45000 mul dup 360000 eq not 6000 store 7000 store",
-                "7000 recall sin 127000 mul 6000 recall mul 128000 add",
-                "7000 recall cos -127000 mul 6000 recall mul 128000 add",
-                "0x0007000f input_state_binary dup 10000 store 255000 mul 11000 store 0x00070033 input_state_binary dup 12000 store 255000 mul 13000 store"
+                "0x00070050 input_state_binary eol 0x0007004f input_state_binary eol 0x00070052 input_state_binary eol 0x00070051 input_state_binary eol dpad",
+                "0x00070004 input_state_binary eol 0x00070007 input_state_binary eol 0x0007001a input_state_binary eol 0x00070016 input_state_binary eol dpad eol 45000 mul eol dup eol 360000 eq not 3000 store eol 4000 store",
+                "4000 recall eol sin eol 127000 mul eol 3000 recall eol mul eol 128000 add",
+                "4000 recall eol cos eol -127000 eol mul eol 3000 recall eol mul eol 128000 add",
+                "0x0007005c input_state_binary eol 0x0007005e input_state_binary eol 0x00070060 input_state_binary eol 0x0007005d input_state_binary eol dpad eol 45000 mul eol dup eol 360000 eq not 6000 store eol 7000 store",
+                "7000 recall eol sin eol 127000 mul eol 6000 recall eol mul eol 128000 add",
+                "7000 recall eol cos eol -127000 mul eol 6000 recall eol mul eol 128000 add",
+                ""
             ],
-            "macro_entry_duration": 1,
-            "gpio_output_mode": 0
+            "quirks": []
         }
     },
     {
