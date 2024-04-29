@@ -130,6 +130,7 @@ struct map_source_t {
     bool hold = false;
     bool is_relative = false;
     bool is_binary = false;
+    uint8_t orig_source_port = 0;
     uint8_t layer_mask = 1;
     int32_t* input_state;
     tap_hold_state_t* tap_hold_state;

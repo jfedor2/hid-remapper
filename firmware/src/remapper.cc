@@ -119,6 +119,7 @@ uint64_t frame_counter = 0;
 #define HUB_PORT_NONE 255
 #define NPORTS 15
 std::unordered_map<uint8_t, uint8_t> hub_ports;  // dev_addr -> hub_port
+uint16_t active_ports_mask = 0;
 
 inline int32_t handle_scroll(map_source_t& map_source, uint32_t target_usage, int32_t movement, uint64_t now) {
     // movement is always non-zero
@@ -432,6 +433,7 @@ void set_mapping_from_config() {
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
         uint8_t source_port = mapping.hub_ports & 0x0F;
+        uint8_t orig_source_port = source_port;
         if (((mapping.source_usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
             ((mapping.source_usage & 0xFFFF0000) == REGISTER_USAGE_PAGE) ||
             ((mapping.source_usage & 0xFFFF0000) == GPIO_USAGE_PAGE)) {
@@ -468,6 +470,7 @@ void set_mapping_from_config() {
                 .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
                 .tap = (mapping.flags & MAPPING_FLAG_TAP) != 0,
                 .hold = (mapping.flags & MAPPING_FLAG_HOLD) != 0,
+                .orig_source_port = orig_source_port,
                 .layer_mask = layer_mask,
                 .input_state = get_state_ptr(mapping.source_usage, source_port),
                 .tap_hold_state = get_tap_hold_state_ptr(mapping.source_usage, source_port),
@@ -1149,6 +1152,10 @@ void process_mapping(bool auto_repeat) {
         uint32_t target = rev_map.target;
         if (rev_map.is_relative) {
             for (auto& map_source : rev_map.sources) {
+                if ((map_source.orig_source_port != 0) &&
+                    !(active_ports_mask & (1 << map_source.orig_source_port))) {
+                    continue;
+                }
                 int32_t value = 0;
                 if (auto_repeat || map_source.is_relative) {
                     if (map_source.sticky) {
@@ -1178,6 +1185,10 @@ void process_mapping(bool auto_repeat) {
         } else {  // our_usage is absolute
             int32_t value = rev_map.default_value;
             for (auto const& map_source : rev_map.sources) {
+                if ((map_source.orig_source_port != 0) &&
+                    !(active_ports_mask & (1 << map_source.orig_source_port))) {
+                    continue;
+                }
                 if (map_source.sticky) {
                     if (*map_source.sticky_state & map_source.layer_mask) {
                         value = 1 * map_source.scaling / 1000;
@@ -1871,6 +1882,9 @@ void set_monitor_enabled(bool enabled) {
 
 void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid, uint8_t hub_port) {
     hub_ports[interface >> 8] = (hub_port != 0) ? hub_port : HUB_PORT_NONE;
+    if (hub_port != 0) {
+        active_ports_mask |= 1 << hub_port;
+    }
     if (our_descriptor->device_connected != nullptr) {
         our_descriptor->device_connected(interface, vid, pid);
     }
@@ -1881,6 +1895,10 @@ void device_disconnected_callback(uint8_t dev_addr) {
         our_descriptor->device_disconnected(dev_addr);
     }
     clear_descriptor_data(dev_addr);
+    uint8_t hub_port = hub_ports[dev_addr];
+    if ((hub_port != 0) && (hub_port != HUB_PORT_NONE)) {
+        active_ports_mask &= ~(1 << hub_port);
+    }
     hub_ports.erase(dev_addr);
 }
 
