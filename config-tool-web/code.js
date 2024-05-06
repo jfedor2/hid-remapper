@@ -101,6 +101,8 @@ const ops = {
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
 
+const expr_re = /((?:\/\*.*?\*\/)?)((?:(?!\/\*).)*)/gs;
+
 const UINT8 = Symbol('uint8');
 const UINT16 = Symbol('uint16');
 const UINT32 = Symbol('uint32');
@@ -601,7 +603,7 @@ function set_expressions_ui_state() {
         }
 
         const expression_input = document.getElementById('expression_' + expr_i).querySelector('.expression_input');
-        const expression_text = expr.split(/\s+/).map(json_to_ui).join(' ').replace(/( )?\n /g, '\n');
+        const expression_text = [...expr.matchAll(expr_re).map(x => x[1]+x[2].split(/\s+/).map(json_to_ui).join(' ').replace(/( )?\n /g, '\n'))].join('');
         expression_input.value = expression_text;
 
         const eols = expression_text.match(/\n/g);
@@ -950,6 +952,9 @@ function layer_checkbox_onchange(mapping, element, layer) {
 
 function expression_onchange(i) {
     const ui_to_json = function (op) {
+        if (op.startsWith('/*')) {
+            return op;
+        }
         if (op.toLowerCase().startsWith('0x')) {
             if (isNaN(parseInt(op, 16))) {
                 throw new Error('Invalid expression: "' + op + '"');
@@ -973,7 +978,10 @@ function expression_onchange(i) {
         const expr_input = document.getElementById('expression_' + i).querySelector('.expression_input');
         try {
             config['expressions'][i] =
-                expr_input.value.replace(/\n/g, " eol ").split(/\s+/).filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
+                [...expr_input.value.matchAll(expr_re).map(x => [
+                    x[1],
+                    ...x[2].replace(/\n/g, " eol ").split(/\s+/)
+                ])].flat().filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
             expr_input.classList.remove('is-invalid');
         } catch (e) {
             expr_input.classList.add('is-invalid');
@@ -1401,7 +1409,7 @@ function expr_to_elems(expr) {
         throw new Error('Invalid expression: "' + elem + '"');
     }
 
-    return expr.split(/\s+/).filter((x) => (x.length > 0)).map(convert_elem);
+    return [...expr.matchAll(expr_re).map(x => x[2])].join('').split(/\s+/).filter((x) => (x.length > 0)).map(convert_elem);
 }
 
 function validate_ui_expressions() {

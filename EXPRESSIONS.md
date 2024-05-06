@@ -89,6 +89,10 @@ All expressions are evaluated once per millisecond (technically USB frame), in o
 
 See the "Examples" section in the web configuration tool for some ideas on how registers can be used in practice.
 
+## Comments
+
+You can put `/* comments */` in expressions, but they are not saved to the device, so if you save your configuration and later load it from the device, the comments will be lost. But they are preserved when you export the configuration to a JSON file and later import it.
+
 ## Tips and tricks
 
 Use `input_state` to fetch the state of relative usages like a mouse axis and non-binary absolute usages like a D-pad or an analog stick or trigger. Use `input_state_binary` to fetch the state of binary absolute usages (buttons).
