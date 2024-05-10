@@ -121,7 +121,7 @@ inline int32_t handle_scroll(map_source_t& map_source, uint32_t target_usage, in
     // movement is always non-zero
     int32_t ret = 0;
     if (resolution_multiplier &
-        resolution_multiplier_masks[target_usage == H_RESOLUTION_BITMASK]) {  // hi-res
+        resolution_multiplier_masks[target_usage == H_SCROLL_USAGE]) {  // hi-res
         ret = movement;
     } else {  // lo-res
         if ((map_source.accumulated_scroll != 0) &&
