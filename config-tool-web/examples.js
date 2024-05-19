@@ -5363,6 +5363,182 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': '"warpd": keyboard-driven, grid-based mouse positioning',
+        'config': {
+            "version": 13,
+            "unmapped_passthrough_layers": [
+                0,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 1,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff50005",
+                    "scaling": 1000,
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff50006",
+                    "scaling": 1000,
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50007",
+                    "target_usage": "0xfff10001",
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0x00070039",
+                    "target_usage": "0x00000000",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50008",
+                    "target_usage": "0x00090001",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50009",
+                    "target_usage": "0x00090003",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff5000a",
+                    "target_usage": "0x00090002",
+                    "layers": [
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50007",
+                    "target_usage": "0x00080002",
+                    "layers": [
+                        0,
+                        1
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/*\nregister 1: current grid region X lower bound\nregister 2: current grid region X upper bound\nregister 3: current grid region Y lower bound\nregister 4: current grid region Y upper bound\nregister 5: output absolute cursor X\nregister 6: output absolute cursor Y\nregister 7 = 0 : inactive (keyboard works as keyboard)\nregister 7 = 1 : grid mode (UIJK selects quarters)\nregister 7 = 2 : normal mode (HJKL moves cursor directly)\nregister 8: left button\nregister 9: middle button\nregister 10: right button\nregister 11: drag-lock\n*/ eol eol 0x00070039 input_state_binary /* caps lock */ eol 0x00070039 prev_input_state_binary not eol mul eol 32000 store /* caps lock has just been pressed */ eol eol /* if caps lock has just been pressed, reset bounds */ eol eol 0 32000 recall mul /* reset if caps lock just pressed */ eol 1000 recall 32000 recall not mul /* keep current if not */ eol add eol 1000 store /* X lower bound */ eol eol 32767000 32000 recall mul /* reset if caps lock just pressed */ eol 2000 recall 32000 recall not mul /* keep current if not */ eol add eol 2000 store /* X upper bound */ eol eol 0 32000 recall mul /* reset if caps lock just pressed */ eol 3000 recall 32000 recall not mul /* keep current if not */ eol add eol 3000 store /* Y lower bound */ eol eol 32767000 32000 recall mul /* reset if caps lock just pressed */ eol 4000 recall 32000 recall not mul /* keep current if not */ eol add eol 4000 store /* Y upper bound */ eol eol /* if caps lock just pressed set mode to 1=grid */ eol 32000 recall 1000 mul eol 32000 recall not 7000 recall mul /* if not keep mode */ eol add eol 0x00070029 prev_input_state_binary /* esc */ eol 0x00070029 input_state_binary not eol mul /* esc just released */ eol not eol mul /* if esc just released, reset mode to 0=inactive */ eol 7000 store /* mode */ eol eol 11000 recall /* drag-lock state */ eol 0x00070019 prev_input_state_binary /* V */ eol 0x00070019 input_state_binary not eol mul /* V was just released */ eol bitwise_or /* drag-lock was already active or V just released */ eol 11000 recall /* drag-lock state */ eol 0x00070019 prev_input_state_binary /* V */ eol 0x00070019 input_state_binary not eol mul /* V was just released */ eol 0x00070010 prev_input_state_binary /* M */ eol 0x00070010 input_state_binary not eol mul /* M was just released */ eol bitwise_or /* V was just released or M was just released */ eol mul /* and drag-lock is active */ eol not /* so deactivate it */ eol mul eol 7000 recall 0 eq not /* not in inactive mode */ eol mul eol 11000 store /* drag-lock */ eol eol 0x00070010 input_state_binary /* M */ eol 0x00070019 input_state_binary /* V */ eol bitwise_or /* M or V currently pressed */ eol dup eol 11000 recall /* drag-lock state */ eol bitwise_or /* drag-lock active or M or V currently pressed */ eol 8000 store /* used as left mouse button */ eol 0x00070036 input_state_binary /* , */ eol dup eol 9000 store /* used as middle mouse button */ eol bitwise_or /* M or V or \",\" currently pressed */ eol 0x00070037 input_state_binary /* . */ eol dup eol 10000 store /* used as right mouse button */ eol bitwise_or /* M or V or \",\" or \".\" currently pressed */ eol 0x0007000b input_state_binary /* H */ eol bitwise_or eol 0x0007000f input_state_binary /* L */ eol bitwise_or eol 0x00070011 input_state_binary /* N */ eol bitwise_or /* M, V, \",\", \".\", H, L or N currently pressed */ eol 7000 recall 0 eq not /* not in inactive mode */ eol mul eol dup eol 31000 store /* not inactive and one of the keys above pressed */ eol 2000 mul /* set mode to 2=normal (HJKL moves cursor) */ eol 31000 recall not 7000 recall mul /* keep current mode otherwise */ eol add eol 7000 store /* mode */",
+                "/* move to top-left quarter */ eol 0x00070018 input_state_binary /* U */ eol 0x00070018 prev_input_state_binary not eol mul eol 30000 store /* U just pressed */ eol eol /* upper_bound = 0.5*(lower_bound+upper_bound) */ eol 1000 recall 2000 recall add eol 500 mul eol 30000 recall mul /* if U just pressed */ eol 2000 recall 30000 recall not mul /* keep current otherwise */ eol add eol 2000 store /* X upper bound */ eol eol /* upper_bound = 0.5*(lower_bound+upper_bound) */ eol 3000 recall 4000 recall add eol 500 mul eol 30000 recall mul /* if U just pressed */ eol 4000 recall 30000 recall not mul /* keep current otherwise */ eol add eol 4000 store /* Y upper bound */ eol eol /* move to top-right quarter */ eol 0x0007000c input_state_binary /* I */ eol 0x0007000c prev_input_state_binary not eol mul eol 29000 store /* I just pressed */ eol eol /* lower_bound = 0.5*(lower_bound+upper_bound) */ eol 1000 recall 2000 recall add eol 500 mul eol 29000 recall mul /* if I just pressed */ eol 1000 recall 29000 recall not mul /* keep current otherwise */ eol add eol 1000 store /* X lower bound */ eol eol /* upper_bound = 0.5*(lower_bound+upper_bound) */ eol 3000 recall 4000 recall add eol 500 mul eol 29000 recall mul /* if I just pressed */ eol 4000 recall 29000 recall not mul /* keep current otherwise */ eol add eol 4000 store /* Y upper bound */ eol eol /* move to bottom-left quarter */ eol 0x0007000d input_state_binary /* J */ eol 0x0007000d prev_input_state_binary not eol mul eol 28000 store /* J just pressed */ eol eol /* upper_bound = 0.5*(lower_bound+upper_bound) */ eol 1000 recall 2000 recall add eol 500 mul eol 28000 recall mul /* if J just pressed */ eol 2000 recall 28000 recall not mul /* keep current otherwise */ eol add eol 2000 store /* X upper bound */ eol eol /* lower_bound = 0.5*(lower_bound+upper_bound) */ eol 3000 recall 4000 recall add eol 500 mul eol 28000 recall mul /* if J just pressed */ eol 3000 recall 28000 recall not mul /* keep current otherwise */ eol add eol 3000 store /* Y lower bound */ eol eol /* move to bottom-right quarter */ eol 0x0007000e input_state_binary /* K */ eol 0x0007000e prev_input_state_binary not eol mul eol 27000 store /* K just pressed */ eol eol /* lower_bound = 0.5*(lower_bound+upper_bound) */ eol 1000 recall 2000 recall add eol 500 mul eol 27000 recall mul /* if K just pressed */ eol 1000 recall 27000 recall not mul /* keep current otherwise */ eol add eol 1000 store /* X lower bound */ eol eol /* lower_bound = 0.5*(lower_bound+upper_bound) */ eol 3000 recall 4000 recall add eol 500 mul eol 27000 recall mul /* if K just pressed */ eol 3000 recall 27000 recall not mul /* keep current otherwise */ eol add eol 3000 store /* Y lower bound */",
+                "/* absolute cursor X position */ eol 7000 recall 1000 eq not /* if not grid mode */ eol 5000 recall mul /* start with current position, zero otherwise */ eol eol 7000 recall 2000 eq /* \"normal\" mode - HJKL moves cursor */ eol 0x0007000b input_state_binary /* H */ eol -2250 mul eol 0x0007000f input_state_binary /* L */ eol 2250 mul eol add /* X delta */ eol mul /* use delta if normal mode, zero otherwise */ eol eol add eol eol 7000 recall 1000 eq /* \"grid\" mode - UIJK selects quarters */ eol /* cursor_x = 0.5*(lower_bound+upper_bound) */ eol 1000 recall 2000 recall add eol 500 mul eol mul /* use if we're in grid mode, zero otherwise */ eol eol add eol eol 0 32767000 clamp eol 5000 store /* used as output absolute mouse X */",
+                "/* absolute cursor Y position */ eol 7000 recall 1000 eq not /* if not grid mode */ eol 6000 recall mul /* start with current position, zero otherwise */ eol eol 7000 recall 2000 eq /* \"normal\" mode - HJKL moves cursor */ eol 0x0007000d input_state_binary /* J */ eol 4000 mul eol 0x0007000e input_state_binary /* K */ eol -4000 mul eol add /* Y delta */ eol mul /* use delta if normal mode, zero otherwise */ eol eol add eol eol 7000 recall 1000 eq /* \"grid\" mode - UIJK selects quarters */ eol /* cursor_y = 0.5*(lower_bound+upper_bound) */ eol 3000 recall 4000 recall add eol 500 mul eol mul /* use if we're in grid mode, zero otherwise */ eol eol add eol eol 0 32767000 clamp eol 6000 store /* used as output absolute mouse Y */",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
