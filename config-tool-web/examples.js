@@ -657,6 +657,116 @@ const examples = [
         }
     },
     {
+        'description': 'scroll wheel smoothly adjusts DPI',
+        'config': {
+            "version": 13,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00000000",
+                    "source_usage": "0x00010038",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "1000 recall /* register 1 is current scaling factor */ eol dup 0 eq add /* on startup it's 0, so make it 1 */ eol eol 0x00010038 input_state /* scroll wheel */ eol 1000 eq /* if scroll up */ eol 1100 mul /* increase scaling factor */ eol 0x00010038 input_state /* scroll wheel */ eol -1000 eq /* if scroll down */ eol 900 mul /* decrease scaling factor */ eol add eol dup 0 eq add /* if result is 0, make it 1, meaning no change */ eol eol mul /* multiply scaling factor by either 1.1, 0.9, or 1.0 */ eol 100 10000 clamp /* restrict scaling factor to 0.1-10 range */ eol 1000 store /* put result back in register 1 */ eol eol /*\nFor real-life use we'd want the scaling factor to max out at 1\nand set the hardware mouse DPI to maximum instead.\nBut for demonstration purposes this will do.\n*/",
+                "0x00010030 input_state /* raw mouse X */ eol 1000 recall /* current scaling factor */ eol mul eol /* result used as mouse X */",
+                "0x00010031 input_state /* raw mouse Y */ eol 1000 recall /* current scaling factor */ eol mul eol /* result used as mouse Y */",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
+    },
+    {
         'description': 'macros: double-click and "Hello, world!"',
         'config': {
             "version": 5,
