@@ -5231,6 +5231,138 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': 'Two mice, two cursors',
+        'config': {
+            "version": 13,
+            "unmapped_passthrough_layers": [
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 1,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff50005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff50006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0x00090001",
+                    "target_usage": "0x00090001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0x00090002",
+                    "target_usage": "0x00090002",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0x00090003",
+                    "target_usage": "0x00090003",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/*\nregister 1 = mouse 1 absolute cursor position X\nregister 2 = mouse 1 absolute cursor position Y\nregister 3 = mouse 2 absolute cursor position X\nregister 4 = mouse 2 absolute cursor position Y\n*/ eol eol 1000 port 0x00010030 input_state /* mouse 1 X delta */ eol 9000 mul eol 1000 recall /* mouse 1 absolute X position */ eol add eol 0 32767000 clamp eol 1000 store eol eol 1000 port 0x00010031 input_state /* mouse 1 Y delta */ eol 16000 mul eol 2000 recall /* mouse 1 absolute Y position */ eol add eol 0 32767000 clamp eol 2000 store eol eol 2000 port 0x00010030 input_state /* mouse 2 X delta */ eol 9000 mul eol 3000 recall /* mouse 2 absolute X position */ eol add eol 0 32767000 clamp eol 3000 store eol eol 2000 port 0x00010031 input_state /* mouse 2 Y delta */ eol 16000 mul eol 4000 recall /* mouse 2 absolute Y position */ eol add eol 0 32767000 clamp eol 4000 store",
+                "/*\nregister 7 = 0 : cursor oscillates between mouse 1 and mouse 2\nregister 7 = 1 : mouse 1 owns the cursor\nregister 7 = 2 : mouse 2 owns the cursor\n*/ eol eol 1000 port 0x00090001 input_state_binary /* mouse 1 left button */ eol 0x00090002 input_state_binary /* mouse 1 right button */ eol bitwise_or eol 0x00090003 input_state_binary /* mouse 1 middle button */ eol bitwise_or eol 7000 store /* set to 1 if any button pressed on mouse 1 */ eol eol 2000 port 0x00090001 input_state_binary /* mouse 2 left button */ eol 0x00090002 input_state_binary /* mouse 2 right button */ eol bitwise_or eol 0x00090003 input_state_binary /* mouse 2 middle button */ eol bitwise_or eol 2000 mul eol 7000 recall not /* check if not already owned by mouse 1 */ eol mul eol 7000 recall eol add eol 7000 store /* set to 2 if any button pressed on mouse 2 */ eol",
+                "time 100000 mod 50000 gt /* this is 1 50% of the time */ eol 7000 recall 0 eq /* we're oscillating between the two mice */ eol mul eol 7000 recall 1000 eq /* mouse 1 owns cursor */ eol bitwise_or /* mouse 1 owns cursor or it's their turn */ eol 1000 recall /* mouse 1 absolute X position */ eol mul eol eol time 100000 mod 50000 gt not /* this is 1 the other 50% of the time */ eol 7000 recall 0 eq /* we're oscillating between the two mice */ eol mul eol 7000 recall 2000 eq /* mouse 2 owns cursor */ eol bitwise_or /* mouse 2 owns cursor or it's their turn */ eol 3000 recall /* mouse 2 absolute X position */ eol mul eol eol add eol 5000 store /* used as output mouse X absolute position */ eol eol time 100000 mod 50000 gt /* this is 1 50% of the time */ eol 7000 recall 0 eq /* we're oscillating between the two mice */ eol mul eol 7000 recall 1000 eq /* mouse 1 owns cursor */ eol bitwise_or /* mouse 1 owns cursor or it's their turn */ eol 2000 recall /* mouse 1 absolute Y position */ eol mul eol eol time 100000 mod 50000 gt not /* this is 1 the other 50% of the time */ eol 7000 recall 0 eq /* we're oscillating between the two mice */ eol mul eol 7000 recall 2000 eq /* mouse 2 owns cursor */ eol bitwise_or /* mouse 2 owns cursor or it's their turn */ eol 4000 recall /* mouse 2 absolute Y position */ eol mul eol eol add eol 6000 store /* used as output mouse Y absolute position */",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
