@@ -519,12 +519,33 @@ static void hogp_map_read_cb(struct bt_hogp* hogp, uint8_t err, const uint8_t* d
     bt_hogp_map_read(hogp, hogp_map_read_cb, offset + size, K_NO_WAIT);
 }
 
+struct find_bond_t {
+    bt_addr_le_t addr;
+    uint8_t i;
+    uint8_t found_idx;
+};
+
+static void find_bond_cb(const struct bt_bond_info* info, void* user_data) {
+    struct find_bond_t* find_bond = (struct find_bond_t*) user_data;
+    find_bond->i++;
+    if (bt_addr_le_eq(&find_bond->addr, &info->addr)) {
+        find_bond->found_idx = find_bond->i;
+    }
+}
+
 static void hogp_ready_work_fn(struct k_work* work) {
     struct bt_hogp_rep_info* rep = NULL;
     struct hogp_ready_type item;
 
     while (!k_msgq_get(&hogp_ready_q, &item, K_NO_WAIT)) {
         LOG_INF("hogp_ready");
+
+        struct find_bond_t find_bond = { .i = 0, .found_idx = 0, };
+        bt_addr_le_copy(&find_bond.addr, bt_conn_get_dst(bt_hogp_conn(item.hogp)));
+        bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
+        LOG_DBG("found bond idx: %d", find_bond.found_idx);
+        device_connected_callback(bt_conn_index(bt_hogp_conn(item.hogp)) << 8, 1, 1, find_bond.found_idx);
+
         while (NULL != (rep = bt_hogp_rep_next(item.hogp, rep))) {
             if (bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_INPUT) {
                 LOG_DBG("subscribing to report ID: %u", bt_hogp_rep_id(rep));
@@ -871,8 +892,8 @@ int main() {
         }
 
         while (!k_msgq_get(&disconnected_q, &disconnected_item, K_NO_WAIT)) {
-            LOG_INF("clear_descriptor_data conn_idx=%d", disconnected_item.conn_idx);
-            clear_descriptor_data(disconnected_item.conn_idx);
+            LOG_INF("device_disconnected_callback conn_idx=%d", disconnected_item.conn_idx);
+            device_disconnected_callback(disconnected_item.conn_idx);
         }
 
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
