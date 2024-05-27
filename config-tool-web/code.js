@@ -1459,12 +1459,13 @@ function update_monitor_ui(usage, value, hub_port) {
 
     element.querySelector('.monitor_last_value').innerText = value;
     element.classList.add('bg-light');
-    if (!(usage in monitor_min_val) || (value < monitor_min_val[usage])) {
-        monitor_min_val[usage] = value;
+    const key = usage + '_' + hub_port;
+    if (!(key in monitor_min_val) || (value < monitor_min_val[key])) {
+        monitor_min_val[key] = value;
         element.querySelector('.monitor_min_value').innerText = value;
     }
-    if (!(usage in monitor_max_val) || (value > monitor_max_val[usage])) {
-        monitor_max_val[usage] = value;
+    if (!(key in monitor_max_val) || (value > monitor_max_val[key])) {
+        monitor_max_val[key] = value;
         element.querySelector('.monitor_max_value').innerText = value;
     }
 }
