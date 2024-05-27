@@ -1475,8 +1475,8 @@ void rlencode(const std::set<uint64_t>& usage_ranges, std::vector<usage_rle_t>& 
 }
 
 void update_their_descriptor_derivates() {
-    std::unordered_set<uint32_t> relative_usage_set;
-    std::unordered_set<uint32_t> binary_usage_set;
+    std::unordered_set<int32_t*> relative_usage_set;
+    std::unordered_set<int32_t*> binary_usage_set;
     std::set<uint64_t> their_usage_ranges_set;
 
     relative_usages.clear();
@@ -1494,15 +1494,19 @@ void update_their_descriptor_derivates() {
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage);
                     if (usage_def.is_relative) {
                         if (state_ptr_0 != NULL) {
-                            relative_usages.push_back(state_ptr_0);
+                            relative_usage_set.insert(state_ptr_0);
                         }
                         if (state_ptr_n != NULL) {
-                            relative_usages.push_back(state_ptr_n);
+                            relative_usage_set.insert(state_ptr_n);
                         }
-                        relative_usage_set.insert(usage);
                     }
                     if (usage_def.size == 1) {
-                        binary_usage_set.insert(usage);
+                        if (state_ptr_0 != NULL) {
+                            binary_usage_set.insert(state_ptr_0);
+                        }
+                        if (state_ptr_n != NULL) {
+                            binary_usage_set.insert(state_ptr_n);
+                        }
                     }
                     if ((state_ptr_0 != NULL) || (state_ptr_n != NULL)) {
                         usage_def.input_state_0 = state_ptr_0;
@@ -1550,13 +1554,17 @@ void update_their_descriptor_derivates() {
         }
     }
 
+    for (int32_t* ptr : relative_usage_set) {
+        relative_usages.push_back(ptr);
+    }
+
     their_usages_rle.clear();
     rlencode(their_usage_ranges_set, their_usages_rle);
 
     for (auto& rev_map : reverse_mapping) {
         for (auto& map_source : rev_map.sources) {
-            map_source.is_relative = relative_usage_set.count(map_source.usage) > 0;
-            map_source.is_binary = binary_usage_set.count(map_source.usage) > 0;
+            map_source.is_relative = relative_usage_set.count(map_source.input_state) > 0;
+            map_source.is_binary = binary_usage_set.count(map_source.input_state) > 0;
         }
         auto search = their_out_usages_flat.find(rev_map.target);
         if (search != their_out_usages_flat.end()) {
