@@ -565,6 +565,17 @@ void set_mapping_from_config() {
             .hub_port = hub_port,
             .sources = sources,
         };
+        if (our_descriptor->default_value != nullptr) {
+            rev_map.default_value = our_descriptor->default_value(target);
+            // This helps in cases where nothing is plugged in to provide state for a source
+            // and a default of zero is not good, but the proper way to solve this would be
+            // to not execute mappings with unplugged sources.
+            for (auto const& source : sources) {
+                if (!source.sticky && !source.tap && !source.hold && (source.scaling == 1000)) {
+                    *(source.input_state) = rev_map.default_value;
+                }
+            }
+        }
         if ((target & 0xFFFF0000) == GPIO_USAGE_PAGE) {
             rev_map.our_usages.push_back((out_usage_def_t){
                 .data = gpio_out_state,
@@ -1004,7 +1015,7 @@ void process_mapping(bool auto_repeat) {
                 }
             }
         } else {  // our_usage is absolute
-            int32_t value = 0;
+            int32_t value = rev_map.default_value;
             for (auto const& map_source : rev_map.sources) {
                 if (map_source.sticky) {
                     if (*map_source.sticky_state & map_source.layer_mask) {
@@ -1022,15 +1033,18 @@ void process_mapping(bool auto_repeat) {
                                     value = 1;
                                 }
                             } else {
-                                if (*map_source.input_state) {
-                                    value = *map_source.input_state;
+                                if ((*map_source.input_state != 0) || (rev_map.default_value != 0)) {
+                                    int32_t candidate = *map_source.input_state;
                                     if (map_source.is_binary) {
-                                        value = !!value;
+                                        candidate = !!candidate;
                                     }
-                                    value = (int64_t) value * map_source.scaling / 1000;
+                                    candidate = (int64_t) candidate * map_source.scaling / 1000;
                                     if (((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
                                         ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE)) {
-                                        value /= 1000;
+                                        candidate /= 1000;
+                                    }
+                                    if (candidate != rev_map.default_value) {
+                                        value = candidate;
                                     }
                                 }
                             }
@@ -1038,10 +1052,10 @@ void process_mapping(bool auto_repeat) {
                     }
                 }
             }
-            if (value) {
+            if (value != rev_map.default_value) {
                 for (auto const& out_usage_def : rev_map.our_usages) {
                     if (out_usage_def.array_count == 0) {
-                        uint32_t effective_value = out_usage_def.size == 1 ? 1 : value;
+                        uint32_t effective_value = out_usage_def.size == 1 ? !!value : value;
                         put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos, out_usage_def.size, effective_value);
                     } else {  // array range
                         for (int i = 0; i < out_usage_def.array_count; i++) {
@@ -1143,7 +1157,11 @@ void process_mapping(bool auto_repeat) {
                 or_items++;
             }
         }
-        memset(reports[report_id], 0, report_sizes[report_id]);
+        if (our_descriptor->clear_report != nullptr) {
+            our_descriptor->clear_report(reports[report_id], report_id, report_sizes[report_id]);
+        } else {
+            memset(reports[report_id], 0, report_sizes[report_id]);
+        }
     }
 
     for (auto const [interface_report_id, report] : out_reports) {

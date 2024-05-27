@@ -502,6 +502,52 @@ uint16_t kb_mouse_handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t
     return 0;
 }
 
+static const uint8_t horipad_neutral[] = { 0x00, 0x00, 0x0F, 0x80, 0x80, 0x80, 0x80, 0x00 };
+
+void horipad_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memcpy(report, horipad_neutral, sizeof(horipad_neutral));
+}
+
+void ps4_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memset(report, 0, len);
+    report[0] = report[1] = report[2] = report[3] = 0x80;
+    report[4] = 0x08;
+}
+
+static const uint8_t stadia_neutral[] = { 0x08, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00 };
+
+void stadia_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memcpy(report, stadia_neutral, sizeof(stadia_neutral));
+}
+
+int32_t horipad_default_value(uint32_t usage) {
+    switch (usage) {
+        case 0x00010039:
+            return 15;
+        case 0x00010030:
+        case 0x00010031:
+        case 0x00010032:
+        case 0x00010035:
+            return 0x80;
+        default:
+            return 0;
+    }
+}
+
+int32_t ps4_stadia_default_value(uint32_t usage) {
+    switch (usage) {
+        case 0x00010039:
+            return 8;
+        case 0x00010030:
+        case 0x00010031:
+        case 0x00010032:
+        case 0x00010035:
+            return 0x80;
+        default:
+            return 0;
+    }
+}
+
 const our_descriptor_def_t our_descriptors[] = {
     {
         .idx = 0,
@@ -526,6 +572,8 @@ const our_descriptor_def_t our_descriptors[] = {
         .vid = 0x0F0D,
         .pid = 0x00C1,
         .handle_received_report = do_handle_received_report,
+        .clear_report = horipad_clear_report,
+        .default_value = horipad_default_value,
     },
     {
         .idx = 3,
@@ -539,6 +587,8 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_set_report = ps4_handle_set_report,
         .handle_get_report_response = ps4_handle_get_report_response,
         .handle_set_report_complete = ps4_handle_set_report_complete,
+        .clear_report = ps4_clear_report,
+        .default_value = ps4_stadia_default_value,
     },
     {
         .idx = 4,
@@ -547,6 +597,8 @@ const our_descriptor_def_t our_descriptors[] = {
         .vid = 0x18D1,
         .pid = 0x9400,
         .handle_received_report = do_handle_received_report,
+        .clear_report = stadia_clear_report,
+        .default_value = ps4_stadia_default_value,
     },
 };
 
