@@ -1008,13 +1008,13 @@ void process_mapping(bool auto_repeat) {
             for (auto const& map_source : rev_map.sources) {
                 if (map_source.sticky) {
                     if (*map_source.sticky_state & map_source.layer_mask) {
-                        value = 1;
+                        value = 1 * map_source.scaling / 1000;
                     }
                 } else {
                     if ((layer_state_mask & map_source.layer_mask)) {
                         if ((map_source.tap && map_source.tap_hold_state->tap) ||
                             (map_source.hold && map_source.tap_hold_state->hold)) {
-                            value = 1;
+                            value = 1 * map_source.scaling / 1000;
                         }
                         if (!map_source.tap && !map_source.hold) {
                             if (map_source.is_relative) {
