@@ -25,6 +25,7 @@ typedef void (*handle_get_report_response_t)(uint16_t interface, uint8_t report_
 typedef void (*handle_set_report_complete_t)(uint16_t interface, uint8_t report_id);
 typedef void (*clear_report_t)(uint8_t* report, uint8_t report_id, uint16_t len);
 typedef int32_t (*default_value_t)(uint32_t usage);
+typedef void (*sanitize_report_t)(uint8_t report_id, uint8_t* buffer, uint16_t len);
 
 struct our_descriptor_def_t {
     uint8_t idx;
@@ -42,6 +43,7 @@ struct our_descriptor_def_t {
     handle_set_report_complete_t handle_set_report_complete = nullptr;
     clear_report_t clear_report = nullptr;
     default_value_t default_value = nullptr;
+    sanitize_report_t sanitize_report = nullptr;
 };
 
 extern const our_descriptor_def_t our_descriptors[];

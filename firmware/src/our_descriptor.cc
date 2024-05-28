@@ -548,6 +548,21 @@ int32_t ps4_stadia_default_value(uint32_t usage) {
     }
 }
 
+void stadia_sanitize_report(uint8_t report_id, uint8_t* buffer, uint16_t len) {
+    if (buffer[3] == 0) {
+        buffer[3] = 1;
+    }
+    if (buffer[4] == 0) {
+        buffer[4] = 1;
+    }
+    if (buffer[5] == 0) {
+        buffer[5] = 1;
+    }
+    if (buffer[6] == 0) {
+        buffer[6] = 1;
+    }
+}
+
 const our_descriptor_def_t our_descriptors[] = {
     {
         .idx = 0,
@@ -599,6 +614,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = stadia_clear_report,
         .default_value = ps4_stadia_default_value,
+        .sanitize_report = stadia_sanitize_report,
     },
 };
 

@@ -1139,6 +1139,9 @@ void process_mapping(bool auto_repeat) {
 
     for (unsigned int i = 0; i < report_ids.size(); i++) {  // XXX what order should we go in? maybe keyboard first so that mappings to ctrl-left click work as expected?
         uint8_t report_id = report_ids[i];
+        if (our_descriptor->sanitize_report != nullptr) {
+            our_descriptor->sanitize_report(report_id, reports[report_id], report_sizes[report_id]);
+        }
         if (needs_to_be_sent(report_id)) {
             if (or_items == OR_BUFSIZE) {
                 printf("overflow!\n");
