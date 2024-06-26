@@ -9,7 +9,7 @@
 #include "platform.h"
 #include "remapper.h"
 
-const uint8_t CONFIG_VERSION = 13;
+const uint8_t CONFIG_VERSION = 14;
 
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH = 0x01;
 const uint8_t CONFIG_FLAG_UNMAPPED_PASSTHROUGH_MASK = 0b00001111;
@@ -525,6 +525,8 @@ void load_config(const uint8_t* persisted_config) {
         load_config_v12(persisted_config);
         return;
     }
+
+    // v14 is same as v13, it just introduces a new emulated device type
 
     persist_config_v13_t* config = (persist_config_v13_t*) persisted_config;
     unmapped_passthrough_layer_mask = config->unmapped_passthrough_layer_mask;

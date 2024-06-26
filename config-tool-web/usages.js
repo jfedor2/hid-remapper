@@ -453,6 +453,25 @@ const usages = {
         "0x00090011": { 'name': 'Assistant', 'class': 'mouse' },
         "0x00090012": { 'name': 'Capture', 'class': 'mouse' },
     },
+    5: {
+        "0x00010030": { 'name': 'Left stick X', 'class': 'mouse' },
+        "0x00010031": { 'name': 'Left stick Y', 'class': 'mouse' },
+        "0x00010032": { 'name': 'Right stick X', 'class': 'mouse' },
+        "0x00010035": { 'name': 'Right stick Y', 'class': 'mouse' },
+        "0x00010039": { 'name': 'D-pad', 'class': 'mouse' },
+        "0x00090005": { 'name': 'A', 'class': 'mouse' },
+        "0x00090006": { 'name': 'B', 'class': 'mouse' },
+        "0x0009000b": { 'name': 'X', 'class': 'mouse' },
+        "0x0009000c": { 'name': 'Y', 'class': 'mouse' },
+        "0x00090004": { 'name': 'LB', 'class': 'mouse' },
+        "0x0009000a": { 'name': 'RB', 'class': 'mouse' },
+        "0x00090001": { 'name': 'X1', 'class': 'mouse' },
+        "0x00090002": { 'name': 'X2', 'class': 'mouse' },
+        "0x00090003": { 'name': 'LSB', 'class': 'mouse' },
+        "0x00090009": { 'name': 'RSB', 'class': 'mouse' },
+        "0x00090007": { 'name': 'View', 'class': 'mouse' },
+        "0x00090008": { 'name': 'Menu', 'class': 'mouse' },
+    },
 };
 
 const common_target_usages = {
@@ -538,6 +557,7 @@ Object.assign(usages[0], common_target_usages);
 Object.assign(usages[2], common_target_usages);
 Object.assign(usages[3], common_target_usages);
 Object.assign(usages[4], common_target_usages);
+Object.assign(usages[5], common_target_usages);
 usages[1] = usages[0]; // absolute mouse & keyboard is the same as regular mouse & keyboard
 
 export default usages;
