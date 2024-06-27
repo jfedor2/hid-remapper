@@ -5539,6 +5539,759 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': 'DualSense to XAC adapter',
+        'config': {
+            "version": 14,
+            "unmapped_passthrough_layers": [
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 5,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0x00010030",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0x00010031",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0x00010032",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0x00010035",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010039",
+                    "source_usage": "0x00010039",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090005",
+                    "source_usage": "0x00090002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090006",
+                    "source_usage": "0x00090003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000b",
+                    "source_usage": "0x00090001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0x00090004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090004",
+                    "source_usage": "0x00090005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000a",
+                    "source_usage": "0x00090006",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x00090007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x00090008",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0x0009000b",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090009",
+                    "source_usage": "0x0009000c",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090007",
+                    "source_usage": "0x00090009",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090008",
+                    "source_usage": "0x0009000a",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": [
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xff000020",
+                    "bitpos": 0,
+                    "size": 0,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xff000022",
+                    "bitpos": 0,
+                    "size": 0,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0001",
+                    "bitpos": 256,
+                    "size": 7,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0002",
+                    "bitpos": 263,
+                    "size": 1,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0003",
+                    "bitpos": 264,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0004",
+                    "bitpos": 276,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0005",
+                    "bitpos": 288,
+                    "size": 7,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0006",
+                    "bitpos": 295,
+                    "size": 1,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0007",
+                    "bitpos": 296,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0008",
+                    "bitpos": 308,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa0009",
+                    "bitpos": 120,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000a",
+                    "bitpos": 136,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000b",
+                    "bitpos": 152,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000c",
+                    "bitpos": 168,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000d",
+                    "bitpos": 184,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                },
+                {
+                    "vendor_id": "0x054c",
+                    "product_id": "0x0ce6",
+                    "interface": 3,
+                    "report_id": 1,
+                    "usage": "0xfffa000e",
+                    "bitpos": 200,
+                    "size": 16,
+                    "relative": false,
+                    "signed": true
+                }
+            ]
+        }
+    },
+    {
+        'description': 'Stadia controller to XAC adapter',
+        'config': {
+            "version": 14,
+            "unmapped_passthrough_layers": [
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 5,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0x00010030",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0x00010031",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0x00010032",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0x00010035",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010039",
+                    "source_usage": "0x00010039",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090005",
+                    "source_usage": "0x00090001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090006",
+                    "source_usage": "0x00090002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000b",
+                    "source_usage": "0x00090004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0x00090005",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090004",
+                    "source_usage": "0x00090007",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000a",
+                    "source_usage": "0x00090008",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0x00090014",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090002",
+                    "source_usage": "0x00090013",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0x0009000e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090009",
+                    "source_usage": "0x0009000f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090007",
+                    "source_usage": "0x0009000b",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090008",
+                    "source_usage": "0x0009000c",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
