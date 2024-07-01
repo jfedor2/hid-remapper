@@ -9,7 +9,7 @@
 #define HID_REMAPPER_BOARD_V8
 
 #define ADC_ENABLED
-#define NADCS 2
+#define NADCS 3
 
 // these settings are here to let this build be used on
 // a regular Pico until we have a proper build with analog
