@@ -89,7 +89,7 @@ void set_gpio_dir() {
         if (gpio_valid_pins_mask & bit) {
              // (This Changes the GPIO Pull direction)
             // Original: gpio_set_pulls(i, gpio_in_mask & bit, false);
-            gpio_set_pulls(i, false gpio_in_mask & bit);
+            gpio_set_pulls(i, false, gpio_in_mask & bit);
         }
     }
 }
