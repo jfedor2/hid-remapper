@@ -87,7 +87,9 @@ void set_gpio_dir() {
     for (uint8_t i = 0; i <= 29; i++) {
         uint32_t bit = 1 << i;
         if (gpio_valid_pins_mask & bit) {
-            gpio_set_pulls(i, gpio_in_mask & bit, false);
+             // (This Changes the GPIO Pull direction)
+            // Original: gpio_set_pulls(i, gpio_in_mask & bit, false);
+            gpio_set_pulls(i, false gpio_in_mask & bit);
         }
     }
 }
@@ -117,7 +119,9 @@ bool read_gpio(uint64_t now) {
             if (changed & bit) {
                 if (last_gpio_change[i] + gpio_debounce_time <= now) {
                     uint32_t usage = GPIO_USAGE_PAGE | i;
-                    int32_t state = !(gpio_state & bit);  // active low
+            // (This Changes the GPIO Pull direction)
+            // Original: int32_t state = !(gpio_state & bit);  // active low
+                    int32_t state = !!(gpio_state & bit);
                     set_input_state(usage, state);
                     if (monitor_enabled) {
                         monitor_usage(usage, state, 0);
