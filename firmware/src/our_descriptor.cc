@@ -486,6 +486,41 @@ uint8_t const our_report_descriptor_stadia[] = {
     0xC0,                          // End Collection
 };
 
+uint8_t const our_report_descriptor_xac_compat[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+    0x09, 0x30,        //   Usage (X)
+    0x09, 0x31,        //   Usage (Y)
+    0x09, 0x32,        //   Usage (Z)
+    0x09, 0x35,        //   Usage (Rz)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x04,        //   Report Count (4)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x39,        //   Usage (Hat switch)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x07,        //   Logical Maximum (7)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x46, 0x3B, 0x01,  //   Physical Maximum (315)
+    0x65, 0x14,        //   Unit (System: English Rotation, Length: Centimeter)
+    0x75, 0x04,        //   Report Size (4)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x42,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
+    0x65, 0x00,        //   Unit (None)
+    0x45, 0x00,        //   Physical Maximum (0)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x19, 0x01,        //   Usage Minimum (0x01)
+    0x29, 0x0C,        //   Usage Maximum (0x0C)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x0C,        //   Report Count (12)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              // End Collection
+};
+
 void kb_mouse_handle_set_report(uint8_t report_id, const uint8_t* buffer, uint16_t reqlen) {
     if (report_id == REPORT_ID_MULTIPLIER && reqlen >= 1) {
         memcpy(&resolution_multiplier, buffer, 1);
@@ -518,6 +553,12 @@ static const uint8_t stadia_neutral[] = { 0x08, 0x00, 0x00, 0x80, 0x80, 0x80, 0x
 
 void stadia_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
     memcpy(report, stadia_neutral, sizeof(stadia_neutral));
+}
+
+static const uint8_t xac_compat_neutral[] = { 0x80, 0x80, 0x80, 0x80, 0x08, 0x00 };
+
+void xac_compat_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memcpy(report, xac_compat_neutral, sizeof(xac_compat_neutral));
 }
 
 int32_t horipad_default_value(uint32_t usage) {
@@ -615,6 +656,14 @@ const our_descriptor_def_t our_descriptors[] = {
         .clear_report = stadia_clear_report,
         .default_value = ps4_stadia_default_value,
         .sanitize_report = stadia_sanitize_report,
+    },
+    {
+        .idx = 5,
+        .descriptor = our_report_descriptor_xac_compat,
+        .descriptor_length = sizeof(our_report_descriptor_xac_compat),
+        .handle_received_report = do_handle_received_report,
+        .clear_report = xac_compat_clear_report,
+        .default_value = ps4_stadia_default_value,  // sic
     },
 };
 
