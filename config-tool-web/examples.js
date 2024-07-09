@@ -2470,7 +2470,7 @@ const examples = [
     {
         'description': 'keyboard adapter for PS4: arrows=D-pad, WASD=left stick, numpad=right stick',
         'config': {
-            "version": 12,
+            "version": 14,
             "unmapped_passthrough_layers": [
                 0,
                 1,
@@ -2795,13 +2795,13 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0x00070050 input_state_binary eol 0x0007004f input_state_binary eol 0x00070052 input_state_binary eol 0x00070051 input_state_binary eol dpad",
-                "0x00070004 input_state_binary eol 0x00070007 input_state_binary eol 0x0007001a input_state_binary eol 0x00070016 input_state_binary eol dpad eol 45000 mul eol dup eol 360000 eq not 3000 store eol 4000 store",
-                "4000 recall eol sin eol 127000 mul eol 3000 recall eol mul eol 128000 add",
-                "4000 recall eol cos eol -127000 eol mul eol 3000 recall eol mul eol 128000 add",
-                "0x0007005c input_state_binary eol 0x0007005e input_state_binary eol 0x00070060 input_state_binary eol 0x0007005d input_state_binary eol dpad eol 45000 mul eol dup eol 360000 eq not 6000 store eol 7000 store",
-                "7000 recall eol sin eol 127000 mul eol 6000 recall eol mul eol 128000 add",
-                "7000 recall eol cos eol -127000 mul eol 6000 recall eol mul eol 128000 add",
+                "0x00070050 input_state_binary /* left arrow */ eol 0x0007004f input_state_binary /* right arrow */ eol 0x00070052 input_state_binary /* up arrow */ eol 0x00070051 input_state_binary /* down arrow */ eol dpad /* 0=up, 1=up+right, 2=right, ..., 8=neutral */",
+                "0x00070004 input_state_binary /* A */ eol 0x00070007 input_state_binary /* D */ eol 0x0007001a input_state_binary /* W */ eol 0x00070016 input_state_binary /* S */ eol dpad /* 0=up, 1=up+right, 2=right, ..., 8=neutral */ eol 45000 mul /* angle in degrees */ eol dup eol 360000 eq not 3000 store /* is any of the keys pressed? */ eol 4000 store /* 0..360 angle */",
+                "4000 recall /* 0..360 angle */ eol sin eol 127000 mul eol 3000 recall /* is any of the keys pressed? */ eol mul eol 128000 add eol /* used as left stick X */",
+                "4000 recall /* 0..360 angle */ eol cos eol -127000 eol mul eol 3000 recall /* is any of the keys pressed? */ eol mul eol 128000 add eol /* used as left stick Y */",
+                "0x0007005c input_state_binary /* numpad 4 */ eol 0x0007005e input_state_binary /* numpad 6 */ eol 0x00070060 input_state_binary /* numpad 8 */ eol 0x0007005d input_state_binary /* numpad 5 */ eol dpad /* 0=up, 1=up+right, 2=right, ..., 8=neutral */ eol 45000 mul /* angle in degrees */ eol dup eol 360000 eq not 6000 store /* is any of the keys pressed? */ eol 7000 store /* 0..360 angle */",
+                "7000 recall /* 0..360 angle */ eol sin eol 127000 mul eol 6000 recall /* is any of the keys pressed? */ eol mul eol 128000 add eol /* used as right stick X */",
+                "7000 recall /* 0..360 angle */ eol cos eol -127000 mul eol 6000 recall /* is any of the keys pressed? */ eol mul eol 128000 add eol /* used as right stick Y */",
                 ""
             ],
             "quirks": []
