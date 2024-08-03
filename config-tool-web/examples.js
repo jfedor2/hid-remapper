@@ -7027,6 +7027,297 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': 'keyboard SOCD: neutral',
+        'config': {
+            "version": 14,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff30001",
+                    "target_usage": "0x00070004",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff30002",
+                    "target_usage": "0x00070007",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00070004 input_state_binary /* A pressed */ eol 0x00070007 input_state_binary not /* D not pressed */ eol mul /* logical AND */ eol /* used as A */",
+                "0x00070007 input_state_binary /* D pressed */ eol 0x00070004 input_state_binary not /* A not pressed */ eol mul /* logical AND */ eol /* used as D */",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
+    },
+    {
+        'description': 'keyboard SOCD: last input priority',
+        'config': {
+            "version": 14,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff30001",
+                    "target_usage": "0x00070004",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff30002",
+                    "target_usage": "0x00070007",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/* register 1 = A is pressed and has priority */ eol 1000 recall eol 0x00070004 prev_input_state_binary not /* A */ eol bitwise_or /* if A was just pressed, it has priority */ eol 0x00070007 input_state_binary not /* D */ eol bitwise_or /* if D is not pressed, A has priority */ eol 0x00070007 prev_input_state_binary not /* D */ eol 0x00070007 input_state_binary /* D */ eol mul eol not eol mul /* if D was just pressed, A doesn't have priority */ eol 0x00070004 input_state_binary /* A */ eol mul /* none of the above matters unless A is pressed */ eol dup eol 1000 store eol /* result used as A */",
+                "/* register 2 = D is pressed and has priority */ eol 2000 recall eol 0x00070007 prev_input_state_binary not /* D */ eol bitwise_or /* if D was just pressed, it has priority */ eol 0x00070004 input_state_binary not /* A */ eol bitwise_or /* if A is not pressed, D has priority */ eol 0x00070004 prev_input_state_binary not /* A */ eol 0x00070004 input_state_binary /* A */ eol mul eol not eol mul /* if A was just pressed, D doesn't have priority */ eol 0x00070007 input_state_binary /* D */ eol mul /* none of the above matters unless D is pressed */ eol dup eol 2000 store eol /* result used as D */",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
+    },
+    {
+        'description': 'keyboard SOCD: first input priority',
+        'config': {
+            "version": 14,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff30001",
+                    "target_usage": "0x00070004",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff30002",
+                    "target_usage": "0x00070007",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/* register 1 = A is pressed and has priority */ eol 1000 recall eol 0x00070007 input_state_binary not /* D */ eol bitwise_or eol 0x00070004 input_state_binary /* A */ eol mul eol dup eol 1000 store eol /* result used as A */",
+                "/* register 2 = D is pressed and has priority */ eol 2000 recall eol 0x00070004 input_state_binary not /* A */ eol bitwise_or eol 0x00070007 input_state_binary /* D */ eol mul eol dup eol 2000 store eol /* result used as D */",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
