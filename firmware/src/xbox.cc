@@ -108,7 +108,8 @@ static struct xdev_t* get_xdev_by_ep(uint8_t dev_addr, uint8_t ep) {
     return nullptr;
 }
 
-void xboxh_init(void) {
+bool xboxh_init(void) {
+    return true;
 }
 
 bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* desc_itf, uint16_t max_len) {

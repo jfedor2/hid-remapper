@@ -23,7 +23,7 @@ add_compile_options(-Wall)
 
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
 
-if(PICO_BOARD STREQUAL "pico")
+if((PICO_BOARD STREQUAL "pico") OR (PICO_BOARD STREQUAL "pico2"))
 add_compile_definitions(GPIO_VALID_PINS_BASE=0b00011100011111111111111111111111)
 endif()
 
@@ -48,7 +48,7 @@ add_executable(remapper
     src/xbox.cc
 )
 
-if(PICO_BOARD STREQUAL "pico")
+if((PICO_BOARD STREQUAL "pico") OR (PICO_BOARD STREQUAL "pico2"))
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_RX_PIN=17)
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_PIO_USB_DP_PIN=0)
@@ -76,7 +76,12 @@ target_link_libraries(remapper
 )
 
 pico_set_binary_type(remapper copy_to_ram)
+if(PICO_BOARD STREQUAL "pico")
 pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single.ld)
+endif()
+if(PICO_BOARD STREQUAL "pico2")
+pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single_rp2350.ld)
+endif()
 pico_add_extra_outputs(remapper)
 
 
@@ -141,6 +146,7 @@ target_link_libraries(remapper_dual_b
     usb_midi_host
 )
 pico_add_extra_outputs(remapper_dual_b)
+pico_add_hex_output(remapper_dual_b)
 
 add_custom_command(
   OUTPUT dual_b_binary.c dual_b_binary.h
