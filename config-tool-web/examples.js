@@ -3860,7 +3860,7 @@ const examples = [
     {
         'description': 'custom board v8: analog stick',
         'config': {
-            "version": 12,
+            "version": 14,
             "unmapped_passthrough_layers": [
                 0,
                 1,
@@ -3875,7 +3875,7 @@ const examples = [
             "tap_hold_threshold": 200000,
             "gpio_debounce_time_ms": 5,
             "interval_override": 0,
-            "our_descriptor_number": 4,
+            "our_descriptor_number": 5,
             "ignore_auth_dev_inputs": false,
             "macro_entry_duration": 1,
             "gpio_output_mode": 0,
@@ -3896,45 +3896,6 @@ const examples = [
                 {
                     "target_usage": "0x00010031",
                     "source_usage": "0xfff30002",
-                    "scaling": 1000,
-                    "layers": [
-                        0
-                    ],
-                    "sticky": false,
-                    "tap": false,
-                    "hold": false,
-                    "source_port": 0,
-                    "target_port": 0
-                },
-                {
-                    "target_usage": "0x00010032",
-                    "source_usage": "0xfff30003",
-                    "scaling": 1000,
-                    "layers": [
-                        0
-                    ],
-                    "sticky": false,
-                    "tap": false,
-                    "hold": false,
-                    "source_port": 0,
-                    "target_port": 0
-                },
-                {
-                    "target_usage": "0x00010035",
-                    "source_usage": "0xfff30003",
-                    "scaling": 1000,
-                    "layers": [
-                        0
-                    ],
-                    "sticky": false,
-                    "tap": false,
-                    "hold": false,
-                    "source_port": 0,
-                    "target_port": 0
-                },
-                {
-                    "target_usage": "0x00010039",
-                    "source_usage": "0xfff30004",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3981,10 +3942,10 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0xfff80000 input_state eol -2048000 add eol 100 mul eol 128000 add eol 1000 255000 clamp",
-                "0xfff80001 input_state eol -2048000 add eol -100 mul eol 128000 add eol 1000 255000 clamp",
-                "128000",
-                "8000",
+                "0xfff80000 input_state /* 12-bit ADC value */ eol -2048000 add /* center around zero */ eol dup abs 50000 gt mul /* simple per-axis deadzone */ eol 100 mul /* scale */ eol 128000 add /* 128 is neutral on output */ eol 0 255000 clamp /* output range is 0-255 */",
+                "0xfff80001 input_state /* 12-bit ADC value */ eol -2048000 add /* center around zero */ eol dup abs 50000 gt mul /* simple per-axis deadzone */ eol -100 mul /* scale and invert */ eol 128000 add /* 128 is neutral on output */ eol 0 255000 clamp /* output range is 0-255 */",
+                "",
+                "",
                 "",
                 "",
                 "",
