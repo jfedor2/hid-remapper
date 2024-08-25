@@ -7279,6 +7279,181 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': 'one shot sticky modifiers',
+        'config': {
+            "version": 14,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff50001",
+                    "target_usage": "0x000700e0",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50002",
+                    "target_usage": "0x000700e1",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50003",
+                    "target_usage": "0x000700e2",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50004",
+                    "target_usage": "0x000700e3",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50005",
+                    "target_usage": "0x000700e4",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50006",
+                    "target_usage": "0x000700e5",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50007",
+                    "target_usage": "0x000700e6",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50008",
+                    "target_usage": "0x000700e7",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/* register 32 = none of the regular keys has just been released */ eol eol 0 eol 0x00070004 input_state_binary not eol 0x00070004 prev_input_state_binary mul bitwise_or eol 0x00070005 input_state_binary not eol 0x00070005 prev_input_state_binary mul bitwise_or eol 0x00070006 input_state_binary not eol 0x00070006 prev_input_state_binary mul bitwise_or eol 0x00070007 input_state_binary not eol 0x00070007 prev_input_state_binary mul bitwise_or eol 0x00070008 input_state_binary not eol 0x00070008 prev_input_state_binary mul bitwise_or eol 0x00070009 input_state_binary not eol 0x00070009 prev_input_state_binary mul bitwise_or eol 0x0007000a input_state_binary not eol 0x0007000a prev_input_state_binary mul bitwise_or eol 0x0007000b input_state_binary not eol 0x0007000b prev_input_state_binary mul bitwise_or eol 0x0007000c input_state_binary not eol 0x0007000c prev_input_state_binary mul bitwise_or eol 0x0007000d input_state_binary not eol 0x0007000d prev_input_state_binary mul bitwise_or eol 0x0007000e input_state_binary not eol 0x0007000e prev_input_state_binary mul bitwise_or eol 0x0007000f input_state_binary not eol 0x0007000f prev_input_state_binary mul bitwise_or eol 0x00070010 input_state_binary not eol 0x00070010 prev_input_state_binary mul bitwise_or eol 0x00070011 input_state_binary not eol 0x00070011 prev_input_state_binary mul bitwise_or eol 0x00070012 input_state_binary not eol 0x00070012 prev_input_state_binary mul bitwise_or eol 0x00070013 input_state_binary not eol 0x00070013 prev_input_state_binary mul bitwise_or eol 0x00070014 input_state_binary not eol 0x00070014 prev_input_state_binary mul bitwise_or eol 0x00070015 input_state_binary not eol 0x00070015 prev_input_state_binary mul bitwise_or eol 0x00070016 input_state_binary not eol 0x00070016 prev_input_state_binary mul bitwise_or eol 0x00070017 input_state_binary not eol 0x00070017 prev_input_state_binary mul bitwise_or eol 0x00070018 input_state_binary not eol 0x00070018 prev_input_state_binary mul bitwise_or eol 0x00070019 input_state_binary not eol 0x00070019 prev_input_state_binary mul bitwise_or eol 0x0007001a input_state_binary not eol 0x0007001a prev_input_state_binary mul bitwise_or eol 0x0007001b input_state_binary not eol 0x0007001b prev_input_state_binary mul bitwise_or eol 0x0007001c input_state_binary not eol 0x0007001c prev_input_state_binary mul bitwise_or eol 0x0007001d input_state_binary not eol 0x0007001d prev_input_state_binary mul bitwise_or eol 0x0007001e input_state_binary not eol 0x0007001e prev_input_state_binary mul bitwise_or eol 0x0007001f input_state_binary not eol 0x0007001f prev_input_state_binary mul bitwise_or eol 0x00070020 input_state_binary not eol 0x00070020 prev_input_state_binary mul bitwise_or eol 0x00070021 input_state_binary not eol 0x00070021 prev_input_state_binary mul bitwise_or eol 0x00070022 input_state_binary not eol 0x00070022 prev_input_state_binary mul bitwise_or eol 0x00070023 input_state_binary not eol 0x00070023 prev_input_state_binary mul bitwise_or eol 0x00070024 input_state_binary not eol 0x00070024 prev_input_state_binary mul bitwise_or eol 0x00070025 input_state_binary not eol 0x00070025 prev_input_state_binary mul bitwise_or eol 0x00070026 input_state_binary not eol 0x00070026 prev_input_state_binary mul bitwise_or eol 0x00070027 input_state_binary not eol 0x00070027 prev_input_state_binary mul bitwise_or eol 0x00070028 input_state_binary not eol 0x00070028 prev_input_state_binary mul bitwise_or eol 0x00070029 input_state_binary not eol 0x00070029 prev_input_state_binary mul bitwise_or eol 0x0007002a input_state_binary not eol 0x0007002a prev_input_state_binary mul bitwise_or eol 0x0007002b input_state_binary not eol 0x0007002b prev_input_state_binary mul bitwise_or eol 0x0007002c input_state_binary not eol 0x0007002c prev_input_state_binary mul bitwise_or eol 0x00070039 input_state_binary not eol 0x00070039 prev_input_state_binary mul bitwise_or eol 0x00070046 input_state_binary not eol 0x00070046 prev_input_state_binary mul bitwise_or eol 0x00070047 input_state_binary not eol 0x00070047 prev_input_state_binary mul bitwise_or eol 0x00070048 input_state_binary not eol 0x00070048 prev_input_state_binary mul bitwise_or eol 0x00070049 input_state_binary not eol 0x00070049 prev_input_state_binary mul bitwise_or eol 0x0007004a input_state_binary not eol 0x0007004a prev_input_state_binary mul bitwise_or eol 0x0007004b input_state_binary not eol 0x0007004b prev_input_state_binary mul bitwise_or eol 0x0007004c input_state_binary not eol 0x0007004c prev_input_state_binary mul bitwise_or eol 0x0007004d input_state_binary not eol 0x0007004d prev_input_state_binary mul bitwise_or eol 0x0007004e input_state_binary not eol 0x0007004e prev_input_state_binary mul bitwise_or eol 0x0007004f input_state_binary not eol 0x0007004f prev_input_state_binary mul bitwise_or eol 0x00070050 input_state_binary not eol 0x00070050 prev_input_state_binary mul bitwise_or eol 0x00070051 input_state_binary not eol 0x00070051 prev_input_state_binary mul bitwise_or eol 0x00070052 input_state_binary not eol 0x00070052 prev_input_state_binary mul bitwise_or eol 0x00070053 input_state_binary not eol 0x00070053 prev_input_state_binary mul bitwise_or eol 0x0007002d input_state_binary not eol 0x0007002d prev_input_state_binary mul bitwise_or eol 0x0007002e input_state_binary not eol 0x0007002e prev_input_state_binary mul bitwise_or eol 0x0007002f input_state_binary not eol 0x0007002f prev_input_state_binary mul bitwise_or eol 0x00070030 input_state_binary not eol 0x00070030 prev_input_state_binary mul bitwise_or eol 0x00070031 input_state_binary not eol 0x00070031 prev_input_state_binary mul bitwise_or eol 0x00070033 input_state_binary not eol 0x00070033 prev_input_state_binary mul bitwise_or eol 0x00070034 input_state_binary not eol 0x00070034 prev_input_state_binary mul bitwise_or eol 0x00070035 input_state_binary not eol 0x00070035 prev_input_state_binary mul bitwise_or eol 0x00070036 input_state_binary not eol 0x00070036 prev_input_state_binary mul bitwise_or eol 0x00070037 input_state_binary not eol 0x00070037 prev_input_state_binary mul bitwise_or eol 0x00070038 input_state_binary not eol 0x00070038 prev_input_state_binary mul bitwise_or eol 0x0007003a input_state_binary not eol 0x0007003a prev_input_state_binary mul bitwise_or eol 0x0007003b input_state_binary not eol 0x0007003b prev_input_state_binary mul bitwise_or eol 0x0007003c input_state_binary not eol 0x0007003c prev_input_state_binary mul bitwise_or eol 0x0007003d input_state_binary not eol 0x0007003d prev_input_state_binary mul bitwise_or eol 0x0007003e input_state_binary not eol 0x0007003e prev_input_state_binary mul bitwise_or eol 0x0007003f input_state_binary not eol 0x0007003f prev_input_state_binary mul bitwise_or eol 0x00070040 input_state_binary not eol 0x00070040 prev_input_state_binary mul bitwise_or eol 0x00070041 input_state_binary not eol 0x00070041 prev_input_state_binary mul bitwise_or eol 0x00070042 input_state_binary not eol 0x00070042 prev_input_state_binary mul bitwise_or eol 0x00070043 input_state_binary not eol 0x00070043 prev_input_state_binary mul bitwise_or eol 0x00070044 input_state_binary not eol 0x00070044 prev_input_state_binary mul bitwise_or eol 0x00070045 input_state_binary not eol 0x00070045 prev_input_state_binary mul bitwise_or eol 0x00070068 input_state_binary not eol 0x00070068 prev_input_state_binary mul bitwise_or eol 0x00070069 input_state_binary not eol 0x00070069 prev_input_state_binary mul bitwise_or eol 0x0007006a input_state_binary not eol 0x0007006a prev_input_state_binary mul bitwise_or eol 0x0007006b input_state_binary not eol 0x0007006b prev_input_state_binary mul bitwise_or eol 0x0007006c input_state_binary not eol 0x0007006c prev_input_state_binary mul bitwise_or eol 0x0007006d input_state_binary not eol 0x0007006d prev_input_state_binary mul bitwise_or eol 0x0007006e input_state_binary not eol 0x0007006e prev_input_state_binary mul bitwise_or eol 0x0007006f input_state_binary not eol 0x0007006f prev_input_state_binary mul bitwise_or eol 0x00070070 input_state_binary not eol 0x00070070 prev_input_state_binary mul bitwise_or eol 0x00070071 input_state_binary not eol 0x00070071 prev_input_state_binary mul bitwise_or eol 0x00070072 input_state_binary not eol 0x00070072 prev_input_state_binary mul bitwise_or eol 0x00070073 input_state_binary not eol 0x00070073 prev_input_state_binary mul bitwise_or eol 0x00070054 input_state_binary not eol 0x00070054 prev_input_state_binary mul bitwise_or eol 0x00070055 input_state_binary not eol 0x00070055 prev_input_state_binary mul bitwise_or eol 0x00070056 input_state_binary not eol 0x00070056 prev_input_state_binary mul bitwise_or eol 0x00070057 input_state_binary not eol 0x00070057 prev_input_state_binary mul bitwise_or eol 0x00070058 input_state_binary not eol 0x00070058 prev_input_state_binary mul bitwise_or eol 0x00070059 input_state_binary not eol 0x00070059 prev_input_state_binary mul bitwise_or eol 0x0007005a input_state_binary not eol 0x0007005a prev_input_state_binary mul bitwise_or eol 0x0007005b input_state_binary not eol 0x0007005b prev_input_state_binary mul bitwise_or eol 0x0007005c input_state_binary not eol 0x0007005c prev_input_state_binary mul bitwise_or eol 0x0007005d input_state_binary not eol 0x0007005d prev_input_state_binary mul bitwise_or eol 0x0007005e input_state_binary not eol 0x0007005e prev_input_state_binary mul bitwise_or eol 0x0007005f input_state_binary not eol 0x0007005f prev_input_state_binary mul bitwise_or eol 0x00070060 input_state_binary not eol 0x00070060 prev_input_state_binary mul bitwise_or eol 0x00070061 input_state_binary not eol 0x00070061 prev_input_state_binary mul bitwise_or eol 0x00070062 input_state_binary not eol 0x00070062 prev_input_state_binary mul bitwise_or eol 0x00070063 input_state_binary not eol 0x00070063 prev_input_state_binary mul bitwise_or eol 0x00070067 input_state_binary not eol 0x00070067 prev_input_state_binary mul bitwise_or eol 0x00070064 input_state_binary not eol 0x00070064 prev_input_state_binary mul bitwise_or eol 0x00070032 input_state_binary not eol 0x00070032 prev_input_state_binary mul bitwise_or eol 0x00070065 input_state_binary not eol 0x00070065 prev_input_state_binary mul bitwise_or eol 0x00070066 input_state_binary not eol 0x00070066 prev_input_state_binary mul bitwise_or eol 0x00070087 input_state_binary not eol 0x00070087 prev_input_state_binary mul bitwise_or eol 0x00070089 input_state_binary not eol 0x00070089 prev_input_state_binary mul bitwise_or eol 0x0007008a input_state_binary not eol 0x0007008a prev_input_state_binary mul bitwise_or eol 0x0007008b input_state_binary not eol 0x0007008b prev_input_state_binary mul bitwise_or eol 0x00070088 input_state_binary not eol 0x00070088 prev_input_state_binary mul bitwise_or eol 0x00070090 input_state_binary not eol 0x00070090 prev_input_state_binary mul bitwise_or eol 0x00070091 input_state_binary not eol 0x00070091 prev_input_state_binary mul bitwise_or eol not eol 32000 store",
+                "/*\nPressing any of the modifier keys latches it,\nbut whenever any regular key is released, all modifiers\nare unlatched.\n*/ eol eol 1000 recall eol 0x000700e0 input_state_binary eol 0x000700e0 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 1000 store eol eol 2000 recall eol 0x000700e1 input_state_binary eol 0x000700e1 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 2000 store eol eol 3000 recall eol 0x000700e2 input_state_binary eol 0x000700e2 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 3000 store eol eol 4000 recall eol 0x000700e3 input_state_binary eol 0x000700e3 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 4000 store eol eol 5000 recall eol 0x000700e4 input_state_binary eol 0x000700e4 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 5000 store eol eol 6000 recall eol 0x000700e5 input_state_binary eol 0x000700e5 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 6000 store eol eol 7000 recall eol 0x000700e6 input_state_binary eol 0x000700e6 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 7000 store eol eol 8000 recall eol 0x000700e7 input_state_binary eol 0x000700e7 prev_input_state_binary not mul bitwise_or eol 32000 recall mul 8000 store",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
