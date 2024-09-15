@@ -100,6 +100,7 @@ std::queue<macro_entry_t> macro_queue;
 
 uint32_t reports_received;
 uint32_t reports_sent;
+uint32_t processing_time;
 
 bool expression_valid[NEXPRESSIONS] = { false };
 
@@ -1316,6 +1317,8 @@ void process_mapping(bool auto_repeat) {
         }
         memset(report, 0, out_report_sizes[interface_report_id]);
     }
+
+    processing_time += get_time() - now;
 }
 
 bool send_report(send_report_t do_send_report) {
@@ -1832,9 +1835,10 @@ void parse_our_descriptor() {
 }
 
 void print_stats() {
-    printf("%lu %lu\n", reports_received, reports_sent);
+    printf("%lu %lu %lu\n", reports_received, reports_sent, processing_time);
     reports_received = 0;
     reports_sent = 0;
+    processing_time = 0;
 }
 
 void set_monitor_enabled(bool enabled) {
