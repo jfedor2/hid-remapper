@@ -103,6 +103,8 @@ ops = {
     "PORT": 34,
     "DPAD": 35,
     "EOL": 36,
+    "INPUT_STATE_FP32": 37,
+    "PREV_INPUT_STATE_FP32": 38,
 }
 
 opcodes = {v: k for k, v in ops.items()}

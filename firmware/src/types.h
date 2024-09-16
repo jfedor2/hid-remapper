@@ -91,6 +91,8 @@ enum class Op : int8_t {
     PORT = 34,
     DPAD = 35,
     EOL = 36,
+    INPUT_STATE_FP32 = 37,
+    PREV_INPUT_STATE_FP32 = 38,
 };
 
 struct expr_elem_t {

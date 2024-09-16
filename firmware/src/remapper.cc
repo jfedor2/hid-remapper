@@ -220,6 +220,8 @@ bool is_expr_valid(uint8_t expr) {
             case Op::RECALL:
             case Op::SQRT:
             case Op::ROUND:
+            case Op::INPUT_STATE_FP32:
+            case Op::PREV_INPUT_STATE_FP32:
                 if (on_stack < 1) {
                     return false;
                 }
@@ -850,6 +852,16 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 break;
             case Op::EOL:
                 break;
+            case Op::INPUT_STATE_FP32: {
+                int32_t* state_ptr = get_state_ptr(stack[ptr], port_register, true);
+                stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr) : 0;
+                break;
+            }
+            case Op::PREV_INPUT_STATE_FP32: {
+                int32_t* state_ptr = get_state_ptr(stack[ptr], port_register, true);
+                stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr + PREV_STATE_OFFSET) : 0;
+                break;
+            }
             default:
                 printf("unknown op!\n");
                 return 0;
