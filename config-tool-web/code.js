@@ -97,6 +97,8 @@ const ops = {
     "PORT": 34,
     "DPAD": 35,
     "EOL": 36,
+    "INPUT_STATE_FP32": 37,
+    "PREV_INPUT_STATE_FP32": 38,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
