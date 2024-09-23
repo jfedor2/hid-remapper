@@ -95,6 +95,7 @@ enum class Op : int8_t {
     PREV_INPUT_STATE_FP32 = 38,
     MIN = 39,
     MAX = 40,
+    IFTE = 41,
 };
 
 struct expr_elem_t {
