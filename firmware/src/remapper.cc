@@ -240,6 +240,8 @@ bool is_expr_valid(uint8_t expr) {
             case Op::BITWISE_OR:
             case Op::BITWISE_AND:
             case Op::ATAN2:
+            case Op::MIN:
+            case Op::MAX:
                 if (on_stack < 2) {
                     return false;
                 }
@@ -862,6 +864,14 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr + PREV_STATE_OFFSET) : 0;
                 break;
             }
+            case Op::MIN:
+                stack[ptr - 1] = stack[ptr - 1] < stack[ptr] ? stack[ptr - 1] : stack[ptr];
+                ptr--;
+                break;
+            case Op::MAX:
+                stack[ptr - 1] = stack[ptr - 1] > stack[ptr] ? stack[ptr - 1] : stack[ptr];
+                ptr--;
+                break;
             default:
                 printf("unknown op!\n");
                 return 0;
