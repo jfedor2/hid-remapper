@@ -128,6 +128,7 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `min` | _x_, _y_ | _min(x, y)_ | x if x < y, y otherwise. |
 | `max` | _x_, _y_ | _max(x, y)_ | x if x > y, y otherwise. |
 | `not` | _x_ | _!x_ | 1 if x == 0, 0 otherwise. |
+| `ifte` | _x_, _y_, _z_ | _x ? y : z_ | y if x != 0, z otherwise. |
 | `abs` | _x_ | _abs(x)_ | -x if x < 0, x otherwise. |
 | `sin` | _x_ | _sin(x)_ | Sine function, x in degrees. |
 | `cos` | _x_ | _cos(x)_ | Cosine function, x in degrees. |

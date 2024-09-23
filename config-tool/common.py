@@ -107,6 +107,7 @@ ops = {
     "PREV_INPUT_STATE_FP32": 38,
     "MIN": 39,
     "MAX": 40,
+    "IFTE": 41,
 }
 
 opcodes = {v: k for k, v in ops.items()}

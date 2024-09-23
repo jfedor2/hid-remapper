@@ -101,6 +101,7 @@ const ops = {
     "PREV_INPUT_STATE_FP32": 38,
     "MIN": 39,
     "MAX": 40,
+    "IFTE": 41,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));

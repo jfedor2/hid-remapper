@@ -248,6 +248,7 @@ bool is_expr_valid(uint8_t expr) {
                 on_stack--;
                 break;
             case Op::CLAMP:
+            case Op::IFTE:
                 if (on_stack < 3) {
                     return false;
                 }
@@ -871,6 +872,10 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::MAX:
                 stack[ptr - 1] = stack[ptr - 1] > stack[ptr] ? stack[ptr - 1] : stack[ptr];
                 ptr--;
+                break;
+            case Op::IFTE:
+                stack[ptr - 2] = (stack[ptr - 2] != 0) ? stack[ptr - 1] : stack[ptr];
+                ptr -= 2;
                 break;
             default:
                 printf("unknown op!\n");
