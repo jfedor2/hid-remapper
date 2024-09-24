@@ -111,6 +111,7 @@ ops = {
     "DIV": 42,
     "SWAP": 43,
     "MONITOR": 44,
+    "SIGN": 45,
 }
 
 opcodes = {v: k for k, v in ops.items()}
