@@ -96,6 +96,7 @@ enum class Op : int8_t {
     MIN = 39,
     MAX = 40,
     IFTE = 41,
+    DIV = 42,
 };
 
 struct expr_elem_t {

@@ -242,6 +242,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::ATAN2:
             case Op::MIN:
             case Op::MAX:
+            case Op::DIV:
                 if (on_stack < 2) {
                     return false;
                 }
@@ -876,6 +877,14 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::IFTE:
                 stack[ptr - 2] = (stack[ptr - 2] != 0) ? stack[ptr - 1] : stack[ptr];
                 ptr -= 2;
+                break;
+            case Op::DIV:
+                if (stack[ptr] != 0) {
+                    stack[ptr - 1] = (int64_t) 1000 * stack[ptr - 1] / stack[ptr];
+                } else {
+                    stack[ptr - 1] = 0;
+                }
+                ptr--;
                 break;
             default:
                 printf("unknown op!\n");
