@@ -139,6 +139,7 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `relu`| _x_ | _relu(x)_ | 0 if x < 0, x otherwise. |
 | `clamp` | _x_, _y_, _z_ | _clamp(x, y, z)_ | y if x < y, z if x > z, x otherwise. |
 | `dup` | _x_ | _x_, _x_ | Duplicates top value on the stack. |
+| `swap` | _x_, _y_ | _y_, _x_ | Swaps top two values on the stack. |
 | `bitwise_or` | _x_, _y_ | _x \| y_ | |
 | `bitwise_and` | _x_, _y_ | _x & y_ | |
 | `bitwise_not` | _x_ | _~x_ | |

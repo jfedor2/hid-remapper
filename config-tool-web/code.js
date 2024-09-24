@@ -103,6 +103,7 @@ const ops = {
     "MAX": 40,
     "IFTE": 41,
     "DIV": 42,
+    "SWAP": 43,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
