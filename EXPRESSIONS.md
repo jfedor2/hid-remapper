@@ -122,6 +122,7 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `prev_input_state_binary` | _usage_ | previous state of _usage_ input | Use for buttons. |
 | `add` | _x_, _y_ | _x + y_ | |
 | `mul` | _x_, _y_ | _x * y_ | |
+| `div` | _x_, _y_ | _x / y_ | 0 if y == 0. |
 | `eq` | _x_, _y_ | _x == y_ | 1 if equal, 0 otherwise. |
 | `mod` | _x_, _y_ | _x % y_ | Modulo function. |
 | `gt` | _x_, _y_ | _x > y_ | 1 if x > y, 0 otherwise. |

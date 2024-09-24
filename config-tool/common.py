@@ -108,6 +108,7 @@ ops = {
     "MIN": 39,
     "MAX": 40,
     "IFTE": 41,
+    "DIV": 42,
 }
 
 opcodes = {v: k for k, v in ops.items()}
