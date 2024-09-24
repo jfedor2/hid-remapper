@@ -109,6 +109,7 @@ ops = {
     "MAX": 40,
     "IFTE": 41,
     "DIV": 42,
+    "SWAP": 43,
 }
 
 opcodes = {v: k for k, v in ops.items()}

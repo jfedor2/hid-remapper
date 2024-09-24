@@ -273,6 +273,11 @@ bool is_expr_valid(uint8_t expr) {
                 }
                 on_stack -= 3;
                 break;
+            case Op::SWAP:
+                if (on_stack < 2) {
+                    return false;
+                }
+                break;
             default:
                 printf("unknown op in is_expr_valid()\n");
                 return false;
@@ -886,6 +891,12 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 }
                 ptr--;
                 break;
+            case Op::SWAP: {
+                int32_t tmp = stack[ptr - 1];
+                stack[ptr - 1] = stack[ptr];
+                stack[ptr] = tmp;
+                break;
+            }
             default:
                 printf("unknown op!\n");
                 return 0;
