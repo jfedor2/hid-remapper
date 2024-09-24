@@ -131,6 +131,7 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `not` | _x_ | _!x_ | 1 if x == 0, 0 otherwise. |
 | `ifte` | _x_, _y_, _z_ | _x ? y : z_ | y if x != 0, z otherwise. |
 | `abs` | _x_ | _abs(x)_ | -x if x < 0, x otherwise. |
+| `sign` | _x_ | _sign(x)_ | 1 if x > 0, -1 if x < 0, 0 if x == 0. |
 | `sin` | _x_ | _sin(x)_ | Sine function, x in degrees. |
 | `cos` | _x_ | _cos(x)_ | Cosine function, x in degrees. |
 | `atan2` | _x_, _y_ | _atan2(x, y)_ | Two-argument arctangent. |

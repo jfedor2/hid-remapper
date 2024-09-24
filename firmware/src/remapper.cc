@@ -222,6 +222,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::ROUND:
             case Op::INPUT_STATE_FP32:
             case Op::PREV_INPUT_STATE_FP32:
+            case Op::SIGN:
                 if (on_stack < 1) {
                     return false;
                 }
@@ -908,6 +909,9 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                     }
                 }
                 ptr -= 2;
+                break;
+            case Op::SIGN:
+                stack[ptr] = (stack[ptr] > 0) ? 1000 : ((stack[ptr]) < 0 ? -1000 : 0);
                 break;
             default:
                 printf("unknown op!\n");

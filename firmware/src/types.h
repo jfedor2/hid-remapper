@@ -99,6 +99,7 @@ enum class Op : int8_t {
     DIV = 42,
     SWAP = 43,
     MONITOR = 44,
+    SIGN = 45,
 };
 
 struct expr_elem_t {
