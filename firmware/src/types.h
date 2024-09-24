@@ -106,15 +106,20 @@ enum class Op : int8_t {
     LT = 49,
 };
 
-struct expr_elem_t {
-    Op op;
-    uint32_t val = 0;
-};
-
 struct tap_hold_state_t {
     bool tap : 1;
     bool hold : 1;
     bool prev_hold : 1;
+};
+
+struct expr_elem_t {
+    Op op;
+    uint32_t val = 0;
+    union {
+        int32_t* state_ptr = NULL;
+        uint8_t* sticky_state_ptr;
+        tap_hold_state_t* tap_hold_state_ptr;
+    };
 };
 
 struct map_source_t {
