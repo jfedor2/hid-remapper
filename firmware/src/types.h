@@ -98,6 +98,7 @@ enum class Op : int8_t {
     IFTE = 41,
     DIV = 42,
     SWAP = 43,
+    MONITOR = 44,
 };
 
 struct expr_elem_t {

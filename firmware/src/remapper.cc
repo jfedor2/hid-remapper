@@ -256,6 +256,7 @@ bool is_expr_valid(uint8_t expr) {
                 on_stack -= 2;
                 break;
             case Op::STORE:
+            case Op::MONITOR:
                 if (on_stack < 2) {
                     return false;
                 }
@@ -897,6 +898,17 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[ptr] = tmp;
                 break;
             }
+            case Op::MONITOR:
+                // The value will show up *1000, but that's okay, we don't
+                // want to lose the fractional part.
+                if (monitor_enabled) {
+                    if (stack[ptr - 1] != monitor_input_state[stack[ptr]]) {
+                        monitor_usage(stack[ptr], stack[ptr - 1], 0);
+                        monitor_input_state[stack[ptr]] = stack[ptr - 1];
+                    }
+                }
+                ptr -= 2;
+                break;
             default:
                 printf("unknown op!\n");
                 return 0;
