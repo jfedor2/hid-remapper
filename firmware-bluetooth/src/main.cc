@@ -872,13 +872,16 @@ int main() {
     struct report_type incoming_report;
     struct descriptor_type incoming_descriptor;
     struct disconnected_type disconnected_item;
+    bool process_pending = false;
 
     while (true) {
-        while (!k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
+        if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
             handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.conn_idx << 8);
+            process_pending = true;
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
             process_mapping(true);
+            process_pending = false;
         }
         if (!k_sem_take(&usb_sem0, K_NO_WAIT)) {
             if (!send_report(do_send_report)) {
