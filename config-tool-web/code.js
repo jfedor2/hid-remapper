@@ -148,6 +148,7 @@ let monitor_min_val = {};
 let monitor_max_val = {};
 let unique_id_counter = 0;
 let save_to_device_checkmark_timeout_id = null;
+let busy = false;
 const ignored_usages = new Set([
 ]);
 
@@ -198,26 +199,36 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 async function open_device() {
+    if (busy) {
+        return;
+    }
+    busy = true;
+
     clear_error();
     let success = false;
-    const devices = await navigator.hid.requestDevice({
-        filters: [{ usagePage: 0xFF00, usage: 0x0020 }]
-    }).catch((err) => { display_error(err); });
-    const config_interface = devices?.find(d => d.collections.some(c => c.usagePage == 0xff00));
-    if (config_interface !== undefined) {
-        device = config_interface;
-        if (!device.opened) {
-            await device.open().catch((err) => { display_error(err + "\nIf you're on Linux, you might need to give yourself permissions to the appropriate /dev/hidraw* device."); });
+
+    try {
+        const devices = await navigator.hid.requestDevice({
+            filters: [{ usagePage: 0xFF00, usage: 0x0020 }]
+        });
+        const config_interface = devices?.find(d => d.collections.some(c => c.usagePage == 0xff00));
+        if (config_interface !== undefined) {
+            device = config_interface;
+            if (!device.opened) {
+                await device.open().catch((err) => { display_error(err + "\nIf you're on Linux, you might need to give yourself permissions to the appropriate /dev/hidraw* device."); });
+            }
+            success = device.opened;
+            success &&= await check_device_version();
+            if (success) {
+                device.addEventListener('inputreport', input_report_received);
+                await set_monitor_enabled(monitor_enabled);
+                await get_usages_from_device();
+                setup_usages_modals();
+                bluetooth_buttons_set_visibility(device.productName.includes("Bluetooth"));
+            }
         }
-        success = device.opened;
-        success &&= await check_device_version();
-        if (success) {
-            device.addEventListener('inputreport', input_report_received);
-            await set_monitor_enabled(monitor_enabled);
-            await get_usages_from_device();
-            setup_usages_modals();
-            bluetooth_buttons_set_visibility(device.productName.includes("Bluetooth"));
-        }
+    } catch (e) {
+        display_error(e);
     }
 
     device_buttons_set_disabled_state(!success);
@@ -225,12 +236,20 @@ async function open_device() {
     if (!success) {
         device = null;
     }
+
+    busy = false;
 }
 
 async function load_from_device() {
     if (device == null) {
         return;
     }
+
+    if (busy) {
+        return;
+    }
+    busy = true;
+
     clear_error();
 
     document.getElementById('load_from_device').disabled = true;
@@ -362,12 +381,20 @@ async function load_from_device() {
     if (device != null) {
         document.getElementById('load_from_device').disabled = false;
     }
+
+    busy = false;
 }
 
 async function save_to_device() {
     if (device == null) {
         return;
     }
+
+    if (busy) {
+        return;
+    }
+    busy = true;
+
     clear_error();
 
     document.getElementById('save_to_device').disabled = true;
@@ -497,6 +524,8 @@ async function save_to_device() {
     if (device != null) {
         document.getElementById('save_to_device').disabled = false;
     }
+
+    busy = false;
 }
 
 async function do_get_usages_from_device(command, rle_count) {
@@ -528,19 +557,15 @@ async function do_get_usages_from_device(command, rle_count) {
 }
 
 async function get_usages_from_device() {
-    try {
-        await send_feature_command(GET_CONFIG);
-        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
-            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
-        check_received_version(config_version);
+    await send_feature_command(GET_CONFIG);
+    const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
+        await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
+    check_received_version(config_version);
 
-        extra_usages['target'] =
-            await do_get_usages_from_device(GET_OUR_USAGES, our_usage_count);
-        extra_usages['source'] =
-            await do_get_usages_from_device(GET_THEIR_USAGES, their_usage_count);
-    } catch (e) {
-        display_error(e);
-    }
+    extra_usages['target'] =
+        await do_get_usages_from_device(GET_OUR_USAGES, our_usage_count);
+    extra_usages['source'] =
+        await do_get_usages_from_device(GET_THEIR_USAGES, their_usage_count);
 }
 
 function set_config_ui_state() {
