@@ -147,6 +147,7 @@ let monitor_enabled = false;
 let monitor_min_val = {};
 let monitor_max_val = {};
 let unique_id_counter = 0;
+let save_to_device_checkmark_timeout_id = null;
 const ignored_usages = new Set([
 ]);
 
@@ -231,6 +232,8 @@ async function load_from_device() {
         return;
     }
     clear_error();
+
+    document.getElementById('load_from_device').disabled = true;
 
     try {
         await send_feature_command(GET_CONFIG);
@@ -355,6 +358,10 @@ async function load_from_device() {
     } catch (e) {
         display_error(e);
     }
+
+    if (device != null) {
+        document.getElementById('load_from_device').disabled = false;
+    }
 }
 
 async function save_to_device() {
@@ -362,6 +369,12 @@ async function save_to_device() {
         return;
     }
     clear_error();
+
+    document.getElementById('save_to_device').disabled = true;
+    if (save_to_device_checkmark_timeout_id != null) {
+        clearTimeout(save_to_device_checkmark_timeout_id);
+    }
+    document.getElementById('save_to_device_checkmark').classList.add('d-none');
 
     try {
         await send_feature_command(SUSPEND);
@@ -471,8 +484,18 @@ async function save_to_device() {
 
         await send_feature_command(PERSIST_CONFIG);
         await send_feature_command(RESUME);
+
+        document.getElementById('save_to_device_checkmark').classList.remove('d-none');
+        save_to_device_checkmark_timeout_id = setTimeout(() => {
+            document.getElementById('save_to_device_checkmark').classList.add('d-none');
+            save_to_device_checkmark_timeout_id = null;
+        }, 3000);
     } catch (e) {
         display_error(e);
+    }
+
+    if (device != null) {
+        document.getElementById('save_to_device').disabled = false;
     }
 }
 
