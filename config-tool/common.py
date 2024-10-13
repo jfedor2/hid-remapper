@@ -113,6 +113,7 @@ ops = {
     "MONITOR": 44,
     "SIGN": 45,
     "SUB": 46,
+    "PRINT_IF": 47,
 }
 
 opcodes = {v: k for k, v in ops.items()}

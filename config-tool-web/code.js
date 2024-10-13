@@ -107,6 +107,7 @@ const ops = {
     "MONITOR": 44,
     "SIGN": 45,
     "SUB": 46,
+    "PRINT_IF": 47,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));

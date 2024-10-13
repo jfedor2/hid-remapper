@@ -101,6 +101,7 @@ enum class Op : int8_t {
     MONITOR = 44,
     SIGN = 45,
     SUB = 46,
+    PRINT_IF = 47,
 };
 
 struct expr_elem_t {
