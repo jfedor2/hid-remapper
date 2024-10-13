@@ -100,6 +100,7 @@ enum class Op : int8_t {
     SWAP = 43,
     MONITOR = 44,
     SIGN = 45,
+    SUB = 46,
 };
 
 struct expr_elem_t {

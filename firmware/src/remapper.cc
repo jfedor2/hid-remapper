@@ -244,6 +244,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::MIN:
             case Op::MAX:
             case Op::DIV:
+            case Op::SUB:
                 if (on_stack < 2) {
                     return false;
                 }
@@ -912,6 +913,10 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 break;
             case Op::SIGN:
                 stack[ptr] = (stack[ptr] > 0) ? 1000 : ((stack[ptr]) < 0 ? -1000 : 0);
+                break;
+            case Op::SUB:
+                stack[ptr - 1] = stack[ptr - 1] - stack[ptr];
+                ptr--;
                 break;
             default:
                 printf("unknown op!\n");
