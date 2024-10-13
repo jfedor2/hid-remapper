@@ -259,6 +259,7 @@ bool is_expr_valid(uint8_t expr) {
                 break;
             case Op::STORE:
             case Op::MONITOR:
+            case Op::PRINT_IF:
                 if (on_stack < 2) {
                     return false;
                 }
@@ -917,6 +918,12 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::SUB:
                 stack[ptr - 1] = stack[ptr - 1] - stack[ptr];
                 ptr--;
+                break;
+            case Op::PRINT_IF:
+                if (stack[ptr] != 0) {
+                    printf("%ld\n", stack[ptr - 1]);
+                }
+                ptr -= 2;
                 break;
             default:
                 printf("unknown op!\n");
