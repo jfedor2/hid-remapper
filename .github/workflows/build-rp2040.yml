@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Install compiler, libraries and tools
@@ -66,6 +66,6 @@ jobs:
           mv build-pico2/remapper_dual_a.uf2 artifacts/remapper_pico2_dual_a.uf2
           mv build-pico2/remapper_dual_b.uf2 artifacts/remapper_pico2_dual_b.uf2
         working-directory: ./firmware
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: firmware/artifacts/*
