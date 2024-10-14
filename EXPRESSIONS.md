@@ -148,6 +148,7 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `store` | _x_, _n_ | | Puts x in register n |
 | `recall` | _n_ | register n contents | |
 | `time` | | current time | In milliseconds, starting at some arbitrary point. |
+| `time_sec` | | current time | In seconds (but with millisecond precision), starting at some arbitrary point. Wraps less often than `time`. |
 | `layer_state` | | _layer\_state_ | Bit mask of currently active layers. |
 | `sticky_state` | _usage_ | _sticky\_state(usage)_ | Bit mask of layers on which given usage is in sticky state. |
 | `tap_state` | _usage_ | _tap\_state(usage)_ | 1 if input is in tap state, 0 otherwise. |
