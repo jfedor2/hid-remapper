@@ -127,6 +127,7 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `eq` | _x_, _y_ | _x == y_ | 1 if equal, 0 otherwise. |
 | `mod` | _x_, _y_ | _x % y_ | Modulo function. |
 | `gt` | _x_, _y_ | _x > y_ | 1 if x > y, 0 otherwise. |
+| `lt` | _x_, _y_ | _x < y_ | 1 if x < y, 0 otherwise. |
 | `min` | _x_, _y_ | _min(x, y)_ | x if x < y, y otherwise. |
 | `max` | _x_, _y_ | _max(x, y)_ | x if x > y, y otherwise. |
 | `not` | _x_ | _!x_ | 1 if x == 0, 0 otherwise. |
