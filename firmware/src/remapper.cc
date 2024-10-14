@@ -296,6 +296,9 @@ bool is_expr_valid(uint8_t expr) {
 void validate_expressions() {
     for (uint8_t i = 0; i < NEXPRESSIONS; i++) {
         expression_valid[i] = is_expr_valid(i);
+        if (!expression_valid[i]) {
+            printf("Expression %d invalid.\n", i + 1);
+        }
     }
 }
 
