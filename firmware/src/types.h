@@ -102,6 +102,7 @@ enum class Op : int8_t {
     SIGN = 45,
     SUB = 46,
     PRINT_IF = 47,
+    TIME_SEC = 48,
 };
 
 struct expr_elem_t {

@@ -199,6 +199,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::TIME:
             case Op::SCALING:
             case Op::LAYER_STATE:
+            case Op::TIME_SEC:
                 if (on_stack >= STACK_SIZE) {
                     return false;
                 }
@@ -724,7 +725,7 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 ptr--;
                 break;
             case Op::TIME:
-                stack[++ptr] = now & 0x7fffffff;
+                stack[++ptr] = (now * 1000) & 0x7fffffff;
                 break;
             case Op::MOD:
                 stack[ptr - 1] = stack[ptr - 1] % stack[ptr];
@@ -925,6 +926,9 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 }
                 ptr -= 2;
                 break;
+            case Op::TIME_SEC:
+                stack[++ptr] = now & 0x7fffffff;
+                break;
             default:
                 printf("unknown op!\n");
                 return 0;
@@ -1025,7 +1029,7 @@ void process_mapping(bool auto_repeat) {
     // XXX should we do this before or after tap-hold/sticky/layer logic?
     port_register = 0;
     for (uint8_t i = 0; i < NEXPRESSIONS; i++) {
-        int32_t result = eval_expr(i, frame_counter * 1000, auto_repeat);
+        int32_t result = eval_expr(i, frame_counter, auto_repeat);
         int32_t* state_ptr = get_state_ptr(EXPR_USAGE_PAGE | (i + 1), 0);
         if (state_ptr != NULL) {
             *state_ptr = result;
