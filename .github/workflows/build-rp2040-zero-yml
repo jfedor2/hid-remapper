@@ -1,4 +1,4 @@
-name: build-rp2040
+name: build-rp2040-zero
 on:
   push:
     paths:

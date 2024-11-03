@@ -1,3 +1,4 @@
 config-tool/__pycache__
 firmware-bluetooth/build
 firmware/build
+.vscode
