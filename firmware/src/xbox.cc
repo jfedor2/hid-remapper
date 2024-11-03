@@ -61,8 +61,9 @@ static const uint8_t xbox_one_descriptor[] = {
     0xC0,                          // End Collection
 };
 
-static uint8_t init1[] = { 0x05, 0x20, 0x00, 0x01, 0x00 };
-static uint8_t init2[] = { 0x05, 0x20, 0x00, 0x0f, 0x06 };
+static uint8_t init1[] = { 0x05, 0x20, 0x01, 0x01, 0x00 };
+static uint8_t init2[] = { 0x05, 0x20, 0x02, 0x0f, 0x06 };
+static uint8_t init3[] = { 0x06, 0x20, 0x03, 0x02, 0x01, 0x00 };
 
 struct xdev_t {
     uint8_t dev_addr = 0;
@@ -206,6 +207,9 @@ static void process_setup(struct xdev_t* xdev) {
             xxfer_out(xdev, init2, sizeof(init2));
             break;
         case 3:
+            xxfer_out(xdev, init3, sizeof(init3));
+            break;
+        case 4:
             xdev->setup_stage = 0;
             xxfer_in(xdev);
 
