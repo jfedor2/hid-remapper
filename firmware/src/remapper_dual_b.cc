@@ -49,7 +49,7 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
 
 void request_b_init() {
     request_b_init_t msg;
-    serial_write((uint8_t*) &msg, sizeof(msg));
+    serial_write_nonblocking((uint8_t*) &msg, sizeof(msg));
 }
 
 int main() {
@@ -82,7 +82,7 @@ void report_received_callback(uint8_t dev_addr, uint8_t instance, uint8_t const*
     msg->dev_addr = dev_addr;
     msg->interface = instance;
     memcpy(msg->report, report, len);
-    serial_write((uint8_t*) msg, len + sizeof(report_received_t));
+    serial_write_nonblocking((uint8_t*) msg, len + sizeof(report_received_t));
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
@@ -137,7 +137,7 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
 
 void tuh_sof_cb() {
     start_of_frame_t msg;
-    serial_write((uint8_t*) &msg, sizeof(msg));
+    serial_write_nonblocking((uint8_t*) &msg, sizeof(msg));
 }
 
 void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
@@ -170,6 +170,6 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
     msg->command = DualCommand::MIDI_RECEIVED;
     msg->hub_port = hub_port;
     while (tuh_midi_packet_read(dev_addr, msg->msg)) {
-        serial_write((uint8_t*) msg, sizeof(midi_received_t));
+        serial_write_nonblocking((uint8_t*) msg, sizeof(midi_received_t));
     }
 }
