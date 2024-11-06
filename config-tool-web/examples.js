@@ -3860,7 +3860,7 @@ const examples = [
     {
         'description': 'custom board v8: analog stick',
         'config': {
-            "version": 14,
+            "version": 15,
             "unmapped_passthrough_layers": [
                 0,
                 1,
@@ -3942,8 +3942,8 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0xfff80000 input_state /* 12-bit ADC value */ eol -2048000 add /* center around zero */ eol dup abs 50000 gt mul /* simple per-axis deadzone */ eol 100 mul /* scale */ eol 128000 add /* 128 is neutral on output */ eol 0 255000 clamp /* output range is 0-255 */",
-                "0xfff80001 input_state /* 12-bit ADC value */ eol -2048000 add /* center around zero */ eol dup abs 50000 gt mul /* simple per-axis deadzone */ eol -100 mul /* scale and invert */ eol 128000 add /* 128 is neutral on output */ eol 0 255000 clamp /* output range is 0-255 */",
+                "0xfff80000 input_state /* 12-bit ADC value */ eol 2048000 /* X neutral point */ eol sub eol dup sign swap abs eol 50000 /* per-axis deadzone */ eol sub relu eol mul /* restore sign */ eol 100 mul /* scale */ eol 128000 add /* 128 is neutral on output */ eol 0 255000 clamp /* output range is 0-255 */",
+                "0xfff80001 input_state /* 12-bit ADC value */ eol 2048000 /* Y neutral point */ eol sub eol dup sign swap abs eol 50000 /* per-axis deadzone */ eol sub relu eol mul /* restore sign */ eol -100 mul /* scale and invert */ eol 128000 add /* 128 is neutral on output */ eol 0 255000 clamp /* output range is 0-255 */",
                 "",
                 "",
                 "",
@@ -3957,7 +3957,7 @@ const examples = [
     {
         'description': 'custom board v8: analog stick as mouse',
         'config': {
-            "version": 12,
+            "version": 15,
             "unmapped_passthrough_layers": [
                 0,
                 1,
@@ -4039,8 +4039,8 @@ const examples = [
                 []
             ],
             "expressions": [
-                "0xfff80000 input_state eol -2048000 add eol dup eol abs 100000 gt mul eol 2 mul",
-                "0xfff80001 input_state eol -2048000 add eol dup eol abs 100000 gt mul eol -2 mul",
+                "0xfff80000 input_state /* 12-bit ADC value */ eol 2048000 /* X neutral point */ eol sub eol dup sign swap abs eol 100000 /* per-axis deadzone */ eol sub relu eol mul /* restore sign */ eol 2 mul /* scale */",
+                "0xfff80001 input_state /* 12-bit ADC value */ eol 2048000 /* Y neutral point */ eol sub eol dup sign swap abs eol 100000 /* per-axis deadzone */ eol sub relu eol mul /* restore sign */ eol -2 mul /* scale */",
                 "",
                 "",
                 "",
