@@ -7957,6 +7957,312 @@ const examples = [
             ],
             "quirks": []
         }
+    },
+    {
+        'description': '3dRudder (PS4 version): analog stick',
+        'config': {
+            "version": 15,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 2,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff50001",
+                    "target_usage": "0x00010030",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50002",
+                    "target_usage": "0x00010031",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/*\nIf message type is not 245, ignore report and use previous value.\nIf status is not 6 or 7, set stick to neutral.\n*/ eol eol 0xff000002 input_state 6000 eq eol 0xff000002 input_state 7000 eq bitwise_or eol 3000 store eol eol /* X */ eol 0xff000001 input_state 245000 eq eol eol 0xff000003 input_state_fp32 /* yaw */ eol dup 0xffff0003 monitor /* preview decoded value */ eol 3000 recall mul /* is status 6 or 7? */ eol 12000 /* horizontal scaling */ eol mul eol dup sign swap abs eol 16000 /* horizontal deadzone */ eol sub relu eol mul /* restore sign */ eol 128000 add eol 0 255000 clamp eol eol 1000 recall /* previous value */ eol eol ifte eol 1000 store eol eol /* Y */ eol 0xff000001 input_state 245000 eq eol eol 0xff000004 input_state_fp32 /* pitch */ eol dup 0xffff0004 monitor /* preview decoded value */ eol 3000 recall mul /* is status 6 or 7? */ eol -20000 /* vertical scaling */ eol mul eol dup sign swap abs eol 16000 /* vertical deadzone */ eol sub relu eol mul /* restore sign */ eol 128000 add eol 0 255000 clamp eol eol 2000 recall /* previous value */ eol eol ifte eol 2000 store",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": [
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000001",
+                    "size": 8,
+                    "bitpos": 8,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000002",
+                    "size": 8,
+                    "bitpos": 24,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000003",
+                    "size": 32,
+                    "bitpos": 40,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000004",
+                    "size": 32,
+                    "bitpos": 72,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000005",
+                    "size": 32,
+                    "bitpos": 104,
+                    "relative": false,
+                    "signed": false
+                }
+            ]
+        }
+    },
+    {
+        'description': '3dRudder (PS4 version): mouse',
+        'config': {
+            "version": 15,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "source_usage": "0xfff30001",
+                    "target_usage": "0x00010030",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 100,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff30002",
+                    "target_usage": "0x00010031",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 100,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/* X */ eol 0xff000003 input_state_fp32 /* yaw */ eol dup 0xffff0003 monitor /* preview decoded value */ eol dup sign swap eol abs 4000 sub relu /* deadzone */ eol mul /* restore sign */ eol /* ignore unless message type is 245 and status is 6 or 7 */ eol 0xff000001 input_state 245000 eq mul eol 0xff000002 input_state 6000 eq eol 0xff000002 input_state 7000 eq bitwise_or mul",
+                "/* Y */ eol 0xff000004 input_state_fp32 /* pitch */ eol dup 0xffff0004 monitor /* preview decoded value */ eol dup sign swap eol abs 4000 sub relu /* deadzone */ eol mul /* restore sign */ eol /* ignore unless message type is 245 and status is 6 or 7 */ eol 0xff000001 input_state 245000 eq mul eol 0xff000002 input_state 6000 eq eol 0xff000002 input_state 7000 eq bitwise_or mul",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": [
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000001",
+                    "size": 8,
+                    "bitpos": 8,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000002",
+                    "size": 8,
+                    "bitpos": 24,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000003",
+                    "size": 32,
+                    "bitpos": 40,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000004",
+                    "size": 32,
+                    "bitpos": 72,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x2dfa",
+                    "product_id": "0x0002",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xff000005",
+                    "size": 32,
+                    "bitpos": 104,
+                    "relative": false,
+                    "signed": false
+                }
+            ]
+        }
     }
 ];
 
