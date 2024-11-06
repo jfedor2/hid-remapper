@@ -4052,6 +4052,94 @@ const examples = [
         }
     },
     {
+        'description': 'custom board v8: analog stick with auto-calibration and proper deadzone',
+        'config': {
+            "version": 15,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 5,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff50015",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff50016",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "/*\nregister 1 = is neutral point calibration done?\nregister 2 = X neutral point\nregister 3 = Y neutral point\nregister 10 = outer deadzone\nregister 11 = inner deadzone radius\nregister 12 = positive X axis scaling\nregister 13 = positive Y axis scaling\nregister 14 = negative X axis scaling\nregister 15 = negative Y axis scaling\nregister 21 = output stick X\nregister 22 = output stick Y\nregister 23 = processed X value, before applying deadzone\nregister 24 = processed Y value, before applying deadzone\nregister 25 = current stick angle\n*/ eol eol 16000 /* inner deadzone radius */ eol 11000 store eol 16000 /* outer deadzone */ eol 10000 store eol eol /* initial scaling values */ eol 12000 recall dup not 500 mul add 12000 store eol 13000 recall dup not 500 mul add 13000 store eol 14000 recall dup not 500 mul add 14000 store eol 15000 recall dup not 500 mul add 15000 store eol eol /* calibrate neutral point during the first second */ eol 1000 recall eol time 1000000 gt eol bitwise_or eol 1000 store eol eol /* X neutral point */ eol 2000 recall 900 mul eol 0xfff80000 input_state 100 mul eol add eol 1000 recall not mul eol 2000 recall 1000 recall mul eol add eol 2000 store eol eol /* Y neutral point */ eol 3000 recall 900 mul eol 0xfff80001 input_state 100 mul eol add eol 1000 recall not mul eol 3000 recall 1000 recall mul eol add eol 3000 store eol eol /* fetch and process raw values */ eol 0xfff80000 input_state /* 12-bit ADC value for X */ eol 2000 recall -1000 mul add /* X neutral point */ eol 32000 store eol 32000 recall 0 gt 12000 recall mul /* positive side scaling */ eol 32000 recall 0 gt not 14000 recall mul /* negative side scaling */ eol add eol 32000 recall eol mul /* scale */ eol 23000 store /* processed X value */ eol eol 0xfff80001 input_state /* 12-bit ADC value for Y */ eol 3000 recall -1000 mul add /* Y neutral point */ eol -1000 mul /* invert Y axis */ eol 32000 store eol 32000 recall 0 gt 13000 recall mul /* positive side scaling */ eol 32000 recall 0 gt not 15000 recall mul /* negative side scaling */ eol add eol 32000 recall eol mul /* scale */ eol 24000 store /* processed Y value */ eol eol 23000 recall eol 24000 recall eol atan2 eol 25000 store /* angle */ eol eol /* X */ eol 23000 recall /* processed X value */ eol dup sign swap abs eol 25000 recall sin 11000 recall mul /* X component of deadzone */ eol abs sub relu /* apply deadzone */ eol mul /* restore sign */ eol 128000 add /* 128 is neutral on output */ eol 32000 store eol eol /* check if we need to decrease scaling factors */ eol /* negative side */ eol 10000 recall -1000 mul 32000 recall gt eol -1 mul eol 1000 recall mul /* skip if we're still calibrating neutral point */ eol 14000 recall eol add eol 0 99000 clamp 14000 store eol eol /* positive side */ eol 32000 recall 10000 recall 255000 add gt eol -1 mul eol 1000 recall mul /* skip if we're still calibrating neutral point */ eol 12000 recall eol add eol 0 99000 clamp 12000 store eol eol 32000 recall eol 0 255000 clamp /* output range is 0-255 */ eol eol 21000 store eol eol /* Y */ eol eol 24000 recall /* processed Y value */ eol dup sign swap abs eol 25000 recall cos 11000 recall mul /* Y component of deadzone */ eol abs sub relu /* apply deadzone */ eol mul /* restore sign */ eol 128000 add /* 128 is neutral on output */ eol 32000 store eol eol /* check if we need to decrease scaling factors */ eol /* negative side */ eol 10000 recall -1000 mul 32000 recall gt eol -1 mul eol 1000 recall mul /* skip if we're still calibrating neutral point */ eol 15000 recall eol add eol 0 99000 clamp 15000 store eol eol /* positive side */ eol 32000 recall 10000 recall 255000 add gt eol -1 mul eol 1000 recall mul /* skip if we're still calibrating neutral point */ eol 13000 recall eol add eol 0 99000 clamp 13000 store eol eol 32000 recall eol 0 255000 clamp /* output range is 0-255 */ eol eol 22000 store",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
+    },
+    {
         'description': 'custom usages for DualSense: touchpad works as mouse',
         'config': {
             "version": 12,
