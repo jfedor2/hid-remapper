@@ -1207,18 +1207,18 @@ void process_mapping(bool auto_repeat) {
                 }
                 if (map_source.sticky) {
                     if (*map_source.sticky_state & map_source.layer_mask) {
-                        value = 1 * map_source.scaling / 1000;
+                        value += 1 * map_source.scaling / 1000 - rev_map.default_value;
                     }
                 } else {
                     if ((layer_state_mask & map_source.layer_mask)) {
                         if ((map_source.tap && map_source.tap_hold_state->tap) ||
                             (map_source.hold && map_source.tap_hold_state->hold)) {
-                            value = 1 * map_source.scaling / 1000;
+                            value += 1 * map_source.scaling / 1000 - rev_map.default_value;
                         }
                         if (!map_source.tap && !map_source.hold) {
                             if (map_source.is_relative) {
                                 if (*map_source.input_state * map_source.scaling > 0) {
-                                    value = 1;
+                                    value += 1;
                                 }
                             } else {
                                 if ((*map_source.input_state != 0) || (rev_map.default_value != 0)) {
@@ -1226,13 +1226,15 @@ void process_mapping(bool auto_repeat) {
                                     if (map_source.is_binary) {
                                         candidate = !!candidate;
                                     }
-                                    candidate = (int64_t) candidate * map_source.scaling / 1000;
-                                    if (((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
-                                        ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE)) {
-                                        candidate /= 1000;
-                                    }
-                                    if (candidate != rev_map.default_value) {
-                                        value = candidate;
+                                    if ((candidate != 0) || !map_source.is_binary) {
+                                        candidate = (int64_t) candidate * map_source.scaling / 1000;
+                                        if (((map_source.usage & 0xFFFF0000) == EXPR_USAGE_PAGE) ||
+                                            ((map_source.usage & 0xFFFF0000) == REGISTER_USAGE_PAGE)) {
+                                            candidate /= 1000;
+                                        }
+                                        if (candidate != rev_map.default_value) {
+                                            value += candidate - rev_map.default_value;
+                                        }
                                     }
                                 }
                             }
@@ -1240,10 +1242,17 @@ void process_mapping(bool auto_repeat) {
                     }
                 }
             }
+            // we don't currently have any absolute usages that can be negative
+            if (value < 0) {
+                value = 0;
+            }
             if (value != rev_map.default_value) {
                 for (auto const& out_usage_def : rev_map.our_usages) {
                     if (out_usage_def.array_count == 0) {
-                        uint32_t effective_value = out_usage_def.size == 1 ? !!value : value;
+                        uint32_t effective_value = value;
+                        if ((out_usage_def.size < 32) && (effective_value > ((1 << out_usage_def.size) - 1))) {
+                            effective_value = (1 << out_usage_def.size) - 1;
+                        }
                         put_bits(out_usage_def.data, out_usage_def.len, out_usage_def.bitpos, out_usage_def.size, effective_value);
                     } else {  // array range
                         for (int i = 0; i < out_usage_def.array_count; i++) {
