@@ -1413,7 +1413,7 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
         }
     } else {
         if (their_usage.input_state_0 != NULL) {
-            if (their_usage.size == 1) {
+            if ((their_usage.size == 1) || their_usage.is_array) {
                 if (value) {
                     *(their_usage.input_state_0) |= 1 << interface_idx;
                 } else {
@@ -1474,7 +1474,7 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
             monitor_usage(source_usage, value, hub_port);
         }
     } else {
-        if (their_usage.size == 1) {
+        if ((their_usage.size == 1) || their_usage.is_array) {
             if (value != (1 & (monitor_input_state[source_usage] >> interface_idx))) {
                 monitor_usage(source_usage, value, hub_port);
             }
@@ -1500,7 +1500,7 @@ inline void monitor_read_input_range(const uint8_t* report, int len, uint32_t so
         if ((bits >= their_usage.logical_minimum) &&
             (bits <= their_usage.logical_minimum + their_usage.usage_maximum - source_usage)) {
             uint32_t actual_usage = source_usage + bits - their_usage.logical_minimum;
-            // for array inputs, "key-up" events (value=0) don't show up in the monitor
+            // for array range inputs, "key-up" events (value=0) don't show up in the monitor
             if (monitor_enabled && ((actual_usage & 0xFFFF) != 0)) {
                 monitor_usage(actual_usage, 1, hub_port);
             }
@@ -1684,7 +1684,7 @@ void update_their_descriptor_derivates() {
                             relative_usage_set.insert(state_ptr_n);
                         }
                     }
-                    if (usage_def.size == 1) {
+                    if ((usage_def.size == 1) || usage_def.is_array) {
                         if (state_ptr_0 != NULL) {
                             binary_usage_set.insert(state_ptr_0);
                         }
@@ -1712,10 +1712,12 @@ void update_their_descriptor_derivates() {
                         if (state_ptr_0 != NULL) {
                             any_used = true;
                             array_range_usages[interface][report_id].push_back(state_ptr_0);
+                            binary_usage_set.insert(state_ptr_0);
                         }
                         if (state_ptr_n != NULL) {
                             any_used = true;
                             array_range_usages[interface][report_id].push_back(state_ptr_n);
+                            binary_usage_set.insert(state_ptr_n);
                         }
                         if (actual_usage == ROLLOVER_USAGE) {
                             rollover_usages[interface][report_id].push_back((usage_def_t){
