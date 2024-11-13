@@ -5,6 +5,14 @@
 
 #define GPIO_USAGE_PAGE 0xFFF40000
 #define DIGIPOT_USAGE_PAGE 0xFFF60000
+#define DPAD_USAGE_PAGE 0xFFF90000
+
+#define DPAD_USAGE_LEFT (DPAD_USAGE_PAGE | 1)
+#define DPAD_USAGE_RIGHT (DPAD_USAGE_PAGE | 2)
+#define DPAD_USAGE_UP (DPAD_USAGE_PAGE | 3)
+#define DPAD_USAGE_DOWN (DPAD_USAGE_PAGE | 4)
+
+#define DPAD_USAGE 0x00010039
 
 typedef bool (*send_report_t)(uint8_t interface, const uint8_t* report_with_id, uint8_t len);
 

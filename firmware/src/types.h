@@ -46,6 +46,7 @@ struct usage_def_t {
     uint32_t usage_maximum;  // effective, for arrays/usage ranges
     int32_t* input_state_0 = NULL;
     int32_t* input_state_n = NULL;
+    uint8_t index_mask = 0;
 };
 
 struct usage_usage_def_t {

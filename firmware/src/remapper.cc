@@ -50,6 +50,8 @@ std::vector<reverse_mapping_t> reverse_mapping_layers;
 
 std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
 std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
+bool have_dpad = false;
+usage_def_t our_dpad_usage;  // only valid if have_dpad is true
 
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<usage_usage_def_t>>> their_used_usages;  // dev_addr+interface -> report_id -> (usage, usage_def) vector
 std::unordered_map<uint16_t, std::unordered_map<uint8_t, std::vector<int32_t*>>> array_range_usages;          // dev_addr+interface -> report_id -> input_state ptr vector
@@ -120,6 +122,8 @@ uint64_t frame_counter = 0;
 #define NPORTS 15
 std::unordered_map<uint8_t, uint8_t> hub_ports;  // dev_addr -> hub_port
 uint16_t active_ports_mask = 0;
+
+uint8_t dpad_state = 0;
 
 inline int32_t handle_scroll(map_source_t& map_source, uint32_t target_usage, int32_t movement, uint64_t now) {
     // movement is always non-zero
@@ -683,6 +687,13 @@ void set_mapping_from_config() {
                 .size = 9,
                 .bitpos = (uint16_t) ((target & 0xFFFF) * 16),
             });
+        } else if ((target & 0xFFFF0000) == DPAD_USAGE_PAGE) {
+            rev_map.our_usages.push_back((out_usage_def_t){
+                .data = &dpad_state,
+                .len = sizeof(dpad_state),
+                .size = 1,
+                .bitpos = (uint16_t) ((target & 0xFFFF) - 1) & 0x03,
+            });
         } else {
             bool handled = false;
             for (auto const& array_usage : our_array_range_usages) {
@@ -1151,6 +1162,7 @@ void process_mapping(bool auto_repeat) {
     digipot_state[3] = 128;
     digipot_state[4] = 0;
     digipot_state[5] = 0;
+    dpad_state = 0;
 
     for (auto& rev_map : reverse_mapping) {
         uint32_t target = rev_map.target;
@@ -1254,6 +1266,8 @@ void process_mapping(bool auto_repeat) {
         for (uint32_t usage : macro_queue.front().items) {
             if ((usage & 0xFFFF0000) == GPIO_USAGE_PAGE) {
                 put_bits(gpio_out_state, sizeof(gpio_out_state), (uint16_t) (usage & 0xFFFF), 1, 1);
+            } else if ((usage & 0xFFFF0000) == DPAD_USAGE_PAGE) {
+                put_bits(&dpad_state, sizeof(dpad_state), (uint16_t) (usage & 0xFFFF) - 1, 1, 1);
             } else {
                 bool handled = false;
                 for (auto const& array_usage : our_array_range_usages) {
@@ -1288,6 +1302,11 @@ void process_mapping(bool auto_repeat) {
                 macro_queue.pop();
             }
         }
+    }
+
+    if (have_dpad) {
+        uint8_t dpad_val = dpad_table[dpad_state];
+        put_bits(reports[our_dpad_usage.report_id], report_sizes[our_dpad_usage.report_id], our_dpad_usage.bitpos, our_dpad_usage.size, dpad_val);
     }
 
     for (auto state : relative_usages) {
@@ -1405,7 +1424,9 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
     int32_t value = 0;
     if (their_usage.is_array) {
         for (unsigned int i = 0; i < their_usage.count; i++) {
-            if (get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size) == their_usage.index) {
+            uint32_t bits = get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size);
+            if (((their_usage.index_mask == 0) && (bits == their_usage.index)) ||
+                (their_usage.index_mask & (1 << bits))) {
                 value = 1;
                 break;
             }
@@ -1470,7 +1491,9 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
     int32_t value = 0;
     if (their_usage.is_array) {
         for (unsigned int i = 0; i < their_usage.count; i++) {
-            if (get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size) == their_usage.index) {
+            uint32_t bits = get_bits(report, len, their_usage.bitpos + i * their_usage.size, their_usage.size);
+            if (((their_usage.index_mask == 0) && (bits == their_usage.index)) ||
+                (their_usage.index_mask & (1 << bits))) {
                 value = 1;
                 break;
             }
@@ -1806,6 +1829,7 @@ void parse_our_descriptor() {
     has_report_id_theirs.erase(OUR_OUT_INTERFACE);
     our_usages_flat.clear();
     our_array_range_usages.clear();
+    have_dpad = false;
 
     for (unsigned int i = 0; i < report_ids.size(); i++) {
         uint8_t report_id = report_ids[i];
@@ -1849,6 +1873,14 @@ void parse_our_descriptor() {
         for (auto const& [usage, usage_def] : usage_map) {
             if (usage_def.usage_maximum == 0) {
                 our_usages_flat[usage] = usage_def;
+                if (usage == DPAD_USAGE) {
+                    our_dpad_usage = usage_def;
+                    have_dpad = true;
+                    our_usages_flat[DPAD_USAGE_LEFT] = (usage_def_t){};
+                    our_usages_flat[DPAD_USAGE_RIGHT] = (usage_def_t){};
+                    our_usages_flat[DPAD_USAGE_UP] = (usage_def_t){};
+                    our_usages_flat[DPAD_USAGE_DOWN] = (usage_def_t){};
+                }
                 our_usage_ranges_set.insert(((uint64_t) usage << 32) | (usage_def.usage_maximum ? usage_def.usage_maximum : usage));
 
                 if (usage_def.is_relative) {
