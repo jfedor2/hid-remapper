@@ -654,6 +654,17 @@ void set_mapping_from_config() {
                 }
             }
         }
+        if ((target == (DIGIPOT_USAGE_PAGE | 0)) ||
+            (target == (DIGIPOT_USAGE_PAGE | 1)) ||
+            (target == (DIGIPOT_USAGE_PAGE | 2)) ||
+            (target == (DIGIPOT_USAGE_PAGE | 3))) {
+            rev_map.default_value = 128;
+            for (auto const& source : sources) {
+                if (!source.sticky && !source.tap && !source.hold && (source.scaling == 1000)) {
+                    *(source.input_state) = 128;
+                }
+            }
+        }
         if ((target & 0xFFFF0000) == GPIO_USAGE_PAGE) {
             rev_map.our_usages.push_back((out_usage_def_t){
                 .data = gpio_out_state,
@@ -1127,7 +1138,12 @@ void process_mapping(bool auto_repeat) {
     }
 
     memcpy(input_state + PREV_STATE_OFFSET, input_state, used_state_slots * sizeof(input_state[0]));
-    memset(digipot_state, 0, sizeof(digipot_state));
+    digipot_state[0] = 128;
+    digipot_state[1] = 128;
+    digipot_state[2] = 128;
+    digipot_state[3] = 128;
+    digipot_state[4] = 0;
+    digipot_state[5] = 0;
 
     for (auto& rev_map : reverse_mapping) {
         uint32_t target = rev_map.target;
