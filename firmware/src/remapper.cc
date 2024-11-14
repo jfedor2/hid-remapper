@@ -202,6 +202,7 @@ bool is_expr_valid(uint8_t expr) {
             case Op::SCALING:
             case Op::LAYER_STATE:
             case Op::TIME_SEC:
+            case Op::PLUGGED_IN:
                 if (on_stack >= STACK_SIZE) {
                     return false;
                 }
@@ -1008,6 +1009,9 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::LT:
                 stack[ptr - 1] = (stack[ptr - 1] < stack[ptr]) * 1000;
                 ptr--;
+                break;
+            case Op::PLUGGED_IN:
+                stack[++ptr] = 1000 * ((port_register == 0) || (active_ports_mask & (1 << port_register)));
                 break;
             default:
                 printf("unknown op!\n");

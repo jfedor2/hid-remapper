@@ -116,6 +116,7 @@ ops = {
     "PRINT_IF": 47,
     "TIME_SEC": 48,
     "LT": 49,
+    "PLUGGED_IN": 50,
 }
 
 opcodes = {v: k for k, v in ops.items()}

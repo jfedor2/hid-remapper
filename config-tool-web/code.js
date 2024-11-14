@@ -110,6 +110,7 @@ const ops = {
     "PRINT_IF": 47,
     "TIME_SEC": 48,
     "LT": 49,
+    "PLUGGED_IN": 50,
 }
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));

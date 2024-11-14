@@ -104,6 +104,7 @@ enum class Op : int8_t {
     PRINT_IF = 47,
     TIME_SEC = 48,
     LT = 49,
+    PLUGGED_IN = 50,
 };
 
 struct tap_hold_state_t {
