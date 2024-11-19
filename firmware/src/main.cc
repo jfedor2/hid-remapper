@@ -277,6 +277,10 @@ int main() {
             boot_protocol_updated = false;
             config_updated = true;
         }
+        if (resume_pending) {
+            resume_pending = false;
+            suspended = false;
+        }
         if (config_updated) {
             set_mapping_from_config();
             config_updated = false;

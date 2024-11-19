@@ -904,6 +904,10 @@ int main() {
             parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
         }
 
+        if (resume_pending) {
+            resume_pending = false;
+            suspended = false;
+        }
         if (config_updated) {
             set_mapping_from_config();
             config_updated = false;

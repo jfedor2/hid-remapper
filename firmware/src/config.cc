@@ -845,19 +845,16 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                         our_descriptor_number = 0;
                     }
                     macro_entry_duration = config->macro_entry_duration;
-                    config_updated = true;
                     break;
                 }
                 case ConfigCommand::GET_CONFIG:
                     break;
                 case ConfigCommand::CLEAR_MAPPING:
                     config_mappings.clear();
-                    config_updated = true;
                     break;
                 case ConfigCommand::ADD_MAPPING: {
                     mapping_config11_t* mapping_config = (mapping_config11_t*) config_buffer->data;
                     config_mappings.push_back(*mapping_config);
-                    config_updated = true;
                     break;
                 }
                 case ConfigCommand::GET_MAPPING:
@@ -875,7 +872,8 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                     suspended = true;
                     break;
                 case ConfigCommand::RESUME:
-                    suspended = false;
+                    resume_pending = true;
+                    config_updated = true;
                     // XXX clear input_state, sticky_state, accumulated?
                     break;
                 case ConfigCommand::PAIR_NEW_DEVICE:
@@ -950,7 +948,6 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                         }
                     }
                     my_mutex_exit(MutexId::EXPRESSIONS);
-                    config_updated = true;
                     break;
                 }
                 case ConfigCommand::GET_EXPRESSION: {
