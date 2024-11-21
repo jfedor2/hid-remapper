@@ -32,6 +32,7 @@ const QUIRK_SIZE_MASK = 0b00111111;
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 const EXPR_USAGE_PAGE = 0xFFF30000;
 const MIDI_USAGE_PAGE = 0xFFF70000;
+const BUTTON_USAGE_PAGE = 0x00090000;
 
 const RESET_INTO_BOOTSEL = 1;
 const SET_CONFIG = 2;
@@ -1207,7 +1208,7 @@ function setup_usage_modal(source_or_target) {
     for (const usage_ of extra_usages[source_or_target]) {
         if (!(usage_ in known_usages)) {
             let clone = template.content.cloneNode(true).firstElementChild;
-            clone.innerText = usage_;
+            clone.innerText = readable_usage_name(usage_);
             clone.title = usage_;
             clone.setAttribute('data-hid-usage', usage_);
             usage_classes['extra'].appendChild(clone);
@@ -1467,7 +1468,7 @@ function readable_usage_name(usage, default_to_hex = true) {
                 return prefix + ' PB';
         }
     }
-    return (usage in usages['source']) ? usages['source'][usage]['name'] : (default_to_hex ? usage : '');
+    return default_to_hex ? usage : '';
 }
 
 function readable_target_usage_name(usage) {
