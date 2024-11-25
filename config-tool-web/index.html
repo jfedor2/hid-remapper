@@ -191,6 +191,17 @@
                 </div>
                 <div class="row mt-3">
                     <div class="col-4 text-end">
+                        <label for="input_labels_dropdown" class="col-form-label">Input labels</label>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select" id="input_labels_dropdown">
+                            <option value="0">mouse</option>
+                            <option value="1">gamepad</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
                         <label for="gpio_output_mode_dropdown" class="col-form-label">GPIO output mode</label>
                     </div>
                     <div class="col-auto">
@@ -547,8 +558,20 @@
                                 <option value="15">15</option>
                             </select>
                         </div>
+                        <div class="col"></div>
+                        <div class="col-auto">
+                            <label for="input_labels_modal_dropdown" class="col-form-label">Input labels</label>
+                        </div>
+                        <div class="col-auto">
+                            <select class="form-select" id="input_labels_modal_dropdown">
+                                <option value="0">mouse</option>
+                                <option value="1">gamepad</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="col mouse_usages mt-3">
+                    </div>
+                    <div class="col gamepad_usages mt-3">
                     </div>
                     <div class="col keyboard_usages mt-3">
                     </div>
@@ -597,6 +620,8 @@
                         </div>
                     </div>
                     <div class="col mouse_usages mt-3">
+                    </div>
+                    <div class="col gamepad_usages mt-3">
                     </div>
                     <div class="col keyboard_usages mt-3">
                     </div>

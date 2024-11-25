@@ -137,6 +137,7 @@ let config = {
     'ignore_auth_dev_inputs': false,
     'macro_entry_duration': DEFAULT_MACRO_ENTRY_DURATION,
     'gpio_output_mode': 0,
+    'input_labels': 0,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -165,6 +166,8 @@ let save_to_device_checkmark_timeout_id = null;
 let busy = false;
 const ignored_usages = new Set([
 ]);
+let modal_return_mapping = null;
+let modal_return_element = null;
 
 document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("open_device").addEventListener("click", open_device);
@@ -193,6 +196,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
     document.getElementById("our_descriptor_number_dropdown").addEventListener("change", our_descriptor_number_onchange);
     document.getElementById("gpio_output_mode_dropdown").addEventListener("change", gpio_output_mode_onchange);
+    document.getElementById("input_labels_dropdown").addEventListener("change", input_labels_onchange("input_labels_dropdown"));
+    document.getElementById("input_labels_modal_dropdown").addEventListener("change", input_labels_onchange("input_labels_modal_dropdown"));
     document.getElementById("ignore_auth_dev_inputs_checkbox").addEventListener("change", ignore_auth_dev_inputs_onchange);
 
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
@@ -595,6 +600,8 @@ function set_config_ui_state() {
     document.getElementById('ignore_auth_dev_inputs_checkbox').checked = config['ignore_auth_dev_inputs'];
     document.getElementById('macro_entry_duration_input').value = config['macro_entry_duration'];
     document.getElementById('gpio_output_mode_dropdown').value = config['gpio_output_mode'];
+    document.getElementById('input_labels_dropdown').value = config['input_labels'];
+    document.getElementById('input_labels_modal_dropdown').value = config['input_labels'];
 }
 
 function set_mappings_ui_state() {
@@ -719,6 +726,9 @@ function set_ui_state() {
     if (config['version'] < 12) {
         config['quirks'] = [];
     }
+    if (config['version'] < 16) {
+        config['input_labels'] = 0;
+    }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
     }
@@ -768,17 +778,20 @@ function add_mapping(mapping) {
         'source_name' in mapping ? mapping['source_name'] : readable_usage_name(mapping['source_usage']);
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
     source_button.title = mapping['source_usage'];
-    source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));
+    source_button.addEventListener("click", show_usage_modal(mapping, 'source', clone));
     set_port_badge(source_button, mapping['source_port']);
     const target_button = clone.querySelector(".target_button");
     target_button.querySelector('.button_label').innerText = readable_target_usage_name(mapping['target_usage']);
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
     target_button.title = mapping['target_usage'];
-    target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
+    target_button.addEventListener("click", show_usage_modal(mapping, 'target', clone));
     set_port_badge(target_button, mapping['target_port']);
     container.appendChild(clone);
     set_forced_layers(mapping, clone);
     set_forced_flags(mapping, clone);
+    if (modal_return_mapping === mapping) {
+        modal_return_element = clone;
+    }
 }
 
 function download_json() {
@@ -1052,8 +1065,12 @@ function expression_onchange(i) {
     }
 }
 
-function show_usage_modal(mapping, source_or_target, element) {
+function show_usage_modal(mapping_, source_or_target, element_) {
     return function () {
+        // When set_mappings_ui_state() recreates the elements, it will update modal_return_element to
+        // the correct element for the mapping we save in modal_return_mapping here.
+        modal_return_mapping = mapping_;
+        modal_return_element = element_;
         // XXX it would be better not to do this every time we show the modal
         const modal_element = document.getElementById(
             (source_or_target == 'source' ? 'source' : 'target') + '_usage_modal');
@@ -1062,6 +1079,9 @@ function show_usage_modal(mapping, source_or_target, element) {
             let clone = button.cloneNode(true);
             button.parentNode.replaceChild(clone, button); // to clear existing event listeners
             clone.addEventListener("click", function () {
+                const mapping = modal_return_mapping;
+                const element = (source_or_target == 'macro_item') ? modal_return_element :
+                    modal_return_element.querySelector('.' + source_or_target + '_button');
                 let usage = clone.getAttribute('data-hid-usage');
                 if (mapping !== null) {
                     mapping[source_or_target + '_usage'] = usage;
@@ -1091,15 +1111,17 @@ function show_usage_modal(mapping, source_or_target, element) {
         if (source_or_target == "macro_item") {
             hub_port_container.classList.add('d-none');
         } else {
-            let clone = hub_port_container.cloneNode(true);
-            hub_port_container.parentElement.replaceChild(clone, hub_port_container); // to clear existing event listeners
             if (source_or_target == "target") {
-                clone.classList.remove('d-none');
+                hub_port_container.classList.remove('d-none');
             }
-            const hub_port_dropdown = clone.querySelector('.hub_port_dropdown');
-            hub_port_dropdown.value = mapping[source_or_target + '_port'];
-            hub_port_dropdown.addEventListener("change", function () {
-                const hub_port = parseInt(hub_port_dropdown.value, 10)
+            const hub_port_dropdown = hub_port_container.querySelector('.hub_port_dropdown');
+            const clone = hub_port_dropdown.cloneNode(true);
+            hub_port_dropdown.parentElement.replaceChild(clone, hub_port_dropdown); // to clear existing event listeners
+            clone.value = mapping_[source_or_target + '_port'];
+            clone.addEventListener("change", function () {
+                const mapping = modal_return_mapping;
+                const element = modal_return_element.querySelector('.' + source_or_target + '_button');
+                const hub_port = parseInt(clone.value, 10)
                 set_port_badge(element, hub_port);
                 mapping[source_or_target + '_port'] = hub_port;
             });
@@ -1136,15 +1158,22 @@ function map_this_onclick(usage) {
     }
 }
 
+function set_label_groups_visibility() {
+    document.getElementById('source_usage_modal').querySelector('.mouse_usages').classList.toggle('d-none', config['input_labels'] != 0);
+    document.getElementById('source_usage_modal').querySelector('.gamepad_usages').classList.toggle('d-none', config['input_labels'] != 1);
+}
+
 function setup_usages_modals() {
     setup_usage_modal('source');
     setup_usage_modal('target');
+    set_label_groups_visibility();
 }
 
 function setup_usage_modal(source_or_target) {
     const modal_element = document.getElementById(source_or_target + '_usage_modal');
     let usage_classes = {
         'mouse': modal_element.querySelector('.mouse_usages'),
+        'gamepad': modal_element.querySelector('.gamepad_usages'),
         'keyboard': modal_element.querySelector('.keyboard_usages'),
         'media': modal_element.querySelector('.media_usages'),
         'other': modal_element.querySelector('.other_usages'),
@@ -1154,16 +1183,29 @@ function setup_usage_modal(source_or_target) {
         clear_children(element);
     }
     let template = document.getElementById('usage_button_template');
-    const relevant_usages = usages[source_or_target == 'source' ? 'source' : config['our_descriptor_number']];
-    for (const [usage, usage_def] of Object.entries(relevant_usages)) {
-        let clone = template.content.cloneNode(true).firstElementChild;
-        clone.innerText = usage_def['name'];
-        clone.title = usage;
-        clone.setAttribute('data-hid-usage', usage);
-        usage_classes[usage_def['class']].appendChild(clone);
+    const add_usage_buttons = (relevant_usages) => {
+        for (const [usage, usage_def] of Object.entries(relevant_usages)) {
+            let clone = template.content.cloneNode(true).firstElementChild;
+            clone.innerText = usage_def['name'];
+            clone.title = usage;
+            clone.setAttribute('data-hid-usage', usage);
+            usage_classes[usage_def['class']].appendChild(clone);
+        }
     }
+
+    let known_usages;
+    if (source_or_target == 'source') {
+        add_usage_buttons(usages['source_0']);
+        add_usage_buttons(usages['source_1']);
+        add_usage_buttons(usages['source']);
+        known_usages = { ...usages['source_0'], ...usages['source_1'], ...usages['source'] };
+    } else {
+        add_usage_buttons(usages[config['our_descriptor_number']]);
+        known_usages = usages[config['our_descriptor_number']];
+    }
+
     for (const usage_ of extra_usages[source_or_target]) {
-        if (!(usage_ in relevant_usages)) {
+        if (!(usage_ in known_usages)) {
             let clone = template.content.cloneNode(true).firstElementChild;
             clone.innerText = usage_;
             clone.title = usage_;
@@ -1325,6 +1367,16 @@ function macro_entry_duration_onchange() {
     config['macro_entry_duration'] = value;
 }
 
+function input_labels_onchange(element_id) {
+    return function () {
+        config['input_labels'] = parseInt(document.getElementById(element_id).value, 10);
+        document.getElementById("input_labels_dropdown").value = config['input_labels'];
+        document.getElementById("input_labels_modal_dropdown").value = config['input_labels'];
+        set_mappings_ui_state();
+        set_label_groups_visibility();
+    }
+}
+
 function load_example(n) {
     config = structuredClone(examples[n]['config']);
     set_ui_state();
@@ -1387,6 +1439,15 @@ function layer_list_to_mask(layers) {
 }
 
 function readable_usage_name(usage, default_to_hex = true) {
+    if (usage in usages['source_' + config['input_labels']]) {
+        return usages['source_' + config['input_labels']][usage]['name'];
+    }
+    if (usage in usages['source']) {
+        return usages['source'][usage]['name'];
+    }
+    if (((usage & 0xFFFF0000) >>> 0) == BUTTON_USAGE_PAGE) {
+        return 'Button ' + (usage & 0xFFFF);
+    }
     if (((usage & 0xFFFF0000) >>> 0) == MIDI_USAGE_PAGE) {
         const status = (usage >> 8) & 0xF0;
         const channel = (usage >> 8) & 0x0F;
