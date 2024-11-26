@@ -1797,7 +1797,8 @@ void update_their_descriptor_derivates() {
     for (auto& rev_map : reverse_mapping) {
         for (auto& map_source : rev_map.sources) {
             map_source.is_relative = relative_usage_set.count(map_source.input_state) > 0;
-            map_source.is_binary = binary_usage_set.count(map_source.input_state) > 0;
+            map_source.is_binary = (binary_usage_set.count(map_source.input_state) > 0) ||
+                                   ((map_source.usage & 0xFFFF0000) == GPIO_USAGE_PAGE);
         }
         auto search = their_out_usages_flat.find(rev_map.target);
         if (search != their_out_usages_flat.end()) {
