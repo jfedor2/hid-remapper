@@ -875,7 +875,7 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                 case ConfigCommand::RESUME:
                     resume_pending = true;
                     config_updated = true;
-                    // XXX clear input_state, sticky_state, accumulated?
+                    reset_state();
                     break;
                 case ConfigCommand::PAIR_NEW_DEVICE:
                     pair_new_device();

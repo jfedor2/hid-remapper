@@ -1918,6 +1918,13 @@ void print_stats() {
     processing_time = 0;
 }
 
+void reset_state() {
+    memset(registers, 0, sizeof(registers));
+    accumulated.clear();
+    layer_state_mask = 1;
+    frame_counter = 0;
+}
+
 void set_monitor_enabled(bool enabled) {
     if (monitor_enabled != enabled) {
         monitor_input_state.clear();
