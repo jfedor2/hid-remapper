@@ -1446,6 +1446,9 @@ function readable_usage_name(usage, default_to_hex = true) {
     if (usage in usages['source']) {
         return usages['source'][usage]['name'];
     }
+    if (usage in usages['source_extra']) {
+        return usages['source_extra'][usage]['name'];
+    }
     if (((usage & 0xFFFF0000) >>> 0) == BUTTON_USAGE_PAGE) {
         return 'Button ' + (usage & 0xFFFF);
     }
