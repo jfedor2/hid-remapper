@@ -547,6 +547,7 @@ void ps4_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
     memset(report, 0, len);
     report[0] = report[1] = report[2] = report[3] = 0x80;
     report[4] = 0x08;
+    report[34] = report[38] = 0b10000000;  // touchpad, 1 means finger not touching
 }
 
 static const uint8_t stadia_neutral[] = { 0x08, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00 };
