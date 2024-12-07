@@ -216,3 +216,11 @@ void tud_mount_cb() {
         boot_protocol_updated = true;
     }
 }
+
+void tud_suspend_cb(bool remote_wakeup_en) {
+    printf("tud_suspend_cb\n");
+}
+
+void tud_resume_cb() {
+    printf("tud_resume_cb\n");
+}
