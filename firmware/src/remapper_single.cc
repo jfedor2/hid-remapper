@@ -123,7 +123,14 @@ void send_out_report() {
     do_send_out_report();
 }
 
+static alarm_id_t fallback_sof_alarm = 0;
+
 static int64_t __no_inline_not_in_flash_func(manual_sof)(alarm_id_t id, void* user_data) {
+    if (fallback_sof_alarm) {
+        cancel_alarm(fallback_sof_alarm);
+    }
+    fallback_sof_alarm = add_alarm_in_us(1050, manual_sof, NULL, false);
+
     pio_usb_host_frame();
     set_tick_pending();
     return 0;
