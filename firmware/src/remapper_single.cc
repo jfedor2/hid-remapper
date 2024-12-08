@@ -11,11 +11,15 @@
 #include "remapper.h"
 #include "tick.h"
 
+static alarm_id_t sof_alarm = 0;
+
 void extra_init() {
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
     pio_cfg.pin_dp = PICO_DEFAULT_PIO_USB_DP_PIN;
     pio_cfg.skip_alarm_pool = true;
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
+    // Schedule the alarm in case we're never connected to a host.
+//    sof_alarm = add_alarm_in_us(3000000, manual_sof, NULL, false);
 }
 
 uint32_t get_gpio_valid_pins_mask() {
@@ -123,21 +127,21 @@ void send_out_report() {
     do_send_out_report();
 }
 
-static alarm_id_t fallback_sof_alarm = 0;
-
 static int64_t __no_inline_not_in_flash_func(manual_sof)(alarm_id_t id, void* user_data) {
-    if (fallback_sof_alarm) {
-        cancel_alarm(fallback_sof_alarm);
-    }
-    fallback_sof_alarm = add_alarm_in_us(1050, manual_sof, NULL, false);
-
     pio_usb_host_frame();
     set_tick_pending();
-    return 0;
+    // We request to be called in 1000us, but the alarm will normally be cancelled
+    // and rescheduled in sof_callback() to keep in sync with host clock.
+    // This is only for when the host stops sending SOF packets so that we don't
+    // stop sending them to connected devices.
+    return -1000;
 }
 
 void __no_inline_not_in_flash_func(sof_callback)() {
-    add_alarm_in_us(150, manual_sof, NULL, true);
+    if (sof_alarm) {
+        cancel_alarm(sof_alarm);
+    }
+    sof_alarm = add_alarm_in_us(150, manual_sof, NULL, true);
 }
 
 void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
