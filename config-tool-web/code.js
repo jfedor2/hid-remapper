@@ -887,8 +887,23 @@ async function send_feature_command(command, fields = [], version = CONFIG_VERSI
 }
 
 async function read_config_feature(fields = []) {
-    const data_with_report_id = await device.receiveFeatureReport(REPORT_ID_CONFIG);
-    const data = new DataView(data_with_report_id.buffer, 1);
+    let attempts_left = 10;
+    let delay = 2;
+    let data;
+    while (true) {
+        const data_with_report_id = await device.receiveFeatureReport(REPORT_ID_CONFIG);
+        data = new DataView(data_with_report_id.buffer, 1);
+        if (data.byteLength > 0) {
+            break;
+        } else {
+            if ((--attempts_left) > 0) {
+                await (new Promise(resolve => setTimeout(resolve, delay)));
+                delay *= 2;
+                continue;
+            }
+            throw new Error('Error in read_config_feature (given up retrying).');
+        }
+    }
     check_crc(data);
     let ret = [];
     let pos = 0;

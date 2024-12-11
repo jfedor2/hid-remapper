@@ -46,6 +46,10 @@ static K_SEM_DEFINE(usb_sem1, 1, 1);
 
 static struct k_mutex mutexes[(uint8_t) MutexId::N];
 
+static struct k_mutex get_report_mutex;
+static uint8_t get_report_buf[64];
+static bool get_report_response_ready = false;
+
 static const struct device* hid_dev0;
 static const struct device* hid_dev1;  // config interface
 
@@ -69,10 +73,18 @@ struct disconnected_type {
     uint8_t conn_idx;
 };
 
+struct set_report_type {
+    uint8_t report_id;
+    uint8_t interface;
+    uint16_t len;
+    uint8_t data[64];
+};
+
 K_MSGQ_DEFINE(report_q, sizeof(struct report_type), 16, 4);
 K_MSGQ_DEFINE(descriptor_q, sizeof(struct descriptor_type), 2, 4);
 K_MSGQ_DEFINE(hogp_ready_q, sizeof(struct hogp_ready_type), CONFIG_BT_MAX_CONN, 4);
 K_MSGQ_DEFINE(disconnected_q, sizeof(struct disconnected_type), CONFIG_BT_MAX_CONN, 4);
+K_MSGQ_DEFINE(set_report_q, sizeof(struct set_report_type), 8, 4);
 ATOMIC_DEFINE(tick_pending, 1);
 
 #define SW0_NODE DT_ALIAS(sw0)
@@ -612,12 +624,20 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
     LOG_INF("report_id=%d, report_type=%d, len=%d", request_value[0], request_value[1], *len);
     LOG_HEXDUMP_DBG((*data), (uint32_t) *len, "");
 
+    struct set_report_type buf;
     if ((request_value[0] > 0) && (*len > 0)) {
         if (dev == hid_dev0) {
-            handle_set_report0(request_value[0], (*data) + 1, (*len) - 1);
+            buf.interface = 0;
         } else if (dev == hid_dev1) {
-            handle_set_report1(request_value[0], (*data) + 1, (*len) - 1);
+            buf.interface = 1;
+            k_mutex_lock(&get_report_mutex, K_FOREVER);
+            get_report_response_ready = false;
+            k_mutex_unlock(&get_report_mutex);
         }
+        buf.report_id = request_value[0];
+        buf.len = *len - 1;
+        memcpy(buf.data, (*data) + 1, (*len) - 1);
+        CHK(k_msgq_put(&set_report_q, &buf, K_NO_WAIT));
     } else {
         LOG_ERR("no report ID?");
     }
@@ -636,7 +656,16 @@ static int get_report_cb(const struct device* dev, struct usb_setup_packet* setu
     if (dev == hid_dev0) {
         *len = handle_get_report0(request_value[0], (*data) + 1, CONFIG_SIZE);
     } else if (dev == hid_dev1) {
-        *len = handle_get_report1(request_value[0], (*data) + 1, CONFIG_SIZE);
+        k_mutex_lock(&get_report_mutex, K_FOREVER);
+        if (get_report_response_ready) {
+            memcpy((*data) + 1, get_report_buf, CONFIG_SIZE);
+            *len = CONFIG_SIZE;
+        } else {
+            LOG_INF("response not ready");
+            *len = 0;
+        }
+        get_report_response_ready = false;
+        k_mutex_unlock(&get_report_mutex);
     }
     (*len)++;
 
@@ -822,6 +851,7 @@ void my_mutexes_init() {
     for (int i = 0; i < (int8_t) MutexId::N; i++) {
         k_mutex_init(&mutexes[i]);
     }
+    k_mutex_init(&get_report_mutex);
 }
 
 void my_mutex_enter(MutexId id) {
@@ -875,7 +905,10 @@ int main() {
     struct report_type incoming_report;
     struct descriptor_type incoming_descriptor;
     struct disconnected_type disconnected_item;
+    static struct set_report_type set_report_item;
+    static uint8_t get_report_tmp_buf[64];
     bool process_pending = false;
+    bool get_report_response_pending = false;
 
     while (true) {
         if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
@@ -894,6 +927,26 @@ int main() {
         if (!k_sem_take(&usb_sem1, K_NO_WAIT)) {
             if (!send_monitor_report(do_send_report)) {
                 k_sem_give(&usb_sem1);
+            }
+        }
+
+        if (!k_msgq_get(&set_report_q, &set_report_item, K_NO_WAIT)) {
+            if (set_report_item.interface == 0) {
+                handle_set_report0(set_report_item.report_id, set_report_item.data, set_report_item.len);
+            }
+            if (set_report_item.interface == 1) {
+                handle_set_report1(set_report_item.report_id, set_report_item.data, set_report_item.len);
+                get_report_response_pending = true;
+            }
+        }
+        if (get_report_response_pending) {
+            get_report_response_pending = false;
+            uint16_t ret = handle_get_report1(REPORT_ID_CONFIG, get_report_tmp_buf, sizeof(get_report_tmp_buf));
+            if (ret > 0) {
+                k_mutex_lock(&get_report_mutex, K_FOREVER);
+                get_report_response_ready = true;
+                memcpy(get_report_buf, get_report_tmp_buf, sizeof(get_report_buf));
+                k_mutex_unlock(&get_report_mutex);
             }
         }
 

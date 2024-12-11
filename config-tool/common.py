@@ -3,6 +3,7 @@ import binascii
 import struct
 import itertools
 import re
+import time
 
 VENDOR_ID = 0xCAFE
 PRODUCT_ID = 0xBAF2
@@ -174,3 +175,18 @@ def convert_elem(elem):
 
 def expr_to_elems(expr):
     return [convert_elem(x) for x in re.sub(r"(?s)/\*.*?\*/", " ", expr).split()]
+
+
+def get_feature_report(device, report_id, size):
+    attempts_left = 10
+    delay = 0.002
+    while True:
+        data = device.get_feature_report(report_id, size)
+        if len(data) > 1:
+            return data
+        attempts_left -= 1
+        if attempts_left > 0:
+            time.sleep(delay)
+            delay *= 2
+            continue
+        raise Exception("Error in get_feature_report (given up retrying)")

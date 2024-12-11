@@ -807,7 +807,7 @@ uint16_t handle_get_report1(uint8_t report_id, uint8_t* buffer, uint16_t reqlen)
                 break;
             }
             default:
-                break;
+                return 0;
         }
         config_buffer->crc32 = crc32((uint8_t*) config_buffer, CONFIG_SIZE - 4);
         last_config_command = ConfigCommand::NO_COMMAND;
