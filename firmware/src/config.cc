@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstring>
 #include <unordered_set>
 
@@ -642,6 +643,40 @@ void persist_config() {
 
     persist_config_t* config = (persist_config_t*) buffer;
     fill_persist_config(config);
+
+    // check if persisted config will fit in the space we have reserved for it in flash
+    int32_t real_persisted_config_size = 0;
+    real_persisted_config_size += sizeof(persist_config_t);
+    real_persisted_config_size += config->mapping_count * sizeof(mapping_config11_t);
+    my_mutex_enter(MutexId::MACROS);
+    for (int i = 0; i < NMACROS; i++) {
+        real_persisted_config_size += 1;
+        for (auto const& entries : macros[i]) {
+            real_persisted_config_size += 1 + entries.size() * sizeof(macro_item_t);
+        }
+    }
+    my_mutex_exit(MutexId::MACROS);
+    my_mutex_enter(MutexId::EXPRESSIONS);
+    for (int i = 0; i < NEXPRESSIONS; i++) {
+        real_persisted_config_size += 2;
+        for (auto const& elem : expressions[i]) {
+            real_persisted_config_size += 1;
+            if ((elem.op == Op::PUSH) || (elem.op == Op::PUSH_USAGE)) {
+                real_persisted_config_size += sizeof(expr_val_t);
+            }
+        }
+    }
+    my_mutex_exit(MutexId::EXPRESSIONS);
+    my_mutex_enter(MutexId::QUIRKS);
+    real_persisted_config_size += quirks.size() * sizeof(quirk_t);
+    my_mutex_exit(MutexId::QUIRKS);
+    real_persisted_config_size += 4;  // CRC32
+    if (real_persisted_config_size > PERSISTED_CONFIG_SIZE) {
+        // XXX we should have a way to let the host know
+        printf("config too large to be persisted!\n");
+        return;
+    }
+
     mapping_config11_t* buffer_mappings = (mapping_config11_t*) (buffer + sizeof(persist_config_t));
     for (uint32_t i = 0; i < config->mapping_count; i++) {
         buffer_mappings[i] = config_mappings[i];
@@ -688,6 +723,10 @@ void persist_config() {
     my_mutex_exit(MutexId::QUIRKS);
 
     ((crc32_t*) (buffer + PERSISTED_CONFIG_SIZE - 4))->crc32 = crc32(buffer, PERSISTED_CONFIG_SIZE - 4);
+
+    if (real_persisted_config_size != 4 + ((uint8_t*) quirk_config_ptr) - buffer) {
+        printf("we calculated real persisted config size wrong!\n");
+    }
 
     do_persist_config(buffer);
 }
