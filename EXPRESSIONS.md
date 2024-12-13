@@ -118,8 +118,10 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `0x00120034` | | 0x00120034 | Puts the value on the stack. Use for usage codes. |
 | `input_state` | _usage_ | state of _usage_ input | |
 | `input_state_binary` | _usage_ | state of _usage_ input | Use for buttons. |
+| `input_state_scaled` | _usage_ | state of _usage_ input | Scaled to 0-255 range for non-binary absolute usages. |
 | `prev_input_state` | _usage_ | previous state of _usage_ input | |
 | `prev_input_state_binary` | _usage_ | previous state of _usage_ input | Use for buttons. |
+| `prev_input_state_scaled` | _usage_ | previous state of _usage_ input | Scaled to 0-255 range for non-binary absolute usages. |
 | `add` | _x_, _y_ | _x + y_ | |
 | `sub` | _x_, _y_ | _x - y_ | |
 | `mul` | _x_, _y_ | _x * y_ | |

@@ -29,6 +29,7 @@ void mark_usage(
     uint8_t size,
     bool is_relative,
     int32_t logical_minimum,
+    int32_t logical_maximum,
     bool is_array = false,
     uint32_t index = 0,
     uint32_t count = 0,
@@ -47,6 +48,7 @@ void mark_usage(
             .is_relative = is_relative,
             .is_array = is_array,
             .logical_minimum = logical_minimum,
+            .logical_maximum = logical_maximum,
             .index = index,
             .count = count,
             .usage_maximum = usage_maximum,
@@ -189,7 +191,8 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 bitpos[report_type][report_id],
                                 report_size,
                                 relative,
-                                logical_minimum);
+                                logical_minimum,
+                                logical_maximum);
 
                             if (usage < usage_maximum) {
                                 usage++;
@@ -212,7 +215,8 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 bitpos[report_type][report_id],
                                 report_size,
                                 relative,
-                                logical_minimum);
+                                logical_minimum,
+                                logical_maximum);
 
                             bitpos[report_type][report_id] += report_size;
                         }
@@ -232,6 +236,7 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                             report_size,
                             relative,
                             logical_minimum,
+                            logical_maximum,
                             true,
                             logical_minimum,
                             report_count,
@@ -252,6 +257,7 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 report_size,
                                 relative,
                                 logical_minimum,
+                                logical_maximum,
                                 true,
                                 index,
                                 report_count);
@@ -308,6 +314,9 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                 break;
             case HID_LOGICAL_MAXIMUM:
                 logical_maximum = value;
+                if (logical_maximum & (1 << (item_size * 8 - 1))) {
+                    logical_maximum |= 0xFFFFFFFF << item_size * 8;
+                }
                 break;
         }
     }

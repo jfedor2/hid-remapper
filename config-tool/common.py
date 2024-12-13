@@ -121,6 +121,8 @@ ops = {
     "TIME_SEC": 48,
     "LT": 49,
     "PLUGGED_IN": 50,
+    "INPUT_STATE_SCALED": 51,
+    "PREV_INPUT_STATE_SCALED": 52,
 }
 
 opcodes = {v: k for k, v in ops.items()}

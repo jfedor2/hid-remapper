@@ -230,6 +230,8 @@ bool is_expr_valid(uint8_t expr) {
             case Op::ROUND:
             case Op::INPUT_STATE_FP32:
             case Op::PREV_INPUT_STATE_FP32:
+            case Op::INPUT_STATE_SCALED:
+            case Op::PREV_INPUT_STATE_SCALED:
             case Op::SIGN:
                 if (on_stack < 1) {
                     return false;
@@ -308,8 +310,8 @@ void validate_expressions() {
     }
 }
 
-bool assign_state_slot(uint32_t usage, uint8_t hub_port) {
-    uint64_t key = ((uint64_t) hub_port << 32) | usage;
+bool assign_state_slot(uint32_t usage, uint8_t hub_port, bool raw) {
+    uint64_t key = (raw ? ((uint64_t) 1 << 40) : 0) | ((uint64_t) hub_port << 32) | usage;
     if (usage_state_ptr.count(key) == 0) {
         if (used_state_slots >= MAX_INPUT_STATES) {
             printf("out of input_state slots!");
@@ -321,15 +323,15 @@ bool assign_state_slot(uint32_t usage, uint8_t hub_port) {
     return true;
 }
 
-inline int32_t* get_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false) {
-    uint64_t key = ((uint64_t) hub_port << 32) | usage;
+inline int32_t* get_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false, bool raw = false) {
+    uint64_t key = (raw ? ((uint64_t) 1 << 40) : 0) | ((uint64_t) hub_port << 32) | usage;
     auto search = usage_state_ptr.find(key);
     if (search != usage_state_ptr.end()) {
         return search->second;
     }
 
     if (assign_if_absent) {
-        if (assign_state_slot(usage, hub_port)) {
+        if (assign_state_slot(usage, hub_port, raw)) {
             their_descriptor_updated = true;
             return usage_state_ptr[key];  // it's zero, but maybe someone wants to write to it
         }
@@ -377,10 +379,18 @@ void optimize_expressions() {
                     break;
                 case Op::INPUT_STATE:
                 case Op::PREV_INPUT_STATE:
-                case Op::INPUT_STATE_BINARY:
-                case Op::PREV_INPUT_STATE_BINARY:
                 case Op::INPUT_STATE_FP32:
                 case Op::PREV_INPUT_STATE_FP32:
+                    if (prev_elem.op == Op::PUSH_USAGE) {
+                        if (current_port >= 0) {
+                            elem.state_ptr = get_state_ptr(prev_elem.val, current_port, true, true);
+                        }
+                    }
+                    break;
+                case Op::INPUT_STATE_BINARY:
+                case Op::PREV_INPUT_STATE_BINARY:
+                case Op::INPUT_STATE_SCALED:
+                case Op::PREV_INPUT_STATE_SCALED:
                     if (prev_elem.op == Op::PUSH_USAGE) {
                         if (current_port >= 0) {
                             elem.state_ptr = get_state_ptr(prev_elem.val, current_port, true);
@@ -468,7 +478,7 @@ void set_mapping_from_config() {
             gpio_in_mask_ |= 1 << pin;
         }
 
-        if (assign_state_slot(mapping.source_usage, source_port)) {
+        if (assign_state_slot(mapping.source_usage, source_port, false)) {
             reverse_mapping_map[((uint64_t) target_port << 32) | mapping.target_usage].push_back((map_source_t){
                 .usage = mapping.source_usage,
                 .scaling = mapping.scaling,
@@ -526,7 +536,7 @@ void set_mapping_from_config() {
     for (uint8_t expr = 0; expr < NEXPRESSIONS; expr++) {
         for (auto const& elem : expressions[expr]) {
             if (elem.op == Op::PUSH_USAGE) {
-                assign_state_slot(elem.val, 0);  // slots for other ports will be assigned on demand
+                assign_state_slot(elem.val, 0, false);  // slots for other ports will be assigned on demand
             }
         }
     }
@@ -602,7 +612,7 @@ void set_mapping_from_config() {
         for (auto const& [usage, usage_def] : our_usages_flat) {
             uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
             if (unmapped_layers) {
-                if (assign_state_slot(usage, 0)) {
+                if (assign_state_slot(usage, 0, false)) {
                     reverse_mapping_map[usage].push_back((map_source_t){
                         .usage = usage,
                         .layer_mask = unmapped_layers,
@@ -616,7 +626,7 @@ void set_mapping_from_config() {
             for (uint32_t usage = array_usage.usage; usage <= array_usage.usage_def.usage_maximum; usage++) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
                 if (unmapped_layers) {
-                    if (assign_state_slot(usage, 0)) {
+                    if (assign_state_slot(usage, 0, false)) {
                         reverse_mapping_map[usage].push_back((map_source_t){
                             .usage = usage,
                             .layer_mask = unmapped_layers,
@@ -631,7 +641,7 @@ void set_mapping_from_config() {
             for (auto const& [usage, usage_def] : usage_map) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
                 if (unmapped_layers) {
-                    if (assign_state_slot(usage, 0)) {
+                    if (assign_state_slot(usage, 0, false)) {
                         reverse_mapping_map[usage].push_back((map_source_t){
                             .usage = usage,
                             .layer_mask = unmapped_layers,
@@ -796,7 +806,7 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[++ptr] = elem.val;
                 break;
             case Op::INPUT_STATE: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
+                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
                 stack[ptr] = (state_ptr != NULL) ? *state_ptr * 1000 : 0;
                 break;
             }
@@ -904,7 +914,7 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 stack[ptr] = ~stack[ptr];
                 break;
             case Op::PREV_INPUT_STATE: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
+                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
                 stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
                 break;
             }
@@ -955,12 +965,12 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::EOL:
                 break;
             case Op::INPUT_STATE_FP32: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
+                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
                 stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr) : 0;
                 break;
             }
             case Op::PREV_INPUT_STATE_FP32: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
+                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
                 stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr + PREV_STATE_OFFSET) : 0;
                 break;
             }
@@ -1024,6 +1034,16 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::PLUGGED_IN:
                 stack[++ptr] = 1000 * ((port_register == 0) || (active_ports_mask & (1 << port_register)));
                 break;
+            case Op::INPUT_STATE_SCALED: {
+                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
+                stack[ptr] = (state_ptr != NULL) ? *state_ptr * 1000 : 0;
+                break;
+            }
+            case Op::PREV_INPUT_STATE_SCALED: {
+                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
+                stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
+                break;
+            }
             default:
                 printf("unknown op!\n");
                 return 0;
@@ -1442,7 +1462,7 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
         }
     } else {
         value = get_bits(report, len, their_usage.bitpos, their_usage.size);
-        if (their_usage.logical_minimum < 0) {
+        if ((their_usage.logical_minimum < 0) || (their_usage.logical_maximum < 0)) {
             if (value & (1 << (their_usage.size - 1))) {
                 value |= 0xFFFFFFFF << their_usage.size;
             }
@@ -1457,6 +1477,12 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
             *(their_usage.input_state_n) = value;  // XXX does it need to be += ?
         }
     } else {
+        int32_t scaled_value;
+        if (their_usage.should_be_scaled) {
+            scaled_value = (int64_t) (value - their_usage.logical_minimum) * 255 / (their_usage.logical_maximum - their_usage.logical_minimum);  // XXX
+        } else {
+            scaled_value = value;
+        }
         if (their_usage.input_state_0 != NULL) {
             if ((their_usage.size == 1) || their_usage.is_array) {
                 if (value) {
@@ -1465,11 +1491,11 @@ inline void read_input(const uint8_t* report, int len, uint32_t source_usage, co
                     *(their_usage.input_state_0) &= ~(1 << interface_idx);
                 }
             } else {
-                *(their_usage.input_state_0) = value;
+                *(their_usage.input_state_0) = scaled_value;
             }
         }
         if (their_usage.input_state_n != NULL) {
-            *(their_usage.input_state_n) = value;
+            *(their_usage.input_state_n) = scaled_value;
         }
     }
 }
@@ -1509,7 +1535,7 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
         }
     } else {
         value = get_bits(report, len, their_usage.bitpos, their_usage.size);
-        if (their_usage.logical_minimum < 0) {
+        if ((their_usage.logical_minimum < 0) || (their_usage.logical_maximum < 0)) {
             if (value & (1 << (their_usage.size - 1))) {
                 value |= 0xFFFFFFFF << their_usage.size;
             }
@@ -1705,6 +1731,18 @@ void rlencode(const std::set<uint64_t>& usage_ranges, std::vector<usage_rle_t>& 
     }
 }
 
+bool should_scale_input(const usage_def_t& their_usage) {
+    if ((their_usage.size == 1) ||
+        (their_usage.is_relative) ||
+        ((their_usage.logical_minimum == 0) && (their_usage.logical_maximum == 255)) ||
+        ((their_usage.logical_minimum == 1) && (their_usage.logical_maximum == 255)) ||
+        ((their_usage.logical_minimum == 0) && (their_usage.logical_maximum == 1)) ||
+        (their_usage.logical_minimum == their_usage.logical_maximum)) {
+        return false;
+    }
+    return true;
+}
+
 void update_their_descriptor_derivates() {
     std::unordered_set<int32_t*> relative_usage_set;
     std::unordered_set<int32_t*> binary_usage_set;
@@ -1718,10 +1756,13 @@ void update_their_descriptor_derivates() {
     for (auto& [interface, report_id_usage_map] : their_usages) {
         uint8_t hub_port = hub_ports[interface >> 8];
         for (auto& [report_id, usage_map] : report_id_usage_map) {
-            for (auto& [usage, usage_def] : usage_map) {
+            for (auto [usage, usage_def] : usage_map) {
+                usage_def.should_be_scaled = should_scale_input(usage_def);
                 if (usage_def.usage_maximum == 0) {
                     int32_t* state_ptr_0 = get_state_ptr(usage, 0);
                     int32_t* state_ptr_n = get_state_ptr(usage, hub_port);
+                    int32_t* state_ptr_raw_0 = get_state_ptr(usage, 0, false, true);
+                    int32_t* state_ptr_raw_n = get_state_ptr(usage, hub_port, false, true);
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage);
                     if (usage_def.is_relative) {
                         if (state_ptr_0 != NULL) {
@@ -1738,10 +1779,25 @@ void update_their_descriptor_derivates() {
                         if (state_ptr_n != NULL) {
                             binary_usage_set.insert(state_ptr_n);
                         }
+                        if (state_ptr_raw_0 != NULL) {
+                            binary_usage_set.insert(state_ptr_raw_0);
+                        }
+                        if (state_ptr_raw_n != NULL) {
+                            binary_usage_set.insert(state_ptr_raw_n);
+                        }
                     }
                     if ((state_ptr_0 != NULL) || (state_ptr_n != NULL)) {
                         usage_def.input_state_0 = state_ptr_0;
                         usage_def.input_state_n = state_ptr_n;
+                        their_used_usages[interface][report_id].push_back((usage_usage_def_t){
+                            .usage = usage,
+                            .usage_def = usage_def,
+                        });
+                    }
+                    if ((state_ptr_raw_0 != NULL) || (state_ptr_raw_n != NULL)) {
+                        usage_def.input_state_0 = state_ptr_raw_0;
+                        usage_def.input_state_n = state_ptr_raw_n;
+                        usage_def.should_be_scaled = false;
                         their_used_usages[interface][report_id].push_back((usage_usage_def_t){
                             .usage = usage,
                             .usage_def = usage_def,
