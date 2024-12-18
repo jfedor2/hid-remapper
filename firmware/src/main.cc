@@ -308,7 +308,7 @@ int main() {
         }
         send_out_report();
         if (need_to_persist_config) {
-            persist_config();
+            persist_config_return_code = persist_config();
             need_to_persist_config = false;
         }
 

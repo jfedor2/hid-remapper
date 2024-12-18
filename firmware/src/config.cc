@@ -636,7 +636,7 @@ void fill_persist_config(persist_config_t* config) {
     my_mutex_exit(MutexId::QUIRKS);
 }
 
-void persist_config() {
+PersistConfigReturnCode persist_config() {
     // stack size is 2KB
     static uint8_t buffer[PERSISTED_CONFIG_SIZE];
     memset(buffer, 0, sizeof(buffer));
@@ -672,9 +672,8 @@ void persist_config() {
     my_mutex_exit(MutexId::QUIRKS);
     real_persisted_config_size += 4;  // CRC32
     if (real_persisted_config_size > PERSISTED_CONFIG_SIZE) {
-        // XXX we should have a way to let the host know
         printf("config too large to be persisted!\n");
-        return;
+        return PersistConfigReturnCode::CONFIG_TOO_BIG;
     }
 
     mapping_config11_t* buffer_mappings = (mapping_config11_t*) (buffer + sizeof(persist_config_t));
@@ -729,6 +728,8 @@ void persist_config() {
     }
 
     do_persist_config(buffer);
+
+    return PersistConfigReturnCode::SUCCESS;
 }
 
 void reset_resolution_multiplier() {
@@ -845,6 +846,15 @@ uint16_t handle_get_report1(uint8_t report_id, uint8_t* buffer, uint16_t reqlen)
                 my_mutex_exit(MutexId::QUIRKS);
                 break;
             }
+            case ConfigCommand::PERSIST_CONFIG: {
+                persist_config_response_t* returned = (persist_config_response_t*) config_buffer;
+                if (persist_config_return_code == PersistConfigReturnCode::UNKNOWN) {
+                    // persist_config() wasn't called yet
+                    return 0;
+                }
+                returned->return_code = persist_config_return_code;
+                break;
+            }
             default:
                 return 0;
         }
@@ -907,6 +917,7 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                 }
                 case ConfigCommand::PERSIST_CONFIG:
                     need_to_persist_config = true;
+                    persist_config_return_code = PersistConfigReturnCode::UNKNOWN;
                     break;
                 case ConfigCommand::SUSPEND:
                     suspended = true;

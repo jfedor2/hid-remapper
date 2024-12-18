@@ -975,8 +975,11 @@ int main() {
         }
 
         if (need_to_persist_config) {
-            persist_config();
+            int64_t t0 = k_uptime_get();
+            persist_config_return_code = persist_config();
+            LOG_INF("persist_config took %lld ms\n", k_uptime_get() - t0);
             need_to_persist_config = false;
+            get_report_response_pending = true;
         }
 
         // without this sleep, some devices won't pair; some thread priority issue?

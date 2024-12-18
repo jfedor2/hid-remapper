@@ -60,6 +60,9 @@ const CLEAR_QUIRKS = 23;
 const ADD_QUIRK = 24;
 const GET_QUIRK = 25;
 
+const PERSIST_CONFIG_SUCCESS = 1;
+const PERSIST_CONFIG_CONFIG_TOO_BIG = 2;
+
 const ops = {
     "PUSH": 0,
     "PUSH_USAGE": 1,
@@ -530,13 +533,25 @@ async function save_to_device() {
         }
 
         await send_feature_command(PERSIST_CONFIG);
+
+        let [persist_config_return_code] = await read_config_feature([UINT8]);
+
         await send_feature_command(RESUME);
 
-        document.getElementById('save_to_device_checkmark').classList.remove('d-none');
-        save_to_device_checkmark_timeout_id = setTimeout(() => {
-            document.getElementById('save_to_device_checkmark').classList.add('d-none');
-            save_to_device_checkmark_timeout_id = null;
-        }, 3000);
+        switch (persist_config_return_code) {
+            case PERSIST_CONFIG_SUCCESS:
+                document.getElementById('save_to_device_checkmark').classList.remove('d-none');
+                save_to_device_checkmark_timeout_id = setTimeout(() => {
+                    document.getElementById('save_to_device_checkmark').classList.add('d-none');
+                    save_to_device_checkmark_timeout_id = null;
+                }, 3000);
+                break;
+            case PERSIST_CONFIG_CONFIG_TOO_BIG:
+                display_error('Configuration too big to persist.');
+                break;
+            default:
+                throw new Error('Unknown PERSIST_CONFIG return code (' + return_code + ').');
+        }
     } catch (e) {
         display_error(e);
     }

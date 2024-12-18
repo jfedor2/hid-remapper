@@ -397,6 +397,16 @@ struct __attribute__((packed)) get_expr_response_t {
     uint8_t elem_data[27];
 };
 
+enum class PersistConfigReturnCode : int8_t {
+    UNKNOWN = 0,
+    SUCCESS = 1,
+    CONFIG_TOO_BIG = 2,
+};
+
+struct __attribute__((packed)) persist_config_response_t {
+    PersistConfigReturnCode return_code;
+};
+
 struct __attribute__((packed)) monitor_t {
     uint8_t enabled;
 };
