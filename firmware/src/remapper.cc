@@ -293,6 +293,18 @@ bool is_expr_valid(uint8_t expr) {
                     return false;
                 }
                 break;
+            case Op::DEADZONE:
+                if (on_stack < 3) {
+                    return false;
+                }
+                on_stack -= 1;
+                break;
+            case Op::DEADZONE2:
+                if (on_stack < 4) {
+                    return false;
+                }
+                on_stack -= 2;
+                break;
             default:
                 printf("unknown op in is_expr_valid()\n");
                 return false;
@@ -1042,6 +1054,65 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::PREV_INPUT_STATE_SCALED: {
                 int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
                 stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
+                break;
+            }
+            case Op::DEADZONE: {
+                int32_t x = stack[ptr - 2] / 1000 - 128;
+                int32_t y = stack[ptr - 1] / 1000 - 128;
+                int32_t radius = sqrt((x * x) + (y * y));
+                int32_t deadzone_radius = stack[ptr] / 1000;
+                if ((radius < deadzone_radius) || (radius * (128 - deadzone_radius) <= 0)) {
+                    stack[ptr - 2] = 128000;
+                    stack[ptr - 1] = 128000;
+                } else {
+                    stack[ptr - 2] = 128 + x * 128 * (radius - deadzone_radius) / (radius * (128 - deadzone_radius));
+                    if (stack[ptr - 2] < 0) {
+                        stack[ptr - 2] = 0;
+                    }
+                    if (stack[ptr - 2] > 255) {
+                        stack[ptr - 2] = 255;
+                    }
+                    stack[ptr - 2] *= 1000;
+                    stack[ptr - 1] = 128 + y * 128 * (radius - deadzone_radius) / (radius * (128 - deadzone_radius));
+                    if (stack[ptr - 1] < 0) {
+                        stack[ptr - 1] = 0;
+                    }
+                    if (stack[ptr - 1] > 255) {
+                        stack[ptr - 1] = 255;
+                    }
+                    stack[ptr - 1] *= 1000;
+                }
+                ptr--;
+                break;
+            }
+            case Op::DEADZONE2: {
+                int32_t x = stack[ptr - 3] / 1000 - 128;
+                int32_t y = stack[ptr - 2] / 1000 - 128;
+                int32_t radius = sqrt((x * x) + (y * y));
+                int32_t inner_deadzone_radius = stack[ptr - 1] / 1000;
+                int32_t outer_deadzone = stack[ptr] / 1000;
+                if ((radius < inner_deadzone_radius) || (radius * (128 - inner_deadzone_radius - outer_deadzone) <= 0)) {
+                    stack[ptr - 3] = 128000;
+                    stack[ptr - 2] = 128000;
+                } else {
+                    stack[ptr - 3] = 128 + x * 128 * (radius - inner_deadzone_radius) / (radius * (128 - inner_deadzone_radius - outer_deadzone));
+                    if (stack[ptr - 3] < 0) {
+                        stack[ptr - 3] = 0;
+                    }
+                    if (stack[ptr - 3] > 255) {
+                        stack[ptr - 3] = 255;
+                    }
+                    stack[ptr - 3] *= 1000;
+                    stack[ptr - 2] = 128 + y * 128 * (radius - inner_deadzone_radius) / (radius * (128 - inner_deadzone_radius - outer_deadzone));
+                    if (stack[ptr - 2] < 0) {
+                        stack[ptr - 2] = 0;
+                    }
+                    if (stack[ptr - 2] > 255) {
+                        stack[ptr - 2] = 255;
+                    }
+                    stack[ptr - 2] *= 1000;
+                }
+                ptr -= 2;
                 break;
             }
             default:

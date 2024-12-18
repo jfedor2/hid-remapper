@@ -123,6 +123,8 @@ ops = {
     "PLUGGED_IN": 50,
     "INPUT_STATE_SCALED": 51,
     "PREV_INPUT_STATE_SCALED": 52,
+    "DEADZONE": 53,
+    "DEADZONE2": 54,
 }
 
 opcodes = {v: k for k, v in ops.items()}
