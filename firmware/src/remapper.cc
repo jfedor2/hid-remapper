@@ -370,69 +370,6 @@ inline uint8_t* get_sticky_state_ptr(uint32_t usage, uint8_t hub_port, bool assi
     return NULL;
 }
 
-void optimize_expressions() {
-    int16_t current_port = 0;
-
-    for (uint8_t expr_i = 0; expr_i < NEXPRESSIONS; expr_i++) {
-        if (!expression_valid[expr_i]) {
-            continue;
-        }
-
-        expr_elem_t prev_elem;
-
-        for (auto& elem : expressions[expr_i]) {
-            switch (elem.op) {
-                case Op::PORT:
-                    if (prev_elem.op == Op::PUSH) {
-                        current_port = prev_elem.val / 1000;
-                    } else {
-                        current_port = -1;
-                    }
-                    break;
-                case Op::INPUT_STATE:
-                case Op::PREV_INPUT_STATE:
-                case Op::INPUT_STATE_FP32:
-                case Op::PREV_INPUT_STATE_FP32:
-                    if (prev_elem.op == Op::PUSH_USAGE) {
-                        if (current_port >= 0) {
-                            elem.state_ptr = get_state_ptr(prev_elem.val, current_port, true, true);
-                        }
-                    }
-                    break;
-                case Op::INPUT_STATE_BINARY:
-                case Op::PREV_INPUT_STATE_BINARY:
-                case Op::INPUT_STATE_SCALED:
-                case Op::PREV_INPUT_STATE_SCALED:
-                    if (prev_elem.op == Op::PUSH_USAGE) {
-                        if (current_port >= 0) {
-                            elem.state_ptr = get_state_ptr(prev_elem.val, current_port, true);
-                        }
-                    }
-                    break;
-                case Op::TAP_STATE:
-                case Op::HOLD_STATE:
-                    if (prev_elem.op == Op::PUSH_USAGE) {
-                        if (current_port >= 0) {
-                            elem.tap_hold_state_ptr = get_tap_hold_state_ptr(prev_elem.val, current_port, true);
-                        }
-                    }
-                    break;
-                case Op::STICKY_STATE:
-                    if (prev_elem.op == Op::PUSH_USAGE) {
-                        if (current_port >= 0) {
-                            elem.sticky_state_ptr = get_sticky_state_ptr(prev_elem.val, current_port, true);
-                        }
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            prev_elem = elem;
-        }
-    }
-}
-
 void set_mapping_from_config() {
     std::unordered_map<uint64_t, std::vector<map_source_t>> reverse_mapping_map;  // hub_port+target -> sources list
     std::unordered_map<uint64_t, uint8_t> sticky_usage_map;
@@ -454,8 +391,6 @@ void set_mapping_from_config() {
     memset(sticky_state, 0, sizeof(sticky_state));
     uint32_t gpio_in_mask_ = 0;
     uint32_t gpio_out_mask_ = 0;
-
-    optimize_expressions();
 
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
@@ -542,14 +477,6 @@ void set_mapping_from_config() {
         if (((mapping.flags & MAPPING_FLAG_TAP) != 0) ||
             ((mapping.flags & MAPPING_FLAG_HOLD) != 0)) {
             tap_hold_usage_set.insert(((uint64_t) source_port << 32) | mapping.source_usage);
-        }
-    }
-
-    for (uint8_t expr = 0; expr < NEXPRESSIONS; expr++) {
-        for (auto const& elem : expressions[expr]) {
-            if (elem.op == Op::PUSH_USAGE) {
-                assign_state_slot(elem.val, 0, false);  // slots for other ports will be assigned on demand
-            }
         }
     }
 
@@ -811,17 +738,18 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
     if (!expression_valid[expr]) {
         return 0;
     }
-    for (auto const& elem : expressions[expr]) {
+    for (auto& elem : expressions[expr]) {
         switch (elem.op) {
             case Op::PUSH:
             case Op::PUSH_USAGE:
                 stack[++ptr] = elem.val;
                 break;
-            case Op::INPUT_STATE: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
-                stack[ptr] = (state_ptr != NULL) ? *state_ptr * 1000 : 0;
+            case Op::INPUT_STATE:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? *elem.state_ptr * 1000 : 0;
                 break;
-            }
             case Op::ADD:
                 stack[ptr - 1] = stack[ptr - 1] + stack[ptr];
                 ptr--;
@@ -848,11 +776,12 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::NOT:
                 stack[ptr] = (!stack[ptr]) * 1000;
                 break;
-            case Op::INPUT_STATE_BINARY: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
-                stack[ptr] = (state_ptr != NULL) ? !!(*state_ptr) * 1000 : 0;
+            case Op::INPUT_STATE_BINARY:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? !!(*elem.state_ptr) * 1000 : 0;
                 break;
-            }
             case Op::ABS:
                 stack[ptr] = labs(stack[ptr]);
                 break;
@@ -893,27 +822,30 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::LAYER_STATE:
                 stack[++ptr] = layer_state_mask;
                 break;
-            case Op::STICKY_STATE: {
-                uint8_t* sticky_state_ptr = (elem.sticky_state_ptr != NULL) ? elem.sticky_state_ptr : get_sticky_state_ptr(stack[ptr], port_register, true);
-                if (sticky_state_ptr != NULL) {
-                    stack[ptr] = *sticky_state_ptr;
+            case Op::STICKY_STATE:
+                if (elem.sticky_state_ptr == NULL) {
+                    elem.sticky_state_ptr = get_sticky_state_ptr(stack[ptr], port_register, true);
+                }
+                if (elem.sticky_state_ptr != NULL) {
+                    stack[ptr] = *elem.sticky_state_ptr;
                 }
                 break;
-            }
-            case Op::TAP_STATE: {
-                tap_hold_state_t* tap_hold_state_ptr = (elem.tap_hold_state_ptr != NULL) ? elem.tap_hold_state_ptr : get_tap_hold_state_ptr(stack[ptr], port_register, true);
-                if (tap_hold_state_ptr != NULL) {
-                    stack[ptr] = tap_hold_state_ptr->tap * 1000;
+            case Op::TAP_STATE:
+                if (elem.tap_hold_state_ptr == NULL) {
+                    elem.tap_hold_state_ptr = get_tap_hold_state_ptr(stack[ptr], port_register, true);
+                }
+                if (elem.tap_hold_state_ptr != NULL) {
+                    stack[ptr] = elem.tap_hold_state_ptr->tap * 1000;
                 }
                 break;
-            }
-            case Op::HOLD_STATE: {
-                tap_hold_state_t* tap_hold_state_ptr = (elem.tap_hold_state_ptr != NULL) ? elem.tap_hold_state_ptr : get_tap_hold_state_ptr(stack[ptr], port_register, true);
-                if (tap_hold_state_ptr != NULL) {
-                    stack[ptr] = tap_hold_state_ptr->hold * 1000;
+            case Op::HOLD_STATE:
+                if (elem.tap_hold_state_ptr == NULL) {
+                    elem.tap_hold_state_ptr = get_tap_hold_state_ptr(stack[ptr], port_register, true);
+                }
+                if (elem.tap_hold_state_ptr != NULL) {
+                    stack[ptr] = elem.tap_hold_state_ptr->hold * 1000;
                 }
                 break;
-            }
             case Op::BITWISE_OR:
                 stack[ptr - 1] = stack[ptr - 1] | stack[ptr];
                 ptr--;
@@ -925,16 +857,18 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::BITWISE_NOT:
                 stack[ptr] = ~stack[ptr];
                 break;
-            case Op::PREV_INPUT_STATE: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
-                stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
+            case Op::PREV_INPUT_STATE:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? *(elem.state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
                 break;
-            }
-            case Op::PREV_INPUT_STATE_BINARY: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
-                stack[ptr] = (state_ptr != NULL) ? !!(*(state_ptr + PREV_STATE_OFFSET)) * 1000 : 0;
+            case Op::PREV_INPUT_STATE_BINARY:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? !!(*(elem.state_ptr + PREV_STATE_OFFSET)) * 1000 : 0;
                 break;
-            }
             case Op::STORE: {
                 int32_t reg_number = stack[ptr] / 1000 - 1;
                 if ((reg_number >= 0) && (reg_number < NREGISTERS)) {
@@ -976,16 +910,18 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 break;
             case Op::EOL:
                 break;
-            case Op::INPUT_STATE_FP32: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
-                stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr) : 0;
+            case Op::INPUT_STATE_FP32:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? 1000.0f * *((float*) elem.state_ptr) : 0;
                 break;
-            }
-            case Op::PREV_INPUT_STATE_FP32: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true, true);
-                stack[ptr] = (state_ptr != NULL) ? 1000.0f * *((float*) state_ptr + PREV_STATE_OFFSET) : 0;
+            case Op::PREV_INPUT_STATE_FP32:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? 1000.0f * *((float*) elem.state_ptr + PREV_STATE_OFFSET) : 0;
                 break;
-            }
             case Op::MIN:
                 stack[ptr - 1] = stack[ptr - 1] < stack[ptr] ? stack[ptr - 1] : stack[ptr];
                 ptr--;
@@ -1046,16 +982,18 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
             case Op::PLUGGED_IN:
                 stack[++ptr] = 1000 * ((port_register == 0) || (active_ports_mask & (1 << port_register)));
                 break;
-            case Op::INPUT_STATE_SCALED: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
-                stack[ptr] = (state_ptr != NULL) ? *state_ptr * 1000 : 0;
+            case Op::INPUT_STATE_SCALED:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? *elem.state_ptr * 1000 : 0;
                 break;
-            }
-            case Op::PREV_INPUT_STATE_SCALED: {
-                int32_t* state_ptr = (elem.state_ptr != NULL) ? elem.state_ptr : get_state_ptr(stack[ptr], port_register, true);
-                stack[ptr] = (state_ptr != NULL) ? *(state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
+            case Op::PREV_INPUT_STATE_SCALED:
+                if (elem.state_ptr == NULL) {
+                    elem.state_ptr = get_state_ptr(stack[ptr], port_register, true);
+                }
+                stack[ptr] = (elem.state_ptr != NULL) ? *(elem.state_ptr + PREV_STATE_OFFSET) * 1000 : 0;
                 break;
-            }
             case Op::DEADZONE: {
                 int32_t x = stack[ptr - 2] / 1000 - 128;
                 int32_t y = stack[ptr - 1] / 1000 - 128;
