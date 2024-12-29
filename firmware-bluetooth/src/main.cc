@@ -54,7 +54,7 @@ static const struct device* hid_dev0;
 static const struct device* hid_dev1;  // config interface
 
 struct report_type {
-    uint8_t conn_idx;
+    uint16_t interface;
     uint8_t len;
     uint8_t data[65];
 };
@@ -503,7 +503,7 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
     }
 
     static struct report_type buf;
-    buf.conn_idx = hogp_index(hogp);
+    buf.interface = hogp_index(hogp) << 8;
     buf.len = bt_hogp_rep_size(rep) + 1;
     buf.data[0] = bt_hogp_rep_id(rep);
 
@@ -676,6 +676,16 @@ static void int_in_ready_cb0(const struct device* dev) {
     k_sem_give(&usb_sem0);
 }
 
+static void int_out_ready_cb0(const struct device* dev) {
+    static struct report_type buf;
+    uint32_t len;
+    if (CHK(hid_int_ep_read(hid_dev0, buf.data, sizeof(buf.data), &len))) {
+        buf.interface = OUR_OUT_INTERFACE;
+        buf.len = len;
+        CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
+    }
+}
+
 static void int_in_ready_cb1(const struct device* dev) {
     k_sem_give(&usb_sem1);
 }
@@ -684,6 +694,7 @@ static const struct hid_ops ops0 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
     .int_in_ready = int_in_ready_cb0,
+    .int_out_ready = int_out_ready_cb0,
 };
 
 static const struct hid_ops ops1 = {
@@ -912,7 +923,7 @@ int main() {
 
     while (true) {
         if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
-            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.conn_idx << 8);
+            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
             process_pending = true;
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
