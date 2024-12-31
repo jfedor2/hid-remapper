@@ -540,7 +540,10 @@ static void hogp_ready_work_fn(struct k_work* work) {
     while (!k_msgq_get(&hogp_ready_q, &item, K_NO_WAIT)) {
         LOG_INF("hogp_ready");
 
-        struct find_bond_t find_bond = { .i = 0, .found_idx = 0, };
+        struct find_bond_t find_bond = {
+            .i = 0,
+            .found_idx = 0,
+        };
         bt_addr_le_copy(&find_bond.addr, bt_conn_get_dst(bt_hogp_conn(item.hogp)));
         bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
         LOG_DBG("found bond idx: %d", find_bond.found_idx);
