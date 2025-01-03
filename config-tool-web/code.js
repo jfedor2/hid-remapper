@@ -41,8 +41,8 @@ const CLEAR_MAPPING = 4;
 const ADD_MAPPING = 5;
 const GET_MAPPING = 6;
 const PERSIST_CONFIG = 7;
-const GET_OUR_USAGES = 8
-const GET_THEIR_USAGES = 9
+const GET_OUR_USAGES = 8;
+const GET_THEIR_USAGES = 9;
 const SUSPEND = 10;
 const RESUME = 11;
 const PAIR_NEW_DEVICE = 12;
@@ -119,7 +119,7 @@ const ops = {
     "PREV_INPUT_STATE_SCALED": 52,
     "DEADZONE": 53,
     "DEADZONE2": 54,
-}
+};
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
 
