@@ -3107,7 +3107,7 @@ const examples = [
     {
         'description': 'Xbox controller (Bluetooth) adapter for Switch',
         'config': {
-            "version": 16,
+            "version": 17,
             "unmapped_passthrough_layers": [],
             "partial_scroll_timeout": 1000000,
             "tap_hold_threshold": 200000,
@@ -3115,7 +3115,7 @@ const examples = [
             "interval_override": 0,
             "our_descriptor_number": 2,
             "ignore_auth_dev_inputs": false,
-            "input_labels": 0,
+            "input_labels": 1,
             "mappings": [
                 {
                     "target_usage": "0xfff90001",
@@ -3171,7 +3171,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010030",
-                    "source_usage": "0xfff30002",
+                    "source_usage": "0x00010030",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3184,7 +3184,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010031",
-                    "source_usage": "0xfff30003",
+                    "source_usage": "0x00010031",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3197,7 +3197,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010032",
-                    "source_usage": "0xfff30004",
+                    "source_usage": "0x00010032",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3210,7 +3210,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010035",
-                    "source_usage": "0xfff30005",
+                    "source_usage": "0x00010035",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3307,7 +3307,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00090007",
-                    "source_usage": "0xfff30006",
+                    "source_usage": "0xfff30002",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3320,7 +3320,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00090008",
-                    "source_usage": "0xfff30007",
+                    "source_usage": "0xfff30003",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3438,12 +3438,12 @@ const examples = [
             ],
             "expressions": [
                 "/*\nXbox controllers in Bluetooth mode report dpad directions as 1..8\n(N, NE, E, SE, S, SW, W, NW) with 0 as neutral.\n*/ eol eol 0x00010039 input_state 6000 eq eol 0x00010039 input_state 7000 eq bitwise_or eol 0x00010039 input_state 8000 eq bitwise_or eol 1000 store /* left */ eol eol 0x00010039 input_state 2000 eq eol 0x00010039 input_state 3000 eq bitwise_or eol 0x00010039 input_state 4000 eq bitwise_or eol 2000 store /* right */ eol eol 0x00010039 input_state 8000 eq eol 0x00010039 input_state 1000 eq bitwise_or eol 0x00010039 input_state 2000 eq bitwise_or eol 3000 store /* up */ eol eol 0x00010039 input_state 4000 eq eol 0x00010039 input_state 5000 eq bitwise_or eol 0x00010039 input_state 6000 eq bitwise_or eol 4000 store /* down */",
-                "0x00010030 input_state eol 256000 div eol round eol 0 255000 clamp",
-                "0x00010031 input_state eol 256000 div eol round eol 0 255000 clamp",
-                "0x00010032 input_state eol 256000 div eol round eol 0 255000 clamp",
-                "0x00010035 input_state eol 256000 div eol round eol 0 255000 clamp",
-                "/* trigger range is 0..1023 */ eol 0x000200c5 input_state eol 255000 gt",
-                "/* trigger range is 0..1023 */ eol 0x000200c4 input_state eol 255000 gt",
+                "0x000200c5 input_state_scaled eol 63000 gt",
+                "0x000200c4 input_state_scaled eol 63000 gt",
+                "",
+                "",
+                "",
+                "",
                 ""
             ],
             "macro_entry_duration": 1,
@@ -3454,7 +3454,7 @@ const examples = [
     {
         'description': 'Xbox controller (USB) adapter for Switch',
         'config': {
-            "version": 16,
+            "version": 17,
             "unmapped_passthrough_layers": [],
             "partial_scroll_timeout": 1000000,
             "tap_hold_threshold": 200000,
@@ -3462,7 +3462,7 @@ const examples = [
             "interval_override": 0,
             "our_descriptor_number": 2,
             "ignore_auth_dev_inputs": false,
-            "input_labels": 0,
+            "input_labels": 1,
             "mappings": [
                 {
                     "target_usage": "0xfff90001",
@@ -3518,7 +3518,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010030",
-                    "source_usage": "0xfff30002",
+                    "source_usage": "0x00010030",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3531,7 +3531,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010031",
-                    "source_usage": "0xfff30003",
+                    "source_usage": "0x00010031",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3544,7 +3544,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010032",
-                    "source_usage": "0xfff30004",
+                    "source_usage": "0x00010032",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3557,7 +3557,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00010035",
-                    "source_usage": "0xfff30005",
+                    "source_usage": "0x00010035",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3654,7 +3654,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00090007",
-                    "source_usage": "0xfff30006",
+                    "source_usage": "0xfff30001",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3667,7 +3667,7 @@ const examples = [
                 },
                 {
                     "target_usage": "0x00090008",
-                    "source_usage": "0xfff30007",
+                    "source_usage": "0xfff30002",
                     "scaling": 1000,
                     "layers": [
                         0
@@ -3784,13 +3784,13 @@ const examples = [
                 []
             ],
             "expressions": [
+                "0x000200c5 input_state_scaled eol 63000 gt",
+                "0x000200c4 input_state_scaled eol 63000 gt",
                 "",
-                "0x00010030 input_state eol 256000 div eol round eol 128000 add eol 0 255000 clamp",
-                "0x00010031 input_state eol -256000 div eol round eol 128000 add eol 0 255000 clamp",
-                "0x00010032 input_state eol 256000 div eol round eol 128000 add eol 0 255000 clamp",
-                "0x00010035 input_state eol -256000 div eol round eol 128000 add eol 0 255000 clamp",
-                "/* trigger range is 0..1023 */ eol 0x000200c5 input_state eol 255000 gt",
-                "/* trigger range is 0..1023 */ eol 0x000200c4 input_state eol 255000 gt",
+                "",
+                "",
+                "",
+                "",
                 ""
             ],
             "macro_entry_duration": 1,
