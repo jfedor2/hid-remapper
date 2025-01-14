@@ -14,7 +14,7 @@
 void extra_init() {
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
     pio_cfg.pin_dp = PICO_DEFAULT_PIO_USB_DP_PIN;
-    pio_cfg.skip_alarm_pool = true;
+//    pio_cfg.skip_alarm_pool = true;
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 }
 
@@ -124,7 +124,7 @@ void send_out_report() {
 }
 
 static int64_t __no_inline_not_in_flash_func(manual_sof)(alarm_id_t id, void* user_data) {
-    pio_usb_host_frame();
+//    pio_usb_host_frame();
     set_tick_pending();
     return 0;
 }
