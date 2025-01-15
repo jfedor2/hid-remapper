@@ -69,12 +69,11 @@ void ps4_main_loop_task() {
                 busy = true;
                 break;
             case SENDING_NONCE:
-                set_buffer[0] = 0xF0;
-                set_buffer[1] = nonce_id;
-                set_buffer[2] = nonce_part;
-                set_buffer[3] = 0;
-                memcpy(set_buffer + 4, nonce + (nonce_part * 56), 56);
-                queue_set_feature_report(auth_dev, 0xF0, set_buffer, 64);
+                set_buffer[0] = nonce_id;
+                set_buffer[1] = nonce_part;
+                set_buffer[2] = 0;
+                memcpy(set_buffer + 3, nonce + (nonce_part * 56), 56);
+                queue_set_feature_report(auth_dev, 0xF0, set_buffer, 63);
                 busy = true;
                 nonce_part++;
                 break;
