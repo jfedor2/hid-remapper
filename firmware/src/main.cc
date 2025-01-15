@@ -126,7 +126,7 @@ bool read_gpio(uint64_t now) {
                 if (last_gpio_change[i] + gpio_debounce_time <= now) {
                     uint32_t usage = GPIO_USAGE_PAGE | i;
                     int32_t state = !(gpio_state & bit);  // active low
-                    set_input_state(usage, state);
+                    set_input_state(usage, state, state);
                     if (monitor_enabled) {
                         monitor_usage(usage, state, 0);
                     }
@@ -173,7 +173,7 @@ bool read_adc() {
             prev_adc_state[i] = state;
         }
         uint32_t usage = ADC_USAGE_PAGE | i;
-        set_input_state(usage, state);
+        set_input_state(usage, state, state >> 4);
         if (monitor_enabled) {
             monitor_usage(usage, state, 0);
         }

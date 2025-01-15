@@ -1669,46 +1669,55 @@ void handle_received_midi(uint8_t hub_port, uint8_t* midi_msg) {
         hub_port = HUB_PORT_NONE;
     }
     uint32_t usage = 0;
-    int32_t val = 0;
+    int32_t raw_val = 0;
+    int32_t scaled_val = 0;
     // ignore cable number and CIN
     switch (midi_msg[1] & 0xF0) {
         case 0x80:  // note off
             usage = MIDI_USAGE_PAGE | ((midi_msg[1] | 0x10) << 8) | midi_msg[2];
-            val = 0;  // note off velocity not exposed
+            raw_val = 0;  // note off velocity not exposed
+            scaled_val = 0;
             break;
         case 0x90:  // note on
         case 0xA0:  // polyphonic key pressure (aftertouch)
         case 0xB0:  // control change
             usage = MIDI_USAGE_PAGE | (midi_msg[1] << 8) | midi_msg[2];
-            val = midi_msg[3];
+            raw_val = midi_msg[3];
+            scaled_val = raw_val * 255 / 127;
             break;
         case 0xC0:  // program change
         case 0xD0:  // channel pressure (aftertouch)
             usage = MIDI_USAGE_PAGE | (midi_msg[1] << 8);
-            val = midi_msg[2];
+            raw_val = midi_msg[2];
+            scaled_val = raw_val * 255 / 127;
             break;
         case 0xE0:  // pitch bend change
             usage = MIDI_USAGE_PAGE | (midi_msg[1] << 8);
-            val = (uint16_t) (midi_msg[3] << 7) | midi_msg[2];
+            raw_val = (uint16_t) (midi_msg[3] << 7) | midi_msg[2];
+            scaled_val = raw_val >> 6;
             break;
         default:
             break;
     }
     if (usage != 0) {
-        set_input_state(usage, val, 0);
+        set_input_state(usage, raw_val, scaled_val, 0);
         if (hub_port != HUB_PORT_NONE) {
-            set_input_state(usage, val, hub_port);
+            set_input_state(usage, raw_val, scaled_val, hub_port);
         }
         if (monitor_enabled) {
-            monitor_usage(usage, val, hub_port);
+            monitor_usage(usage, raw_val, hub_port);
         }
     }
 }
 
-void set_input_state(uint32_t usage, int32_t state, uint8_t hub_port) {
-    int32_t* state_ptr = get_state_ptr(usage, hub_port);
+void set_input_state(uint32_t usage, int32_t state_raw, int32_t state_scaled, uint8_t hub_port) {
+    int32_t* state_ptr = get_state_ptr(usage, hub_port, false, true);
     if (state_ptr != NULL) {
-        *state_ptr = state;
+        *state_ptr = state_raw;
+    }
+    state_ptr = get_state_ptr(usage, hub_port, false, false);
+    if (state_ptr != NULL) {
+        *state_ptr = state_scaled;
     }
 }
 
