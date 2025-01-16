@@ -8840,6 +8840,246 @@ const examples = [
                 }
             ]
         }
+    },
+    {
+        'description': 'analog stick cardinal directions to D-pad',
+        'config': {
+            "version": 17,
+            "unmapped_passthrough_layers": [
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 2,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "input_labels": 1,
+            "mappings": [
+                {
+                    "source_usage": "0xfff5000b",
+                    "target_usage": "0xfff90003",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff5000c",
+                    "target_usage": "0xfff90004",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff5000d",
+                    "target_usage": "0xfff90001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff5000e",
+                    "target_usage": "0xfff90002",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state_scaled eol 128000 sub eol dup mul eol eol 0x00010031 input_state_scaled eol 128000 sub eol dup mul eol eol add sqrt /* sqrt(x^2 + y^2) */ eol 64000 gt eol 7000 store /* stick outside deadzone? */ eol eol 0x00010030 input_state_scaled eol 128000 sub eol 0x00010031 input_state_scaled eol 128000 sub eol atan2 eol 8000 store /* stick angle */ eol eol /* overlapping (d-pad) */ eol /* up */ eol 8000 recall 112500 gt eol 8000 recall -112500 lt eol bitwise_or eol 7000 recall mul /* deadzone */ eol 11000 store eol eol /* down */ eol 8000 recall -67500 gt eol 8000 recall 67500 lt eol mul eol 7000 recall mul /* deadzone */ eol 12000 store eol eol /* left */ eol 8000 recall -157500 gt eol 8000 recall -22500 lt eol mul eol 7000 recall mul /* deadzone */ eol 13000 store eol eol /* right */ eol 8000 recall 22500 gt eol 8000 recall 157500 lt eol mul eol 7000 recall mul /* deadzone */ eol 14000 store",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
+    },
+    {
+        'description': 'analog stick cardinal directions to buttons',
+        'config': {
+            "version": 17,
+            "unmapped_passthrough_layers": [
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 2,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "input_labels": 1,
+            "mappings": [
+                {
+                    "source_usage": "0xfff50015",
+                    "target_usage": "0x00090004",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50016",
+                    "target_usage": "0x00090002",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50017",
+                    "target_usage": "0x00090001",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "source_usage": "0xfff50018",
+                    "target_usage": "0x00090003",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "scaling": 1000,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00010030 input_state_scaled eol 128000 sub eol dup mul eol eol 0x00010031 input_state_scaled eol 128000 sub eol dup mul eol eol add sqrt /* sqrt(x^2 + y^2) */ eol 64000 gt eol 7000 store /* stick outside deadzone? */ eol eol 0x00010030 input_state_scaled eol 128000 sub eol 0x00010031 input_state_scaled eol 128000 sub eol atan2 eol 8000 store /* stick angle */ eol eol /* non-overlapping (buttons) */ eol /* up */ eol 8000 recall 135000 gt eol 8000 recall -135000 lt eol bitwise_or eol 7000 recall mul /* deadzone */ eol 21000 store eol eol /* down */ eol 8000 recall -45000 gt eol 8000 recall 45000 lt eol mul eol 7000 recall mul /* deadzone */ eol 22000 store eol eol /* left */ eol 8000 recall -135000 gt eol 8000 recall -45000 lt eol mul eol 7000 recall mul /* deadzone */ eol 23000 store eol eol /* right */ eol 8000 recall 45000 gt eol 8000 recall 135000 lt eol mul eol 7000 recall mul /* deadzone */ eol 24000 store",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": []
+        }
     }
 ];
 
