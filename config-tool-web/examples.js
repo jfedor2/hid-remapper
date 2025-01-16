@@ -8605,6 +8605,241 @@ const examples = [
                 }
             ]
         }
+    },
+    {
+        'description': 'touchpad as analog sticks on a PS4 fightstick',
+        'config': {
+            "version": 17,
+            "unmapped_passthrough_layers": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "partial_scroll_timeout": 1000000,
+            "tap_hold_threshold": 200000,
+            "gpio_debounce_time_ms": 5,
+            "interval_override": 0,
+            "our_descriptor_number": 3,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "input_labels": 1,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff50001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff50002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010032",
+                    "source_usage": "0xfff50003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010035",
+                    "source_usage": "0xfff50004",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000b",
+                    "source_usage": "0xfff50009",
+                    "scaling": 1000,
+                    "layers": [],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x0009000c",
+                    "source_usage": "0xfff5000a",
+                    "scaling": 1000,
+                    "layers": [],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "600 11000 store /* X sensitivity */ eol 600 12000 store /* Y sensitivity */ eol eol /* first finger=left stick? */ eol 0xfffa0002 prev_input_state_binary eol 0xfffa0002 input_state_binary not eol mul /* first finger started touching */ eol 960000 0xfffa0003 input_state gt mul /* on left side */ eol dup eol 0xfffa0003 input_state eol 13000 recall ifte 13000 store /* left stick center X */ eol dup eol 0xfffa0004 input_state eol 14000 recall ifte 14000 store /* left stick center Y */ eol 5000 recall bitwise_or eol 0xfffa0002 input_state_binary not mul eol 5000 store /* first finger controls left stick */ eol eol /* first finger=right stick? */ eol 0xfffa0002 prev_input_state_binary eol 0xfffa0002 input_state_binary not eol mul /* first finger started touching */ eol 0xfffa0003 input_state 960000 gt mul /* on right side */ eol dup eol 0xfffa0003 input_state eol 15000 recall ifte 15000 store /* right stick center X */ eol dup eol 0xfffa0004 input_state eol 16000 recall ifte 16000 store /* right stick center Y */ eol 6000 recall bitwise_or eol 0xfffa0002 input_state_binary not mul eol 6000 store /* first finger controls right stick */ eol eol /* second finger=left stick? */ eol 0xfffa0006 prev_input_state_binary eol 0xfffa0006 input_state_binary not eol mul /* second finger started touching */ eol 960000 0xfffa0007 input_state gt mul /* on left side */ eol dup eol 0xfffa0007 input_state eol 13000 recall ifte 13000 store /* left stick center X */ eol dup eol 0xfffa0008 input_state eol 14000 recall ifte 14000 store /* left stick center Y */ eol 7000 recall bitwise_or eol 0xfffa0006 input_state_binary not mul eol 7000 store /* second finger controls left stick */ eol eol /* second finger=right stick? */ eol 0xfffa0006 prev_input_state_binary eol 0xfffa0006 input_state_binary not eol mul /* second finger started touching */ eol 0xfffa0007 input_state 960000 gt mul /* on right side */ eol dup eol 0xfffa0007 input_state eol 15000 recall ifte 15000 store /* right stick center X */ eol dup eol 0xfffa0008 input_state eol 16000 recall ifte 16000 store /* right stick center Y */ eol 8000 recall bitwise_or eol 0xfffa0006 input_state_binary not mul eol 8000 store /* second finger controls right stick */ eol eol 0xfffa0003 input_state /* first finger X */ eol 13000 recall -1000 mul add /* left stick center X */ eol 5000 recall mul /* first finger controls left stick? */ eol 0xfffa0007 input_state /* second finger X */ eol 13000 recall -1000 mul add /* left stick center X */ eol 7000 recall mul /* second finger controls left stick? */ eol add eol 11000 recall mul /* X sensitivity */ eol 128000 add 0 255000 clamp 1000 store /* left stick X */ eol eol 0xfffa0004 input_state /* first finger Y */ eol 14000 recall -1000 mul add /* left stick center Y */ eol 5000 recall mul /* first finger controls left stick? */ eol 0xfffa0008 input_state /* second finger Y */ eol 14000 recall -1000 mul add /* left stick center Y */ eol 7000 recall mul /* second finger controls left stick? */ eol add eol 12000 recall mul /* Y sensitivity */ eol 128000 add 0 255000 clamp 2000 store /* left stick Y */ eol eol 0xfffa0003 input_state /* first finger X */ eol 15000 recall -1000 mul add /* right stick center X */ eol 6000 recall mul /* first finger controls right stick? */ eol 0xfffa0007 input_state /* second finger X */ eol 15000 recall -1000 mul add /* right stick center X */ eol 8000 recall mul /* second finger controls right stick? */ eol add eol 11000 recall mul /* X sensitivity */ eol 128000 add 0 255000 clamp 3000 store /* right stick X */ eol eol 0xfffa0004 input_state /* first finger Y */ eol 16000 recall -1000 mul add /* right stick center Y */ eol 6000 recall mul /* first finger controls right stick? */ eol 0xfffa0008 input_state /* second finger Y */ eol 16000 recall -1000 mul add /* right stick center Y */ eol 8000 recall mul /* second finger controls right stick? */ eol add eol 12000 recall mul /* Y sensitivity */ eol 128000 add 0 255000 clamp 4000 store /* right stick Y */ eol eol 0x0009000e input_state_binary /* touchpad click */ eol 5000 recall /* first finger touching on left side? */ eol 7000 recall bitwise_or /* second finger touching on left side? */ eol mul eol 6000 recall not mul /* first finger NOT touching on right side */ eol 8000 recall not mul /* second finger NOT touching on right side */ eol 9000 store /* L3 */ eol eol 0x0009000e input_state_binary /* touchpad click */ eol 6000 recall /* first finger touching on right side? */ eol 8000 recall bitwise_or /* second finger touching on right side? */ eol mul eol 5000 recall not mul /* first finger NOT touching on left side */ eol 7000 recall not mul /* second finger NOT touching on left side */ eol 10000 store /* R3 */",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "quirks": [
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0001",
+                    "bitpos": 272,
+                    "size": 7,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0002",
+                    "bitpos": 279,
+                    "size": 1,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0003",
+                    "bitpos": 280,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0004",
+                    "bitpos": 292,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0005",
+                    "bitpos": 304,
+                    "size": 7,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0006",
+                    "bitpos": 311,
+                    "size": 1,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0007",
+                    "bitpos": 312,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                },
+                {
+                    "vendor_id": "0x0000",
+                    "product_id": "0x0000",
+                    "interface": 0,
+                    "report_id": 1,
+                    "usage": "0xfffa0008",
+                    "bitpos": 324,
+                    "size": 12,
+                    "relative": false,
+                    "signed": false
+                }
+            ]
+        }
     }
 ];
 
