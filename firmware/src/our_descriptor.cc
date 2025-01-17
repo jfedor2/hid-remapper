@@ -529,6 +529,10 @@ void kb_mouse_handle_set_report(uint8_t report_id, const uint8_t* buffer, uint16
     }
 }
 
+bool kb_mouse_set_report_synchronous(uint8_t report_id) {
+    return (report_id == REPORT_ID_MULTIPLIER);
+}
+
 uint16_t kb_mouse_handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) {
     if (report_id == REPORT_ID_MULTIPLIER && reqlen >= 1) {
         memcpy(buffer, &resolution_multiplier, 1);
@@ -613,6 +617,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
+        .set_report_synchronous = kb_mouse_set_report_synchronous,
     },
     {
         .idx = 1,
@@ -621,6 +626,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
+        .set_report_synchronous = kb_mouse_set_report_synchronous,
     },
     {
         .idx = 2,

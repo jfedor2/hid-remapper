@@ -2042,6 +2042,13 @@ void handle_set_report0(uint8_t report_id, const uint8_t* buffer, uint16_t reqle
     }
 }
 
+bool set_report0_synchronous(uint8_t report_id) {
+    if (our_descriptor->set_report_synchronous != nullptr) {
+        return our_descriptor->set_report_synchronous(report_id);
+    }
+    return false;
+}
+
 void handle_get_report_response(uint16_t interface, uint8_t report_id, uint8_t* report, uint16_t len) {
     if (our_descriptor->handle_get_report_response != nullptr) {
         our_descriptor->handle_get_report_response(interface, report_id, report, len);

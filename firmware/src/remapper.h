@@ -48,6 +48,7 @@ void device_connected_callback(uint16_t interface, uint16_t vid, uint16_t pid, u
 void device_disconnected_callback(uint8_t interface);
 uint16_t handle_get_report0(uint8_t report_id, uint8_t* buffer, uint16_t reqlen);
 void handle_set_report0(uint8_t report_id, const uint8_t* buffer, uint16_t reqlen);
+bool set_report0_synchronous(uint8_t report_id);
 void handle_get_report_response(uint16_t interface, uint8_t report_id, uint8_t* report, uint16_t len);
 void handle_set_report_complete(uint16_t interface, uint8_t report_id);
 

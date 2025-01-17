@@ -626,18 +626,22 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
 
     struct set_report_type buf;
     if ((request_value[0] > 0) && (*len > 0)) {
-        if (dev == hid_dev0) {
-            buf.interface = 0;
-        } else if (dev == hid_dev1) {
-            buf.interface = 1;
-            k_mutex_lock(&get_report_mutex, K_FOREVER);
-            get_report_response_ready = false;
-            k_mutex_unlock(&get_report_mutex);
+        if ((dev == hid_dev0) && set_report0_synchronous(request_value[0])) {
+            handle_set_report0(request_value[0], (*data) + 1, (*len) - 1);
+        } else {
+            if (dev == hid_dev0) {
+                buf.interface = 0;
+            } else if (dev == hid_dev1) {
+                buf.interface = 1;
+                k_mutex_lock(&get_report_mutex, K_FOREVER);
+                get_report_response_ready = false;
+                k_mutex_unlock(&get_report_mutex);
+            }
+            buf.report_id = request_value[0];
+            buf.len = *len - 1;
+            memcpy(buf.data, (*data) + 1, (*len) - 1);
+            CHK(k_msgq_put(&set_report_q, &buf, K_NO_WAIT));
         }
-        buf.report_id = request_value[0];
-        buf.len = *len - 1;
-        memcpy(buf.data, (*data) + 1, (*len) - 1);
-        CHK(k_msgq_put(&set_report_q, &buf, K_NO_WAIT));
     } else {
         LOG_ERR("no report ID?");
     }
