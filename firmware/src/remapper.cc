@@ -1789,6 +1789,12 @@ void update_their_descriptor_derivates() {
                         if (state_ptr_n != NULL) {
                             relative_usage_set.insert(state_ptr_n);
                         }
+                        if (state_ptr_raw_0 != NULL) {
+                            relative_usage_set.insert(state_ptr_raw_0);
+                        }
+                        if (state_ptr_raw_n != NULL) {
+                            relative_usage_set.insert(state_ptr_raw_n);
+                        }
                     }
                     if ((usage_def.size == 1) || usage_def.is_array) {
                         if (state_ptr_0 != NULL) {
