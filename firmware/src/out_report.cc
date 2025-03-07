@@ -29,15 +29,18 @@ void do_queue_out_report(const uint8_t* report, uint16_t len, uint8_t report_id,
         printf("out overflow!\n");
         return;
     }
-    if (len > sizeof(outgoing_out_reports[oor_tail].report)) {
+    if ((len + ((report_id != 0) ? 1 : 0)) > sizeof(outgoing_out_reports[oor_tail].report)) {
         return;
     }
     outgoing_out_reports[oor_tail].dev_addr = dev_addr;
     outgoing_out_reports[oor_tail].interface = interface;
     outgoing_out_reports[oor_tail].report_id = report_id;
-    outgoing_out_reports[oor_tail].len = len;
+    outgoing_out_reports[oor_tail].len = len + ((report_id != 0) ? 1 : 0);
     outgoing_out_reports[oor_tail].type = type;
-    memcpy(outgoing_out_reports[oor_tail].report, report, len);
+    if (report_id != 0) {
+        outgoing_out_reports[oor_tail].report[0] = report_id;
+    }
+    memcpy(outgoing_out_reports[oor_tail].report + ((report_id != 0) ? 1 : 0), report, len);
     oor_tail = (oor_tail + 1) % OOR_BUFSIZE;
     oor_items++;
 }

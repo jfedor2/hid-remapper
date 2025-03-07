@@ -43,7 +43,7 @@ When the board is fresh from the factory (has never been flashed), it should ent
 There are two RP2040 chips on each board and each chip has to be flashed with appropriate firmware. The procedure to do it goes as follows:
 
 1. Flash A side (the one that connects to your computer) with [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board.uf2) file by putting the board in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
-2. Flash B side by going to the [web config tool](https://www.jfedor.org/hid-remapper-config/), opening the device and pressing the "Flash B side" button. When you do this, the A side flashes the B side with the appropriate firmware (there's no separate UF2 file).
+2. Flash B side by going to the [web config tool](https://www.remapper.org/config/), opening the device and pressing the "Flash B side" button. When you do this, the A side flashes the B side with the appropriate firmware (there's no separate UF2 file).
 
 In the future, I'd like to remove the need for step 2, it should be possible to make it happen automatically.
 

@@ -40,12 +40,15 @@ struct usage_def_t {
     uint16_t bitpos;
     bool is_relative;
     bool is_array = false;
+    bool should_be_scaled = false;
     int32_t logical_minimum;
+    int32_t logical_maximum;
     uint32_t index = 0;      // for arrays
     uint32_t count = 0;      // for arrays
     uint32_t usage_maximum;  // effective, for arrays/usage ranges
     int32_t* input_state_0 = NULL;
     int32_t* input_state_n = NULL;
+    uint8_t index_mask = 0;
 };
 
 struct usage_usage_def_t {
@@ -91,17 +94,40 @@ enum class Op : int8_t {
     PORT = 34,
     DPAD = 35,
     EOL = 36,
-};
-
-struct expr_elem_t {
-    Op op;
-    uint32_t val = 0;
+    INPUT_STATE_FP32 = 37,
+    PREV_INPUT_STATE_FP32 = 38,
+    MIN = 39,
+    MAX = 40,
+    IFTE = 41,
+    DIV = 42,
+    SWAP = 43,
+    MONITOR = 44,
+    SIGN = 45,
+    SUB = 46,
+    PRINT_IF = 47,
+    TIME_SEC = 48,
+    LT = 49,
+    PLUGGED_IN = 50,
+    INPUT_STATE_SCALED = 51,
+    PREV_INPUT_STATE_SCALED = 52,
+    DEADZONE = 53,
+    DEADZONE2 = 54,
 };
 
 struct tap_hold_state_t {
     bool tap : 1;
     bool hold : 1;
     bool prev_hold : 1;
+};
+
+struct expr_elem_t {
+    Op op;
+    uint32_t val = 0;
+    union {
+        int32_t* state_ptr = NULL;
+        uint8_t* sticky_state_ptr;
+        tap_hold_state_t* tap_hold_state_ptr;
+    };
 };
 
 struct map_source_t {
@@ -112,6 +138,7 @@ struct map_source_t {
     bool hold = false;
     bool is_relative = false;
     bool is_binary = false;
+    uint8_t orig_source_port = 0;
     uint8_t layer_mask = 1;
     int32_t* input_state;
     tap_hold_state_t* tap_hold_state;
@@ -125,10 +152,13 @@ struct out_usage_def_t {
     uint16_t len;
     uint8_t size;
     uint16_t bitpos;
+    uint8_t array_count;
+    uint32_t array_index;
 };
 
 struct reverse_mapping_t {
     uint32_t target;
+    uint8_t default_value = 0;  // should be int32_t theoretically, but currently all defaults fit uint8_t
     uint8_t hub_port = 0;
     bool is_relative = false;
     std::vector<out_usage_def_t> our_usages;
@@ -278,7 +308,9 @@ struct __attribute__((packed)) persist_config_v12_t {
     uint16_t quirk_count;
 };
 
-typedef persist_config_v12_t persist_config_t;
+typedef persist_config_v12_t persist_config_v13_t;
+
+typedef persist_config_v13_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
     uint8_t version;
@@ -371,6 +403,16 @@ struct __attribute__((packed)) get_expr_response_t {
     uint8_t elem_data[27];
 };
 
+enum class PersistConfigReturnCode : int8_t {
+    UNKNOWN = 0,
+    SUCCESS = 1,
+    CONFIG_TOO_BIG = 2,
+};
+
+struct __attribute__((packed)) persist_config_response_t {
+    PersistConfigReturnCode return_code;
+};
+
 struct __attribute__((packed)) monitor_t {
     uint8_t enabled;
 };
@@ -384,6 +426,10 @@ struct __attribute__((packed)) monitor_report_item_t {
 struct __attribute__((packed)) monitor_report_t {
     uint8_t report_id;
     monitor_report_item_t items[7];
+};
+
+struct __attribute__((packed)) uint16_val_t {
+    uint16_t val;
 };
 
 #endif

@@ -60,7 +60,7 @@ void extra_init() {
     uart_set_translate_crlf(SERIAL_MOUSE_UART, false);
     uart_set_format(SERIAL_MOUSE_UART, 7, 1, UART_PARITY_NONE);
 
-    parse_descriptor(FAKE_VID, FAKE_PID, fake_descriptor, sizeof(fake_descriptor), FAKE_INTERFACE);
+    parse_descriptor(FAKE_VID, FAKE_PID, fake_descriptor, sizeof(fake_descriptor), FAKE_INTERFACE, 0);
 }
 
 uint32_t get_gpio_valid_pins_mask() {

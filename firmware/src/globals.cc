@@ -20,6 +20,7 @@ std::vector<usage_rle_t> their_usages_rle;
 volatile bool need_to_persist_config = false;
 volatile bool their_descriptor_updated = false;
 volatile bool suspended = false;
+volatile bool resume_pending = false;
 volatile bool config_updated = false;
 
 uint8_t unmapped_passthrough_layer_mask = 0b11111111;
@@ -47,3 +48,8 @@ uint8_t gpio_out_state[4] = { 0 };
 uint16_t digipot_state[NDIGIPOTS] = { 0 };
 
 std::vector<quirk_t> quirks;
+
+bool boot_protocol_keyboard = false;
+bool boot_protocol_updated = false;
+
+volatile PersistConfigReturnCode persist_config_return_code = PersistConfigReturnCode::UNKNOWN;

@@ -281,7 +281,7 @@ const uint8_t our_report_descriptor_absolute[] = {
     0xC0,                      // End Collection
 };
 
-const uint8_t our_report_descriptor_gamepad[] = {
+const uint8_t our_report_descriptor_horipad[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
     0x09, 0x05,        // Usage (Game Pad)
     0xA1, 0x01,        // Collection (Application)
@@ -290,11 +290,13 @@ const uint8_t our_report_descriptor_gamepad[] = {
     0x35, 0x00,        //   Physical Minimum (0)
     0x45, 0x01,        //   Physical Maximum (1)
     0x75, 0x01,        //   Report Size (1)
-    0x95, 0x10,        //   Report Count (16)
+    0x95, 0x0E,        //   Report Count (14)
     0x05, 0x09,        //   Usage Page (Button)
     0x19, 0x01,        //   Usage Minimum (0x01)
-    0x29, 0x10,        //   Usage Maximum (0x10)
+    0x29, 0x0E,        //   Usage Maximum (0x0E)
     0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x02,        //   Report Count (2)
+    0x81, 0x01,        //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
     0x25, 0x07,        //   Logical Maximum (7)
     0x46, 0x3B, 0x01,  //   Physical Maximum (315)
@@ -315,13 +317,9 @@ const uint8_t our_report_descriptor_gamepad[] = {
     0x75, 0x08,        //   Report Size (8)
     0x95, 0x04,        //   Report Count (4)
     0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x06, 0x00, 0xFF,  //   Usage Page (Vendor Defined 0xFF00)
-    0x09, 0x20,        //   Usage (0x20)
+    0x75, 0x08,        //   Report Size (8)
     0x95, 0x01,        //   Report Count (1)
-    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x0A, 0x21, 0x26,  //   Usage (0x2621)
-    0x95, 0x08,        //   Report Count (8)
-    0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x81, 0x01,        //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
     0xC0,              // End Collection
 };
 
@@ -502,12 +500,51 @@ uint8_t const our_report_descriptor_stadia[] = {
     0xC0,                          // End Collection
 };
 
+uint8_t const our_report_descriptor_xac_compat[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+    0x09, 0x30,        //   Usage (X)
+    0x09, 0x31,        //   Usage (Y)
+    0x09, 0x32,        //   Usage (Z)
+    0x09, 0x35,        //   Usage (Rz)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x04,        //   Report Count (4)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x39,        //   Usage (Hat switch)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x07,        //   Logical Maximum (7)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x46, 0x3B, 0x01,  //   Physical Maximum (315)
+    0x65, 0x14,        //   Unit (System: English Rotation, Length: Centimeter)
+    0x75, 0x04,        //   Report Size (4)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x42,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
+    0x65, 0x00,        //   Unit (None)
+    0x45, 0x00,        //   Physical Maximum (0)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x19, 0x01,        //   Usage Minimum (0x01)
+    0x29, 0x0C,        //   Usage Maximum (0x0C)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x0C,        //   Report Count (12)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              // End Collection
+};
+
 void kb_mouse_handle_set_report(uint8_t report_id, const uint8_t* buffer, uint16_t reqlen) {
     if (report_id == REPORT_ID_MULTIPLIER && reqlen >= 1) {
         memcpy(&resolution_multiplier, buffer, 1);
-    } else if (report_id == REPORT_ID_LEDS) {
+    } else if (boot_protocol_keyboard || (report_id == REPORT_ID_LEDS)) {
         handle_received_report(buffer, reqlen, OUR_OUT_INTERFACE, report_id);
     }
+}
+
+bool kb_mouse_set_report_synchronous(uint8_t report_id) {
+    return (report_id == REPORT_ID_MULTIPLIER);
 }
 
 uint16_t kb_mouse_handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t reqlen) {
@@ -518,31 +555,109 @@ uint16_t kb_mouse_handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t
     return 0;
 }
 
+static const uint8_t horipad_neutral[] = { 0x00, 0x00, 0x0F, 0x80, 0x80, 0x80, 0x80, 0x00 };
+
+void horipad_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memcpy(report, horipad_neutral, sizeof(horipad_neutral));
+}
+
+void ps4_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memset(report, 0, len);
+    report[0] = report[1] = report[2] = report[3] = 0x80;
+    report[4] = 0x08;
+    report[34] = report[38] = 0b10000000;  // touchpad, 1 means finger not touching
+}
+
+static const uint8_t stadia_neutral[] = { 0x08, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00 };
+
+void stadia_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memcpy(report, stadia_neutral, sizeof(stadia_neutral));
+}
+
+static const uint8_t xac_compat_neutral[] = { 0x80, 0x80, 0x80, 0x80, 0x08, 0x00 };
+
+void xac_compat_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memcpy(report, xac_compat_neutral, sizeof(xac_compat_neutral));
+}
+
+int32_t horipad_default_value(uint32_t usage) {
+    switch (usage) {
+        case 0x00010039:
+            return 15;
+        case 0x00010030:
+        case 0x00010031:
+        case 0x00010032:
+        case 0x00010035:
+            return 0x80;
+        default:
+            return 0;
+    }
+}
+
+int32_t ps4_stadia_default_value(uint32_t usage) {
+    switch (usage) {
+        case 0x00010039:
+            return 8;
+        case 0x00010030:
+        case 0x00010031:
+        case 0x00010032:
+        case 0x00010035:
+            return 0x80;
+        default:
+            return 0;
+    }
+}
+
+void stadia_sanitize_report(uint8_t report_id, uint8_t* buffer, uint16_t len) {
+    if (buffer[3] == 0) {
+        buffer[3] = 1;
+    }
+    if (buffer[4] == 0) {
+        buffer[4] = 1;
+    }
+    if (buffer[5] == 0) {
+        buffer[5] = 1;
+    }
+    if (buffer[6] == 0) {
+        buffer[6] = 1;
+    }
+}
+
 const our_descriptor_def_t our_descriptors[] = {
     {
+        .idx = 0,
         .descriptor = our_report_descriptor_kb_mouse,
         .descriptor_length = sizeof(our_report_descriptor_kb_mouse),
         .handle_received_report = do_handle_received_report,
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
+        .set_report_synchronous = kb_mouse_set_report_synchronous,
     },
     {
+        .idx = 1,
         .descriptor = our_report_descriptor_absolute,
         .descriptor_length = sizeof(our_report_descriptor_absolute),
         .handle_received_report = do_handle_received_report,
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
+        .set_report_synchronous = kb_mouse_set_report_synchronous,
     },
     {
-        .descriptor = our_report_descriptor_gamepad,
-        .descriptor_length = sizeof(our_report_descriptor_gamepad),
+        .idx = 2,
+        .descriptor = our_report_descriptor_horipad,
+        .descriptor_length = sizeof(our_report_descriptor_horipad),
         .vid = 0x0F0D,
-        .pid = 0x0092,
+        .pid = 0x00C1,
         .handle_received_report = do_handle_received_report,
+        .clear_report = horipad_clear_report,
+        .default_value = horipad_default_value,
     },
     {
+        .idx = 3,
         .descriptor = our_report_descriptor_ps4,
         .descriptor_length = sizeof(our_report_descriptor_ps4),
+        .vid = 0x054C,
+        .pid = 0x1234,
         .device_connected = ps4_device_connected,
         .device_disconnected = ps4_device_disconnected,
         .main_loop_task = ps4_main_loop_task,
@@ -551,13 +666,27 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_set_report = ps4_handle_set_report,
         .handle_get_report_response = ps4_handle_get_report_response,
         .handle_set_report_complete = ps4_handle_set_report_complete,
+        .clear_report = ps4_clear_report,
+        .default_value = ps4_stadia_default_value,
     },
     {
+        .idx = 4,
         .descriptor = our_report_descriptor_stadia,
         .descriptor_length = sizeof(our_report_descriptor_stadia),
         .vid = 0x18D1,
         .pid = 0x9400,
         .handle_received_report = do_handle_received_report,
+        .clear_report = stadia_clear_report,
+        .default_value = ps4_stadia_default_value,
+        .sanitize_report = stadia_sanitize_report,
+    },
+    {
+        .idx = 5,
+        .descriptor = our_report_descriptor_xac_compat,
+        .descriptor_length = sizeof(our_report_descriptor_xac_compat),
+        .handle_received_report = do_handle_received_report,
+        .clear_report = xac_compat_clear_report,
+        .default_value = ps4_stadia_default_value,  // sic
     },
 };
 
@@ -583,3 +712,39 @@ const uint8_t config_report_descriptor[] = {
 };
 
 const uint32_t config_report_descriptor_length = sizeof(config_report_descriptor);
+
+// This isn't sent to the host.
+uint8_t const boot_kb_report_descriptor[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x06,        // Usage (Keyboard)
+    0xA1, 0x01,        // Collection (Application)
+    0x05, 0x07,        //   Usage Page (Kbrd/Keypad)
+    0x19, 0xE0,        //   Usage Minimum (0xE0)
+    0x29, 0xE7,        //   Usage Maximum (0xE7)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x08,        //   Report Count (8)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x07,        //   Usage Page (Kbrd/Keypad)
+    0x19, 0x00,        //   Usage Minimum (0x00)
+    0x2A, 0x91, 0x00,  //   Usage Maximum (0x91)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x95, 0x06,        //   Report Count (6)
+    0x81, 0x00,        //   Input (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x08,        //   Usage Page (LEDs)
+    0x19, 0x01,        //   Usage Minimum (Num Lock)
+    0x29, 0x03,        //   Usage Maximum (Scroll Lock)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x03,        //   Report Count (3)
+    0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x95, 0x05,        //   Report Count (5)
+    0x91, 0x03,        //   Output (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0xC0,              // End Collection
+};
+
+const uint32_t boot_kb_report_descriptor_length = sizeof(boot_kb_report_descriptor);

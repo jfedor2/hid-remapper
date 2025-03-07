@@ -10,7 +10,7 @@ device = get_device()
 data = struct.pack("<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, GET_CONFIG, *([0] * 26))
 device.send_feature_report(add_crc(data))
 
-data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
+data = get_feature_report(device, REPORT_ID_CONFIG, CONFIG_SIZE + 1)
 
 (
     report_id,
@@ -37,7 +37,7 @@ for command, key, count in [
             "<BBBL22B", REPORT_ID_CONFIG, CONFIG_VERSION, command, i, *([0] * 22)
         )
         device.send_feature_report(add_crc(data))
-        data = device.get_feature_report(REPORT_ID_CONFIG, CONFIG_SIZE + 1)
+        data = get_feature_report(device, REPORT_ID_CONFIG, CONFIG_SIZE + 1)
         (report_id, *usages_rle, _, crc) = struct.unpack("<B6L4BL", data)
         check_crc(data, crc)
         for u, l in zip(*(iter(usages_rle),) * 2):

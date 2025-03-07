@@ -5,6 +5,7 @@
 #include "globals.h"
 #include "platform.h"
 #include "quirks.h"
+#include "remapper.h"
 
 const uint8_t HID_INPUT = 0x80;
 const uint8_t HID_OUTPUT = 0x90;
@@ -28,6 +29,7 @@ void mark_usage(
     uint8_t size,
     bool is_relative,
     int32_t logical_minimum,
+    int32_t logical_maximum,
     bool is_array = false,
     uint32_t index = 0,
     uint32_t count = 0,
@@ -46,6 +48,7 @@ void mark_usage(
             .is_relative = is_relative,
             .is_array = is_array,
             .logical_minimum = logical_minimum,
+            .logical_maximum = logical_maximum,
             .index = index,
             .count = count,
             .usage_maximum = usage_maximum,
@@ -68,7 +71,27 @@ void assign_interface_index(uint16_t interface) {
     interface_index_in_use |= 1 << i;
 }
 
-void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface) {
+static void add_synthetic_dpad_usages(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& report_id_usage_map) {
+    for (auto& [report_id, usage_map] : report_id_usage_map) {
+        auto search = usage_map.find(DPAD_USAGE);
+        if (search != usage_map.end()) {
+            usage_def_t dpad_usage_def = search->second;
+            dpad_usage_def.is_array = true;
+            dpad_usage_def.count = 1;
+
+            dpad_usage_def.index_mask = 0b11100000;
+            usage_map[DPAD_USAGE_LEFT] = dpad_usage_def;
+            dpad_usage_def.index_mask = 0b00001110;
+            usage_map[DPAD_USAGE_RIGHT] = dpad_usage_def;
+            dpad_usage_def.index_mask = 0b10000011;
+            usage_map[DPAD_USAGE_UP] = dpad_usage_def;
+            dpad_usage_def.index_mask = 0b00111000;
+            usage_map[DPAD_USAGE_DOWN] = dpad_usage_def;
+        }
+    }
+}
+
+void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t itf_num) {
     my_mutex_enter(MutexId::THEIR_USAGES);
     auto their_report_sizes_map = parse_descriptor(
         their_usages[interface],
@@ -77,8 +100,9 @@ void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* re
         has_report_id_theirs[interface],
         report_descriptor,
         len);
-    apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len, interface & 0xFF);
+    apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len, itf_num);
     assign_interface_index(interface);
+    add_synthetic_dpad_usages(their_usages[interface]);
 
     for (auto const& [report_id, size] : their_report_sizes_map[ReportType::OUTPUT]) {
         out_report_sizes[(interface << 16) | report_id] = size;
@@ -167,7 +191,8 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 bitpos[report_type][report_id],
                                 report_size,
                                 relative,
-                                logical_minimum);
+                                logical_minimum,
+                                logical_maximum);
 
                             if (usage < usage_maximum) {
                                 usage++;
@@ -190,7 +215,8 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 bitpos[report_type][report_id],
                                 report_size,
                                 relative,
-                                logical_minimum);
+                                logical_minimum,
+                                logical_maximum);
 
                             bitpos[report_type][report_id] += report_size;
                         }
@@ -210,6 +236,7 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                             report_size,
                             relative,
                             logical_minimum,
+                            logical_maximum,
                             true,
                             logical_minimum,
                             report_count,
@@ -230,6 +257,7 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 report_size,
                                 relative,
                                 logical_minimum,
+                                logical_maximum,
                                 true,
                                 index,
                                 report_count);
@@ -286,6 +314,9 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                 break;
             case HID_LOGICAL_MAXIMUM:
                 logical_maximum = value;
+                if (logical_maximum & (1 << (item_size * 8 - 1))) {
+                    logical_maximum |= 0xFFFFFFFF << item_size * 8;
+                }
                 break;
         }
     }

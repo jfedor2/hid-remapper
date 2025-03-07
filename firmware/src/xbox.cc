@@ -3,66 +3,81 @@
 
 #define NXDEVS 8
 
+// Xbox controllers have the vertical axes inverted compared to the standard
+// HID convention. We use logical_minimum=32767 and logical_maximum=-32768 for
+// those axes in the fake report descriptor below. This happens to give the
+// correct results when we scale the values to 0-255 range.
+
 static const uint8_t xbox_one_descriptor[] = {
-    0x05, 0x01,                    // Usage Page (Generic Desktop Ctrls)
-    0x09, 0x05,                    // Usage (Game Pad)
-    0xA1, 0x01,                    // Collection (Application)
-    0x85, 0x20,                    //   Report ID (32)
-    0x75, 0x08,                    //   Report Size (8)
-    0x95, 0x03,                    //   Report Count (3)
-    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x15, 0x00,                    //   Logical Minimum (0)
-    0x25, 0x01,                    //   Logical Maximum (1)
-    0x75, 0x01,                    //   Report Size (1)
-    0x95, 0x10,                    //   Report Count (16)
-    0x05, 0x09,                    //   Usage Page (Button)
-    0x19, 0x01,                    //   Usage Minimum (0x01)
-    0x29, 0x10,                    //   Usage Maximum (0x10)
-    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x75, 0x10,                    //   Report Size (16)
-    0x95, 0x02,                    //   Report Count (2)
-    0x15, 0x00,                    //   Logical Minimum (0)
-    0x27, 0xFF, 0xFF, 0x00, 0x00,  //   Logical Maximum (65534)
-    0x05, 0x02,                    //   Usage Page (Sim Ctrls)
-    0x09, 0xC5,                    //   Usage (Brake)
-    0x09, 0xC4,                    //   Usage (Accelerator)
-    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x04,                    //   Report Count (4)
-    0x16, 0x00, 0x80,              //   Logical Minimum (-32768)
-    0x26, 0xFF, 0x7F,              //   Logical Maximum (32767)
-    0x05, 0x01,                    //   Usage Page (Generic Desktop Ctrls)
-    0x09, 0x30,                    //   Usage (X)
-    0x09, 0x31,                    //   Usage (Y)
-    0x09, 0x32,                    //   Usage (Z)
-    0x09, 0x35,                    //   Usage (Rz)
-    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x75, 0x08,                    //   Report Size (8)
-    0x95, 0x10,                    //   Report Count (16)
-    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x01,                    //   Report Count (1)
-    0x05, 0x0C,                    //   Usage Page (Consumer)
-    0x09, 0x85,                    //   Usage (Order Movie)
-    0x15, 0x00,                    //   Logical Minimum (0)
-    0x26, 0xFF, 0x00,              //   Logical Maximum (255)
-    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x85, 0x07,                    //   Report ID (7)
-    0x75, 0x08,                    //   Report Size (8)
-    0x95, 0x03,                    //   Report Count (3)
-    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x75, 0x01,                    //   Report Size (1)
-    0x95, 0x01,                    //   Report Count (1)
-    0x05, 0x09,                    //   Usage Page (Button)
-    0x09, 0x11,                    //   Usage (0x11)
-    0x15, 0x00,                    //   Logical Minimum (0)
-    0x25, 0x01,                    //   Logical Maximum (1)
-    0x81, 0x02,                    //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0x95, 0x07,                    //   Report Count (7)
-    0x81, 0x03,                    //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    0xC0,                          // End Collection
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+    0x85, 0x20,        //   Report ID (32)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x03,        //   Report Count (3)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x10,        //   Report Count (16)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x19, 0x01,        //   Usage Minimum (0x01)
+    0x29, 0x10,        //   Usage Maximum (0x10)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x10,        //   Report Size (16)
+    0x95, 0x02,        //   Report Count (2)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x03,  //   Logical Maximum (1023)
+    0x05, 0x02,        //   Usage Page (Sim Ctrls)
+    0x09, 0xC5,        //   Usage (Brake)
+    0x09, 0xC4,        //   Usage (Accelerator)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,        //   Report Count (1)
+    0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
+    0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x09, 0x30,        //   Usage (X)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x26, 0x00, 0x80,  //   Logical Maximum (-32768)
+    0x16, 0xFF, 0x7F,  //   Logical Minimum (32767)
+    0x09, 0x31,        //   Usage (Y)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x09, 0x32,        //   Usage (Z)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x26, 0x00, 0x80,  //   Logical Maximum (-32768)
+    0x16, 0xFF, 0x7F,  //   Logical Minimum (32767)
+    0x09, 0x35,        //   Usage (Rz)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x10,        //   Report Count (16)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x01,        //   Report Count (1)
+    0x05, 0x0C,        //   Usage Page (Consumer)
+    0x09, 0x85,        //   Usage (Order Movie)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x85, 0x07,        //   Report ID (7)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x03,        //   Report Count (3)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x01,        //   Report Count (1)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x09, 0x11,        //   Usage (0x11)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x07,        //   Report Count (7)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              // End Collection
 };
 
-static uint8_t init1[] = { 0x05, 0x20, 0x00, 0x01, 0x00 };
-static uint8_t init2[] = { 0x05, 0x20, 0x00, 0x0f, 0x06 };
+static uint8_t init1[] = { 0x05, 0x20, 0x01, 0x01, 0x00 };
+static uint8_t init2[] = { 0x05, 0x20, 0x02, 0x0f, 0x06 };
+static uint8_t init3[] = { 0x06, 0x20, 0x03, 0x02, 0x01, 0x00 };
 
 struct xdev_t {
     uint8_t dev_addr = 0;
@@ -108,7 +123,8 @@ static struct xdev_t* get_xdev_by_ep(uint8_t dev_addr, uint8_t ep) {
     return nullptr;
 }
 
-void xboxh_init(void) {
+bool xboxh_init(void) {
+    return true;
 }
 
 bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* desc_itf, uint16_t max_len) {
@@ -205,13 +221,16 @@ static void process_setup(struct xdev_t* xdev) {
             xxfer_out(xdev, init2, sizeof(init2));
             break;
         case 3:
+            xxfer_out(xdev, init3, sizeof(init3));
+            break;
+        case 4:
             xdev->setup_stage = 0;
             xxfer_in(xdev);
 
             uint8_t hub_addr;
             uint8_t hub_port;
             tuh_get_hub_addr_port(xdev->dev_addr, &hub_addr, &hub_port);
-            descriptor_received_callback(0, 0, xbox_one_descriptor, sizeof(xbox_one_descriptor), (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num, hub_port);
+            descriptor_received_callback(0, 0, xbox_one_descriptor, sizeof(xbox_one_descriptor), (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num, hub_port, xdev->itf_num);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
     }

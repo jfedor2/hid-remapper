@@ -191,5 +191,23 @@ data = struct.pack(
 )
 device.send_feature_report(add_crc(data))
 
+data = get_feature_report(device, REPORT_ID_CONFIG, CONFIG_SIZE + 1)
+(
+    report_id,
+    persist_config_return_code,
+    *_,
+    crc,
+) = struct.unpack("<BB27BL", data)
+check_crc(data, crc)
+
 data = struct.pack("<BBB26B", REPORT_ID_CONFIG, CONFIG_VERSION, RESUME, *([0] * 26))
 device.send_feature_report(add_crc(data))
+
+if persist_config_return_code == PERSIST_CONFIG_SUCCESS:
+    pass
+elif persist_config_return_code == PERSIST_CONFIG_CONFIG_TOO_BIG:
+    raise Exception("Configuration too big to persist.")
+else:
+    raise Exception(
+        "Unknown PERSIST_CONFIG return code ({}).".format(persist_config_return_code)
+    )

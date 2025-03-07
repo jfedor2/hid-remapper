@@ -605,7 +605,7 @@ const uint8_t spacemouse_pro_descriptor[] = {
     0xC0,              // End Collection
 };
 
-void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len, uint8_t interface) {
+void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len, uint8_t itf_num) {
     // Button Fn1 is described as a constant (padding) in the descriptor.
     // We add it as button 6.
     if (vendor_id == VENDOR_ID_ELECOM &&
@@ -753,7 +753,7 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
     my_mutex_enter(MutexId::QUIRKS);
     for (uint16_t i = 0; i < quirks.size(); i++) {
         quirk_t* quirk = &quirks[i];
-        if (((quirk->vendor_id == vendor_id) && (quirk->product_id == product_id) && (quirk->interface == interface)) ||
+        if (((quirk->vendor_id == vendor_id) && (quirk->product_id == product_id) && (quirk->interface == itf_num)) ||
             ((quirk->vendor_id == 0) && (quirk->product_id == 0))) {
             uint8_t quirk_size = quirk->size_flags & QUIRK_SIZE_MASK;
             if (quirk_size != 0) {

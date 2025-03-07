@@ -49,7 +49,7 @@ bool serial_callback(const uint8_t* data, uint16_t len) {
 
 void request_b_init() {
     request_b_init_t msg;
-    serial_write((uint8_t*) &msg, sizeof(msg));
+    serial_write_nonblocking((uint8_t*) &msg, sizeof(msg));
 }
 
 int main() {
@@ -82,7 +82,7 @@ void report_received_callback(uint8_t dev_addr, uint8_t instance, uint8_t const*
     msg->dev_addr = dev_addr;
     msg->interface = instance;
     memcpy(msg->report, report, len);
-    serial_write((uint8_t*) msg, len + sizeof(report_received_t));
+    serial_write_nonblocking((uint8_t*) msg, len + sizeof(report_received_t));
 }
 
 void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len) {
@@ -91,7 +91,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     tuh_hid_receive_report(dev_addr, instance);
 }
 
-void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port) {
+void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port, uint8_t itf_num) {
     device_connected_t* msg = (device_connected_t*) buffer;
     msg->command = DualCommand::DEVICE_CONNECTED;
     msg->vid = vendor_id;
@@ -99,6 +99,7 @@ void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const
     msg->dev_addr = (interface >> 8) & 0xFF;
     msg->interface = interface & 0xFF;
     msg->hub_port = hub_port;
+    msg->itf_num = itf_num;
     memcpy(msg->report_descriptor, report_descriptor, len);
     serial_write((uint8_t*) msg, len + sizeof(device_connected_t));
 }
@@ -114,7 +115,11 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
     uint16_t pid;
     tuh_vid_pid_get(dev_addr, &vid, &pid);
 
-    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance, hub_port);
+    tuh_itf_info_t itf_info;
+    tuh_hid_itf_get_info(dev_addr, instance, &itf_info);
+    uint8_t itf_num = itf_info.desc.bInterfaceNumber;
+
+    descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance, hub_port, itf_num);
     tuh_hid_receive_report(dev_addr, instance);
 }
 
@@ -132,7 +137,7 @@ void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
 
 void tuh_sof_cb() {
     start_of_frame_t msg;
-    serial_write((uint8_t*) &msg, sizeof(msg));
+    serial_write_nonblocking((uint8_t*) &msg, sizeof(msg));
 }
 
 void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
@@ -165,6 +170,6 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
     msg->command = DualCommand::MIDI_RECEIVED;
     msg->hub_port = hub_port;
     while (tuh_midi_packet_read(dev_addr, msg->msg)) {
-        serial_write((uint8_t*) msg, sizeof(midi_received_t));
+        serial_write_nonblocking((uint8_t*) msg, sizeof(midi_received_t));
     }
 }

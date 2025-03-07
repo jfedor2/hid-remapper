@@ -46,11 +46,15 @@ static K_SEM_DEFINE(usb_sem1, 1, 1);
 
 static struct k_mutex mutexes[(uint8_t) MutexId::N];
 
+static struct k_mutex get_report_mutex;
+static uint8_t get_report_buf[64];
+static bool get_report_response_ready = false;
+
 static const struct device* hid_dev0;
 static const struct device* hid_dev1;  // config interface
 
 struct report_type {
-    uint8_t conn_idx;
+    uint16_t interface;
     uint8_t len;
     uint8_t data[65];
 };
@@ -69,10 +73,18 @@ struct disconnected_type {
     uint8_t conn_idx;
 };
 
+struct set_report_type {
+    uint8_t report_id;
+    uint8_t interface;
+    uint16_t len;
+    uint8_t data[64];
+};
+
 K_MSGQ_DEFINE(report_q, sizeof(struct report_type), 16, 4);
 K_MSGQ_DEFINE(descriptor_q, sizeof(struct descriptor_type), 2, 4);
 K_MSGQ_DEFINE(hogp_ready_q, sizeof(struct hogp_ready_type), CONFIG_BT_MAX_CONN, 4);
 K_MSGQ_DEFINE(disconnected_q, sizeof(struct disconnected_type), CONFIG_BT_MAX_CONN, 4);
+K_MSGQ_DEFINE(set_report_q, sizeof(struct set_report_type), 8, 4);
 ATOMIC_DEFINE(tick_pending, 1);
 
 #define SW0_NODE DT_ALIAS(sw0)
@@ -491,7 +503,7 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
     }
 
     static struct report_type buf;
-    buf.conn_idx = hogp_index(hogp);
+    buf.interface = hogp_index(hogp) << 8;
     buf.len = bt_hogp_rep_size(rep) + 1;
     buf.data[0] = bt_hogp_rep_id(rep);
 
@@ -519,12 +531,36 @@ static void hogp_map_read_cb(struct bt_hogp* hogp, uint8_t err, const uint8_t* d
     bt_hogp_map_read(hogp, hogp_map_read_cb, offset + size, K_NO_WAIT);
 }
 
+struct find_bond_t {
+    bt_addr_le_t addr;
+    uint8_t i;
+    uint8_t found_idx;
+};
+
+static void find_bond_cb(const struct bt_bond_info* info, void* user_data) {
+    struct find_bond_t* find_bond = (struct find_bond_t*) user_data;
+    find_bond->i++;
+    if (bt_addr_le_eq(&find_bond->addr, &info->addr)) {
+        find_bond->found_idx = find_bond->i;
+    }
+}
+
 static void hogp_ready_work_fn(struct k_work* work) {
     struct bt_hogp_rep_info* rep = NULL;
     struct hogp_ready_type item;
 
     while (!k_msgq_get(&hogp_ready_q, &item, K_NO_WAIT)) {
         LOG_INF("hogp_ready");
+
+        struct find_bond_t find_bond = {
+            .i = 0,
+            .found_idx = 0,
+        };
+        bt_addr_le_copy(&find_bond.addr, bt_conn_get_dst(bt_hogp_conn(item.hogp)));
+        bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
+        LOG_DBG("found bond idx: %d", find_bond.found_idx);
+        device_connected_callback(bt_conn_index(bt_hogp_conn(item.hogp)) << 8, 1, 1, find_bond.found_idx);
+
         while (NULL != (rep = bt_hogp_rep_next(item.hogp, rep))) {
             if (bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_INPUT) {
                 LOG_DBG("subscribing to report ID: %u", bt_hogp_rep_id(rep));
@@ -588,11 +624,23 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
     LOG_INF("report_id=%d, report_type=%d, len=%d", request_value[0], request_value[1], *len);
     LOG_HEXDUMP_DBG((*data), (uint32_t) *len, "");
 
+    struct set_report_type buf;
     if ((request_value[0] > 0) && (*len > 0)) {
-        if (dev == hid_dev0) {
+        if ((dev == hid_dev0) && set_report0_synchronous(request_value[0])) {
             handle_set_report0(request_value[0], (*data) + 1, (*len) - 1);
-        } else if (dev == hid_dev1) {
-            handle_set_report1(request_value[0], (*data) + 1, (*len) - 1);
+        } else {
+            if (dev == hid_dev0) {
+                buf.interface = 0;
+            } else if (dev == hid_dev1) {
+                buf.interface = 1;
+                k_mutex_lock(&get_report_mutex, K_FOREVER);
+                get_report_response_ready = false;
+                k_mutex_unlock(&get_report_mutex);
+            }
+            buf.report_id = request_value[0];
+            buf.len = *len - 1;
+            memcpy(buf.data, (*data) + 1, (*len) - 1);
+            CHK(k_msgq_put(&set_report_q, &buf, K_NO_WAIT));
         }
     } else {
         LOG_ERR("no report ID?");
@@ -612,7 +660,16 @@ static int get_report_cb(const struct device* dev, struct usb_setup_packet* setu
     if (dev == hid_dev0) {
         *len = handle_get_report0(request_value[0], (*data) + 1, CONFIG_SIZE);
     } else if (dev == hid_dev1) {
-        *len = handle_get_report1(request_value[0], (*data) + 1, CONFIG_SIZE);
+        k_mutex_lock(&get_report_mutex, K_FOREVER);
+        if (get_report_response_ready) {
+            memcpy((*data) + 1, get_report_buf, CONFIG_SIZE);
+            *len = CONFIG_SIZE;
+        } else {
+            LOG_INF("response not ready");
+            *len = 0;
+        }
+        get_report_response_ready = false;
+        k_mutex_unlock(&get_report_mutex);
     }
     (*len)++;
 
@@ -623,6 +680,16 @@ static void int_in_ready_cb0(const struct device* dev) {
     k_sem_give(&usb_sem0);
 }
 
+static void int_out_ready_cb0(const struct device* dev) {
+    static struct report_type buf;
+    uint32_t len;
+    if (CHK(hid_int_ep_read(hid_dev0, buf.data, sizeof(buf.data), &len))) {
+        buf.interface = OUR_OUT_INTERFACE;
+        buf.len = len;
+        CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
+    }
+}
+
 static void int_in_ready_cb1(const struct device* dev) {
     k_sem_give(&usb_sem1);
 }
@@ -631,6 +698,7 @@ static const struct hid_ops ops0 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
     .int_in_ready = int_in_ready_cb0,
+    .int_out_ready = int_out_ready_cb0,
 };
 
 static const struct hid_ops ops1 = {
@@ -798,6 +866,7 @@ void my_mutexes_init() {
     for (int i = 0; i < (int8_t) MutexId::N; i++) {
         k_mutex_init(&mutexes[i]);
     }
+    k_mutex_init(&get_report_mutex);
 }
 
 void my_mutex_enter(MutexId id) {
@@ -851,13 +920,19 @@ int main() {
     struct report_type incoming_report;
     struct descriptor_type incoming_descriptor;
     struct disconnected_type disconnected_item;
+    static struct set_report_type set_report_item;
+    static uint8_t get_report_tmp_buf[64];
+    bool process_pending = false;
+    bool get_report_response_pending = false;
 
     while (true) {
-        while (!k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
-            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.conn_idx << 8);
+        if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
+            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
+            process_pending = true;
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
             process_mapping(true);
+            process_pending = false;
         }
         if (!k_sem_take(&usb_sem0, K_NO_WAIT)) {
             if (!send_report(do_send_report)) {
@@ -870,16 +945,40 @@ int main() {
             }
         }
 
+        if (!k_msgq_get(&set_report_q, &set_report_item, K_NO_WAIT)) {
+            if (set_report_item.interface == 0) {
+                handle_set_report0(set_report_item.report_id, set_report_item.data, set_report_item.len);
+            }
+            if (set_report_item.interface == 1) {
+                handle_set_report1(set_report_item.report_id, set_report_item.data, set_report_item.len);
+                get_report_response_pending = true;
+            }
+        }
+        if (get_report_response_pending) {
+            get_report_response_pending = false;
+            uint16_t ret = handle_get_report1(REPORT_ID_CONFIG, get_report_tmp_buf, sizeof(get_report_tmp_buf));
+            if (ret > 0) {
+                k_mutex_lock(&get_report_mutex, K_FOREVER);
+                get_report_response_ready = true;
+                memcpy(get_report_buf, get_report_tmp_buf, sizeof(get_report_buf));
+                k_mutex_unlock(&get_report_mutex);
+            }
+        }
+
         while (!k_msgq_get(&disconnected_q, &disconnected_item, K_NO_WAIT)) {
-            LOG_INF("clear_descriptor_data conn_idx=%d", disconnected_item.conn_idx);
-            clear_descriptor_data(disconnected_item.conn_idx);
+            LOG_INF("device_disconnected_callback conn_idx=%d", disconnected_item.conn_idx);
+            device_disconnected_callback(disconnected_item.conn_idx);
         }
 
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
-            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8);
+            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
         }
 
+        if (resume_pending) {
+            resume_pending = false;
+            suspended = false;
+        }
         if (config_updated) {
             set_mapping_from_config();
             config_updated = false;
@@ -891,8 +990,11 @@ int main() {
         }
 
         if (need_to_persist_config) {
-            persist_config();
+            int64_t t0 = k_uptime_get();
+            persist_config_return_code = persist_config();
+            LOG_INF("persist_config took %lld ms\n", k_uptime_get() - t0);
             need_to_persist_config = false;
+            get_report_response_pending = true;
         }
 
         // without this sleep, some devices won't pair; some thread priority issue?

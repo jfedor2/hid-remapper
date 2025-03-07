@@ -25,7 +25,10 @@
                 <button id="load_from_device" type="button" class="btn btn-primary w-100">Load from device</button>
             </div>
             <div class="col">
-                <button id="save_to_device" type="button" class="btn btn-primary w-100">Save to device</button>
+                <button id="save_to_device" type="button" class="btn btn-primary w-100 position-relative">
+                    <span id="save_to_device_checkmark" class="position-absolute top-0 start-100 translate-middle badge bg-success rounded-pill hub_port_badge d-none">&check;</span>
+                    <span>Save to device</span>
+                </button>
             </div>
         </div>
 
@@ -182,6 +185,18 @@
                             <option value="2">Switch gamepad</option>
                             <option value="3">PS4 arcade stick</option>
                             <option value="4">Stadia controller</option>
+                            <option value="5">XAC/Flex compatible</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="input_labels_dropdown" class="col-form-label">Input labels</label>
+                    </div>
+                    <div class="col-auto">
+                        <select class="form-select" id="input_labels_dropdown">
+                            <option value="0">mouse</option>
+                            <option value="1">gamepad</option>
                         </select>
                     </div>
                 </div>
@@ -238,6 +253,9 @@
 
                 </div>
 
+                <div class="row mt-4">
+                    <em>Expression /* comments */ are not saved to device, but they are preserved in exported JSON files.</em>
+                </div>
             </div>
 
             <div class="tab-pane" id="nav-actions" role="tabpanel" tabindex="0">
@@ -304,7 +322,7 @@
         </div>
 
         <div class="text-center text-muted mt-4 mb-4">
-            For more information, see <a class="text-reset" href="https://github.com/jfedor2/hid-remapper">github.com/jfedor2/hid-remapper</a>.
+            For more information, see <a class="text-reset" href="https://www.remapper.org/">remapper.org</a>.
         </div>
 
     </div>
@@ -540,8 +558,20 @@
                                 <option value="15">15</option>
                             </select>
                         </div>
+                        <div class="col"></div>
+                        <div class="col-auto">
+                            <label for="input_labels_modal_dropdown" class="col-form-label">Input labels</label>
+                        </div>
+                        <div class="col-auto">
+                            <select class="form-select" id="input_labels_modal_dropdown">
+                                <option value="0">mouse</option>
+                                <option value="1">gamepad</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="col mouse_usages mt-3">
+                    </div>
+                    <div class="col gamepad_usages mt-3">
                     </div>
                     <div class="col keyboard_usages mt-3">
                     </div>
@@ -590,6 +620,8 @@
                         </div>
                     </div>
                     <div class="col mouse_usages mt-3">
+                    </div>
+                    <div class="col gamepad_usages mt-3">
                     </div>
                     <div class="col keyboard_usages mt-3">
                     </div>

@@ -89,6 +89,10 @@ All expressions are evaluated once per millisecond (technically USB frame), in o
 
 See the "Examples" section in the web configuration tool for some ideas on how registers can be used in practice.
 
+## Comments
+
+You can put `/* comments */` in expressions, but they are not saved to the device, so if you save your configuration and later load it from the device, the comments will be lost. But they are preserved when you export the configuration to a JSON file and later import it.
+
 ## Tips and tricks
 
 Use `input_state` to fetch the state of relative usages like a mouse axis and non-binary absolute usages like a D-pad or an analog stick or trigger. Use `input_state_binary` to fetch the state of binary absolute usages (buttons).
@@ -114,15 +118,24 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `0x00120034` | | 0x00120034 | Puts the value on the stack. Use for usage codes. |
 | `input_state` | _usage_ | state of _usage_ input | |
 | `input_state_binary` | _usage_ | state of _usage_ input | Use for buttons. |
+| `input_state_scaled` | _usage_ | state of _usage_ input | Scaled to 0-255 range for non-binary absolute usages. |
 | `prev_input_state` | _usage_ | previous state of _usage_ input | |
 | `prev_input_state_binary` | _usage_ | previous state of _usage_ input | Use for buttons. |
+| `prev_input_state_scaled` | _usage_ | previous state of _usage_ input | Scaled to 0-255 range for non-binary absolute usages. |
 | `add` | _x_, _y_ | _x + y_ | |
+| `sub` | _x_, _y_ | _x - y_ | |
 | `mul` | _x_, _y_ | _x * y_ | |
+| `div` | _x_, _y_ | _x / y_ | 0 if y == 0. |
 | `eq` | _x_, _y_ | _x == y_ | 1 if equal, 0 otherwise. |
 | `mod` | _x_, _y_ | _x % y_ | Modulo function. |
 | `gt` | _x_, _y_ | _x > y_ | 1 if x > y, 0 otherwise. |
+| `lt` | _x_, _y_ | _x < y_ | 1 if x < y, 0 otherwise. |
+| `min` | _x_, _y_ | _min(x, y)_ | x if x < y, y otherwise. |
+| `max` | _x_, _y_ | _max(x, y)_ | x if x > y, y otherwise. |
 | `not` | _x_ | _!x_ | 1 if x == 0, 0 otherwise. |
+| `ifte` | _x_, _y_, _z_ | _x ? y : z_ | y if x != 0, z otherwise. |
 | `abs` | _x_ | _abs(x)_ | -x if x < 0, x otherwise. |
+| `sign` | _x_ | _sign(x)_ | 1 if x > 0, -1 if x < 0, 0 if x == 0. |
 | `sin` | _x_ | _sin(x)_ | Sine function, x in degrees. |
 | `cos` | _x_ | _cos(x)_ | Cosine function, x in degrees. |
 | `atan2` | _x_, _y_ | _atan2(x, y)_ | Two-argument arctangent. |
@@ -131,15 +144,21 @@ Here's a list of all operations that can be used in an expression. Each operatio
 | `relu`| _x_ | _relu(x)_ | 0 if x < 0, x otherwise. |
 | `clamp` | _x_, _y_, _z_ | _clamp(x, y, z)_ | y if x < y, z if x > z, x otherwise. |
 | `dup` | _x_ | _x_, _x_ | Duplicates top value on the stack. |
+| `swap` | _x_, _y_ | _y_, _x_ | Swaps top two values on the stack. |
 | `bitwise_or` | _x_, _y_ | _x \| y_ | |
 | `bitwise_and` | _x_, _y_ | _x & y_ | |
 | `bitwise_not` | _x_ | _~x_ | |
 | `store` | _x_, _n_ | | Puts x in register n |
 | `recall` | _n_ | register n contents | |
 | `time` | | current time | In milliseconds, starting at some arbitrary point. |
+| `time_sec` | | current time | In seconds (but with millisecond precision), starting at some arbitrary point. Wraps less often than `time`. |
 | `layer_state` | | _layer\_state_ | Bit mask of currently active layers. |
 | `sticky_state` | _usage_ | _sticky\_state(usage)_ | Bit mask of layers on which given usage is in sticky state. |
 | `tap_state` | _usage_ | _tap\_state(usage)_ | 1 if input is in tap state, 0 otherwise. |
 | `hold_state` | _usage_ | _hold\_state(usage)_ | 1 if input is in hold state, 0 otherwise. |
 | `port` | _port number_ | | Sets the value of the port register that determines which input state is fetched by `input_state` etc. Defaults to 0 at the beginning of each mapping engine iteration, which means "all ports". |
-| `dpad` | _left_state_, _right_state_, _up_state_, _down_state_ | d-pad output state | Takes four input states and produces a 0-8 value that can be used as a d-pad (hat switch) output on a gamepad. |
+| `plugged_in` | | plugged-in state | 1 if something is plugged into the currently selected port or if selected port is 0, 0 otherwise. |
+| `deadzone` | _x_, _y_, _deadzone\_radius_ | _new\_x_, _new\_y_ | Applies a radial deadzone to stick inputs.
+| `deadzone2` | _x_, _y_, _inner\_deadzone_, _outer\_deadzone_ | _new\_x_, _new\_y_ | Applies a radial inner and outer deadzone to stick inputs.
+| `dpad` | _left_state_, _right_state_, _up_state_, _down_state_ | d-pad output state | Takes four input states and produces a 0-8 value like the one used by the d-pad (hat switch). |
+| `monitor` | _x_, _usage_ | | Sends x to the Monitor as the given usage. |

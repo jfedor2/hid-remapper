@@ -8,7 +8,7 @@ const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
 const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 12;
+const CONFIG_VERSION = 17;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -32,6 +32,7 @@ const QUIRK_SIZE_MASK = 0b00111111;
 const LAYERS_USAGE_PAGE = 0xFFF10000;
 const EXPR_USAGE_PAGE = 0xFFF30000;
 const MIDI_USAGE_PAGE = 0xFFF70000;
+const BUTTON_USAGE_PAGE = 0x00090000;
 
 const RESET_INTO_BOOTSEL = 1;
 const SET_CONFIG = 2;
@@ -40,8 +41,8 @@ const CLEAR_MAPPING = 4;
 const ADD_MAPPING = 5;
 const GET_MAPPING = 6;
 const PERSIST_CONFIG = 7;
-const GET_OUR_USAGES = 8
-const GET_THEIR_USAGES = 9
+const GET_OUR_USAGES = 8;
+const GET_THEIR_USAGES = 9;
 const SUSPEND = 10;
 const RESUME = 11;
 const PAIR_NEW_DEVICE = 12;
@@ -58,6 +59,9 @@ const SET_MONITOR_ENABLED = 22;
 const CLEAR_QUIRKS = 23;
 const ADD_QUIRK = 24;
 const GET_QUIRK = 25;
+
+const PERSIST_CONFIG_SUCCESS = 1;
+const PERSIST_CONFIG_CONFIG_TOO_BIG = 2;
 
 const ops = {
     "PUSH": 0,
@@ -97,9 +101,29 @@ const ops = {
     "PORT": 34,
     "DPAD": 35,
     "EOL": 36,
-}
+    "INPUT_STATE_FP32": 37,
+    "PREV_INPUT_STATE_FP32": 38,
+    "MIN": 39,
+    "MAX": 40,
+    "IFTE": 41,
+    "DIV": 42,
+    "SWAP": 43,
+    "MONITOR": 44,
+    "SIGN": 45,
+    "SUB": 46,
+    "PRINT_IF": 47,
+    "TIME_SEC": 48,
+    "LT": 49,
+    "PLUGGED_IN": 50,
+    "INPUT_STATE_SCALED": 51,
+    "PREV_INPUT_STATE_SCALED": 52,
+    "DEADZONE": 53,
+    "DEADZONE2": 54,
+};
 
 const opcodes = Object.fromEntries(Object.entries(ops).map(([key, value]) => [value, key]));
+
+const expr_re = /((?:\/\*.*?\*\/)?)((?:(?!\/\*).)*)/gs;
 
 const UINT8 = Symbol('uint8');
 const UINT16 = Symbol('uint16');
@@ -121,6 +145,7 @@ let config = {
     'ignore_auth_dev_inputs': false,
     'macro_entry_duration': DEFAULT_MACRO_ENTRY_DURATION,
     'gpio_output_mode': 0,
+    'input_labels': 0,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -145,8 +170,12 @@ let monitor_enabled = false;
 let monitor_min_val = {};
 let monitor_max_val = {};
 let unique_id_counter = 0;
+let save_to_device_checkmark_timeout_id = null;
+let busy = false;
 const ignored_usages = new Set([
 ]);
+let modal_return_mapping = null;
+let modal_return_element = null;
 
 document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("open_device").addEventListener("click", open_device);
@@ -175,6 +204,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("interval_override_dropdown").addEventListener("change", interval_override_onchange);
     document.getElementById("our_descriptor_number_dropdown").addEventListener("change", our_descriptor_number_onchange);
     document.getElementById("gpio_output_mode_dropdown").addEventListener("change", gpio_output_mode_onchange);
+    document.getElementById("input_labels_dropdown").addEventListener("change", input_labels_onchange("input_labels_dropdown"));
+    document.getElementById("input_labels_modal_dropdown").addEventListener("change", input_labels_onchange("input_labels_modal_dropdown"));
     document.getElementById("ignore_auth_dev_inputs_checkbox").addEventListener("change", ignore_auth_dev_inputs_onchange);
 
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
@@ -195,26 +226,36 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 async function open_device() {
+    if (busy) {
+        return;
+    }
+    busy = true;
+
     clear_error();
     let success = false;
-    const devices = await navigator.hid.requestDevice({
-        filters: [{ usagePage: 0xFF00, usage: 0x0020 }]
-    }).catch((err) => { display_error(err); });
-    const config_interface = devices?.find(d => d.collections.some(c => c.usagePage == 0xff00));
-    if (config_interface !== undefined) {
-        device = config_interface;
-        if (!device.opened) {
-            await device.open().catch((err) => { display_error(err + "\nIf you're on Linux, you might need to give yourself permissions to the appropriate /dev/hidraw* device."); });
+
+    try {
+        const devices = await navigator.hid.requestDevice({
+            filters: [{ usagePage: 0xFF00, usage: 0x0020 }]
+        });
+        const config_interface = devices?.find(d => d.collections.some(c => c.usagePage == 0xff00));
+        if (config_interface !== undefined) {
+            device = config_interface;
+            if (!device.opened) {
+                await device.open().catch((err) => { display_error(err + "\nIf you're on Linux, you might need to give yourself permissions to the appropriate /dev/hidraw* device."); });
+            }
+            success = device.opened;
+            success &&= await check_device_version();
+            if (success) {
+                device.addEventListener('inputreport', input_report_received);
+                await set_monitor_enabled(monitor_enabled);
+                await get_usages_from_device();
+                setup_usages_modals();
+                bluetooth_buttons_set_visibility(device.productName.includes("Bluetooth"));
+            }
         }
-        success = device.opened;
-        success &&= await check_device_version();
-        if (success) {
-            device.addEventListener('inputreport', input_report_received);
-            await set_monitor_enabled(monitor_enabled);
-            await get_usages_from_device();
-            setup_usages_modals();
-            bluetooth_buttons_set_visibility(device.productName.includes("Bluetooth"));
-        }
+    } catch (e) {
+        display_error(e);
     }
 
     device_buttons_set_disabled_state(!success);
@@ -222,13 +263,23 @@ async function open_device() {
     if (!success) {
         device = null;
     }
+
+    busy = false;
 }
 
 async function load_from_device() {
     if (device == null) {
         return;
     }
+
+    if (busy) {
+        return;
+    }
+    busy = true;
+
     clear_error();
+
+    document.getElementById('load_from_device').disabled = true;
 
     try {
         await send_feature_command(GET_CONFIG);
@@ -353,13 +404,31 @@ async function load_from_device() {
     } catch (e) {
         display_error(e);
     }
+
+    if (device != null) {
+        document.getElementById('load_from_device').disabled = false;
+    }
+
+    busy = false;
 }
 
 async function save_to_device() {
     if (device == null) {
         return;
     }
+
+    if (busy) {
+        return;
+    }
+    busy = true;
+
     clear_error();
+
+    document.getElementById('save_to_device').disabled = true;
+    if (save_to_device_checkmark_timeout_id != null) {
+        clearTimeout(save_to_device_checkmark_timeout_id);
+    }
+    document.getElementById('save_to_device_checkmark').classList.add('d-none');
 
     try {
         await send_feature_command(SUSPEND);
@@ -468,10 +537,34 @@ async function save_to_device() {
         }
 
         await send_feature_command(PERSIST_CONFIG);
+
+        let [persist_config_return_code] = await read_config_feature([UINT8]);
+
         await send_feature_command(RESUME);
+
+        switch (persist_config_return_code) {
+            case PERSIST_CONFIG_SUCCESS:
+                document.getElementById('save_to_device_checkmark').classList.remove('d-none');
+                save_to_device_checkmark_timeout_id = setTimeout(() => {
+                    document.getElementById('save_to_device_checkmark').classList.add('d-none');
+                    save_to_device_checkmark_timeout_id = null;
+                }, 3000);
+                break;
+            case PERSIST_CONFIG_CONFIG_TOO_BIG:
+                display_error('Configuration too big to persist.');
+                break;
+            default:
+                throw new Error('Unknown PERSIST_CONFIG return code (' + return_code + ').');
+        }
     } catch (e) {
         display_error(e);
     }
+
+    if (device != null) {
+        document.getElementById('save_to_device').disabled = false;
+    }
+
+    busy = false;
 }
 
 async function do_get_usages_from_device(command, rle_count) {
@@ -503,19 +596,15 @@ async function do_get_usages_from_device(command, rle_count) {
 }
 
 async function get_usages_from_device() {
-    try {
-        await send_feature_command(GET_CONFIG);
-        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
-            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
-        check_received_version(config_version);
+    await send_feature_command(GET_CONFIG);
+    const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
+        await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
+    check_received_version(config_version);
 
-        extra_usages['target'] =
-            await do_get_usages_from_device(GET_OUR_USAGES, our_usage_count);
-        extra_usages['source'] =
-            await do_get_usages_from_device(GET_THEIR_USAGES, their_usage_count);
-    } catch (e) {
-        display_error(e);
-    }
+    extra_usages['target'] =
+        await do_get_usages_from_device(GET_OUR_USAGES, our_usage_count);
+    extra_usages['source'] =
+        await do_get_usages_from_device(GET_THEIR_USAGES, their_usage_count);
 }
 
 function set_config_ui_state() {
@@ -531,6 +620,8 @@ function set_config_ui_state() {
     document.getElementById('ignore_auth_dev_inputs_checkbox').checked = config['ignore_auth_dev_inputs'];
     document.getElementById('macro_entry_duration_input').value = config['macro_entry_duration'];
     document.getElementById('gpio_output_mode_dropdown').value = config['gpio_output_mode'];
+    document.getElementById('input_labels_dropdown').value = config['input_labels'];
+    document.getElementById('input_labels_modal_dropdown').value = config['input_labels'];
 }
 
 function set_mappings_ui_state() {
@@ -555,7 +646,7 @@ function set_macros_ui_state() {
             for (const item of entry) {
                 const item_element = add_macro_item(entry_element);
                 const usage_button_element = item_element.querySelector('.macro_item_usage');
-                usage_button_element.innerText = readable_target_usage_name(item);
+                usage_button_element.querySelector('.button_label').innerText = readable_target_usage_name(item);
                 usage_button_element.title = item;
                 usage_button_element.setAttribute('data-hid-usage', item);
             }
@@ -601,7 +692,7 @@ function set_expressions_ui_state() {
         }
 
         const expression_input = document.getElementById('expression_' + expr_i).querySelector('.expression_input');
-        const expression_text = expr.split(/\s+/).map(json_to_ui).join(' ').replace(/ \n /g, '\n');
+        const expression_text = [...expr.matchAll(expr_re).map(x => x[1]+x[2].split(/\s+/).map(json_to_ui).join(' ').replace(/( )?\n /g, '\n'))].join('');
         expression_input.value = expression_text;
 
         const eols = expression_text.match(/\n/g);
@@ -655,6 +746,9 @@ function set_ui_state() {
     if (config['version'] < 12) {
         config['quirks'] = [];
     }
+    if (config['version'] < 16) {
+        config['input_labels'] = 0;
+    }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
     }
@@ -704,17 +798,20 @@ function add_mapping(mapping) {
         'source_name' in mapping ? mapping['source_name'] : readable_usage_name(mapping['source_usage']);
     source_button.setAttribute('data-hid-usage', mapping['source_usage']);
     source_button.title = mapping['source_usage'];
-    source_button.addEventListener("click", show_usage_modal(mapping, 'source', source_button));
+    source_button.addEventListener("click", show_usage_modal(mapping, 'source', clone));
     set_port_badge(source_button, mapping['source_port']);
     const target_button = clone.querySelector(".target_button");
     target_button.querySelector('.button_label').innerText = readable_target_usage_name(mapping['target_usage']);
     target_button.setAttribute('data-hid-usage', mapping['target_usage']);
     target_button.title = mapping['target_usage'];
-    target_button.addEventListener("click", show_usage_modal(mapping, 'target', target_button));
+    target_button.addEventListener("click", show_usage_modal(mapping, 'target', clone));
     set_port_badge(target_button, mapping['target_port']);
     container.appendChild(clone);
     set_forced_layers(mapping, clone);
     set_forced_flags(mapping, clone);
+    if (modal_return_mapping === mapping) {
+        modal_return_element = clone;
+    }
 }
 
 function download_json() {
@@ -809,8 +906,23 @@ async function send_feature_command(command, fields = [], version = CONFIG_VERSI
 }
 
 async function read_config_feature(fields = []) {
-    const data_with_report_id = await device.receiveFeatureReport(REPORT_ID_CONFIG);
-    const data = new DataView(data_with_report_id.buffer, 1);
+    let attempts_left = 10;
+    let delay = 2;
+    let data;
+    while (true) {
+        const data_with_report_id = await device.receiveFeatureReport(REPORT_ID_CONFIG);
+        data = new DataView(data_with_report_id.buffer, 1);
+        if (data.byteLength > 0) {
+            break;
+        } else {
+            if ((--attempts_left) > 0) {
+                await (new Promise(resolve => setTimeout(resolve, delay)));
+                delay *= 2;
+                continue;
+            }
+            throw new Error('Error in read_config_feature (given up retrying).');
+        }
+    }
     check_crc(data);
     let ret = [];
     let pos = 0;
@@ -862,7 +974,7 @@ function add_crc(data) {
 }
 
 function check_json_version(config_version) {
-    if (!([3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(config_version))) {
+    if (!([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].includes(config_version))) {
         throw new Error("Incompatible version.");
     }
 }
@@ -878,7 +990,7 @@ async function check_device_version() {
     // device because it could be version X, ignore our GET_CONFIG call with version Y and
     // just happen to have Y at the right place in the buffer from some previous call done
     // by some other software.
-    for (const version of [CONFIG_VERSION, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]) {
+    for (const version of [CONFIG_VERSION, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]) {
         await send_feature_command(GET_CONFIG, [], version);
         const [received_version] = await read_config_feature([UINT8]);
         if (received_version == version) {
@@ -950,6 +1062,9 @@ function layer_checkbox_onchange(mapping, element, layer) {
 
 function expression_onchange(i) {
     const ui_to_json = function (op) {
+        if (op.startsWith('/*')) {
+            return op;
+        }
         if (op.toLowerCase().startsWith('0x')) {
             if (isNaN(parseInt(op, 16))) {
                 throw new Error('Invalid expression: "' + op + '"');
@@ -973,7 +1088,10 @@ function expression_onchange(i) {
         const expr_input = document.getElementById('expression_' + i).querySelector('.expression_input');
         try {
             config['expressions'][i] =
-                expr_input.value.replace(/\n/g, " eol ").split(/\s+/).filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
+                [...expr_input.value.matchAll(expr_re).map(x => [
+                    x[1],
+                    ...x[2].replace(/\n/g, " eol ").split(/\s+/)
+                ])].flat().filter((x) => (x.length > 0)).map(ui_to_json).join(' ');
             expr_input.classList.remove('is-invalid');
         } catch (e) {
             expr_input.classList.add('is-invalid');
@@ -982,8 +1100,12 @@ function expression_onchange(i) {
     }
 }
 
-function show_usage_modal(mapping, source_or_target, element) {
+function show_usage_modal(mapping_, source_or_target, element_) {
     return function () {
+        // When set_mappings_ui_state() recreates the elements, it will update modal_return_element to
+        // the correct element for the mapping we save in modal_return_mapping here.
+        modal_return_mapping = mapping_;
+        modal_return_element = element_;
         // XXX it would be better not to do this every time we show the modal
         const modal_element = document.getElementById(
             (source_or_target == 'source' ? 'source' : 'target') + '_usage_modal');
@@ -992,6 +1114,9 @@ function show_usage_modal(mapping, source_or_target, element) {
             let clone = button.cloneNode(true);
             button.parentNode.replaceChild(clone, button); // to clear existing event listeners
             clone.addEventListener("click", function () {
+                const mapping = modal_return_mapping;
+                const element = (source_or_target == 'macro_item') ? modal_return_element :
+                    modal_return_element.querySelector('.' + source_or_target + '_button');
                 let usage = clone.getAttribute('data-hid-usage');
                 if (mapping !== null) {
                     mapping[source_or_target + '_usage'] = usage;
@@ -1021,15 +1146,17 @@ function show_usage_modal(mapping, source_or_target, element) {
         if (source_or_target == "macro_item") {
             hub_port_container.classList.add('d-none');
         } else {
-            let clone = hub_port_container.cloneNode(true);
-            hub_port_container.parentElement.replaceChild(clone, hub_port_container); // to clear existing event listeners
             if (source_or_target == "target") {
-                clone.classList.remove('d-none');
+                hub_port_container.classList.remove('d-none');
             }
-            const hub_port_dropdown = clone.querySelector('.hub_port_dropdown');
-            hub_port_dropdown.value = mapping[source_or_target + '_port'];
-            hub_port_dropdown.addEventListener("change", function () {
-                const hub_port = parseInt(hub_port_dropdown.value, 10)
+            const hub_port_dropdown = hub_port_container.querySelector('.hub_port_dropdown');
+            const clone = hub_port_dropdown.cloneNode(true);
+            hub_port_dropdown.parentElement.replaceChild(clone, hub_port_dropdown); // to clear existing event listeners
+            clone.value = mapping_[source_or_target + '_port'];
+            clone.addEventListener("change", function () {
+                const mapping = modal_return_mapping;
+                const element = modal_return_element.querySelector('.' + source_or_target + '_button');
+                const hub_port = parseInt(clone.value, 10)
                 set_port_badge(element, hub_port);
                 mapping[source_or_target + '_port'] = hub_port;
             });
@@ -1066,15 +1193,22 @@ function map_this_onclick(usage) {
     }
 }
 
+function set_label_groups_visibility() {
+    document.getElementById('source_usage_modal').querySelector('.mouse_usages').classList.toggle('d-none', config['input_labels'] != 0);
+    document.getElementById('source_usage_modal').querySelector('.gamepad_usages').classList.toggle('d-none', config['input_labels'] != 1);
+}
+
 function setup_usages_modals() {
     setup_usage_modal('source');
     setup_usage_modal('target');
+    set_label_groups_visibility();
 }
 
 function setup_usage_modal(source_or_target) {
     const modal_element = document.getElementById(source_or_target + '_usage_modal');
     let usage_classes = {
         'mouse': modal_element.querySelector('.mouse_usages'),
+        'gamepad': modal_element.querySelector('.gamepad_usages'),
         'keyboard': modal_element.querySelector('.keyboard_usages'),
         'media': modal_element.querySelector('.media_usages'),
         'other': modal_element.querySelector('.other_usages'),
@@ -1084,18 +1218,31 @@ function setup_usage_modal(source_or_target) {
         clear_children(element);
     }
     let template = document.getElementById('usage_button_template');
-    const relevant_usages = usages[source_or_target == 'source' ? 'source' : config['our_descriptor_number']];
-    for (const [usage, usage_def] of Object.entries(relevant_usages)) {
-        let clone = template.content.cloneNode(true).firstElementChild;
-        clone.innerText = usage_def['name'];
-        clone.title = usage;
-        clone.setAttribute('data-hid-usage', usage);
-        usage_classes[usage_def['class']].appendChild(clone);
-    }
-    for (const usage_ of extra_usages[source_or_target]) {
-        if (!(usage_ in relevant_usages)) {
+    const add_usage_buttons = (relevant_usages) => {
+        for (const [usage, usage_def] of Object.entries(relevant_usages)) {
             let clone = template.content.cloneNode(true).firstElementChild;
-            clone.innerText = usage_;
+            clone.innerText = usage_def['name'];
+            clone.title = usage;
+            clone.setAttribute('data-hid-usage', usage);
+            usage_classes[usage_def['class']].appendChild(clone);
+        }
+    }
+
+    let known_usages;
+    if (source_or_target == 'source') {
+        add_usage_buttons(usages['source_0']);
+        add_usage_buttons(usages['source_1']);
+        add_usage_buttons(usages['source']);
+        known_usages = { ...usages['source_0'], ...usages['source_1'], ...usages['source'] };
+    } else {
+        add_usage_buttons(usages[config['our_descriptor_number']]);
+        known_usages = usages[config['our_descriptor_number']];
+    }
+
+    for (const usage_ of extra_usages[source_or_target]) {
+        if (!(usage_ in known_usages)) {
+            let clone = template.content.cloneNode(true).firstElementChild;
+            clone.innerText = readable_usage_name(usage_);
             clone.title = usage_;
             clone.setAttribute('data-hid-usage', usage_);
             usage_classes['extra'].appendChild(clone);
@@ -1255,6 +1402,16 @@ function macro_entry_duration_onchange() {
     config['macro_entry_duration'] = value;
 }
 
+function input_labels_onchange(element_id) {
+    return function () {
+        config['input_labels'] = parseInt(document.getElementById(element_id).value, 10);
+        document.getElementById("input_labels_dropdown").value = config['input_labels'];
+        document.getElementById("input_labels_modal_dropdown").value = config['input_labels'];
+        set_mappings_ui_state();
+        set_label_groups_visibility();
+    }
+}
+
 function load_example(n) {
     config = structuredClone(examples[n]['config']);
     set_ui_state();
@@ -1317,6 +1474,18 @@ function layer_list_to_mask(layers) {
 }
 
 function readable_usage_name(usage, default_to_hex = true) {
+    if (usage in usages['source_' + config['input_labels']]) {
+        return usages['source_' + config['input_labels']][usage]['name'];
+    }
+    if (usage in usages['source']) {
+        return usages['source'][usage]['name'];
+    }
+    if (usage in usages['source_extra']) {
+        return usages['source_extra'][usage]['name'];
+    }
+    if (((usage & 0xFFFF0000) >>> 0) == BUTTON_USAGE_PAGE) {
+        return 'Button ' + (usage & 0xFFFF);
+    }
     if (((usage & 0xFFFF0000) >>> 0) == MIDI_USAGE_PAGE) {
         const status = (usage >> 8) & 0xF0;
         const channel = (usage >> 8) & 0x0F;
@@ -1336,7 +1505,7 @@ function readable_usage_name(usage, default_to_hex = true) {
                 return prefix + ' PB';
         }
     }
-    return (usage in usages['source']) ? usages['source'][usage]['name'] : (default_to_hex ? usage : '');
+    return default_to_hex ? usage : '';
 }
 
 function readable_target_usage_name(usage) {
@@ -1401,7 +1570,7 @@ function expr_to_elems(expr) {
         throw new Error('Invalid expression: "' + elem + '"');
     }
 
-    return expr.split(/\s+/).filter((x) => (x.length > 0)).map(convert_elem);
+    return [...expr.matchAll(expr_re).map(x => x[2])].join('').split(/\s+/).filter((x) => (x.length > 0)).map(convert_elem);
 }
 
 function validate_ui_expressions() {
@@ -1451,12 +1620,13 @@ function update_monitor_ui(usage, value, hub_port) {
 
     element.querySelector('.monitor_last_value').innerText = value;
     element.classList.add('bg-light');
-    if (!(usage in monitor_min_val) || (value < monitor_min_val[usage])) {
-        monitor_min_val[usage] = value;
+    const key = usage + '_' + hub_port;
+    if (!(key in monitor_min_val) || (value < monitor_min_val[key])) {
+        monitor_min_val[key] = value;
         element.querySelector('.monitor_min_value').innerText = value;
     }
-    if (!(usage in monitor_max_val) || (value > monitor_max_val[usage])) {
-        monitor_max_val[usage] = value;
+    if (!(key in monitor_max_val) || (value > monitor_max_val[key])) {
+        monitor_max_val[key] = value;
         element.querySelector('.monitor_max_value').innerText = value;
     }
 }

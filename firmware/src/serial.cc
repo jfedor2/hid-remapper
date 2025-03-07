@@ -127,8 +127,29 @@ void send_escaped_byte(uint8_t b) {
     }
 }
 
-void serial_write(const uint8_t* data, uint16_t len) {
+bool serial_write(const uint8_t* data, uint16_t len, bool drop_if_blocking) {
     uint32_t crc = crc32(data, len);
+
+    if (drop_if_blocking) {
+        // determine how many bytes would be written, including escaped characters
+        uint16_t bytes_to_send = len + 2 + 4;
+        for (uint16_t i = 0; i < len; i++) {
+            if ((data[i] == END) || (data[i] == ESC)) {
+                bytes_to_send++;
+            }
+        }
+        for (uint16_t i = 0; i < 4; i++) {
+            uint8_t b = crc >> (i * 8);
+            if ((b == END) || (b == ESC)) {
+                bytes_to_send++;
+            }
+        }
+        // drop if there's not enough space in the buffer
+        // uart also has as fifo, but it's not long
+        if (bytes_to_send > BUFFER_SIZE - buf_items) {
+            return false;
+        }
+    }
 
     my_putc(END);
 
@@ -141,4 +162,10 @@ void serial_write(const uint8_t* data, uint16_t len) {
     }
 
     my_putc(END);
+
+    return true;
+}
+
+bool serial_write_nonblocking(const uint8_t* data, uint16_t len) {
+    return serial_write(data, len, true);
 }
