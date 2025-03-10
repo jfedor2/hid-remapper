@@ -104,8 +104,12 @@ const uint8_t* configuration_descriptors[] = {
 
 char const* string_desc_arr[] = {
     (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
-    "RP2040",                      // 1: Manufacturer
-    "HID Remapper XXXX",           // 2: Product
+#ifdef PICO_RP2350
+    "RP2350",  // 1: Manufacturer
+#else
+    "RP2040",  // 1: Manufacturer
+#endif
+    "HID Remapper XXXX",  // 2: Product
 };
 
 // Invoked when received GET DEVICE DESCRIPTOR
