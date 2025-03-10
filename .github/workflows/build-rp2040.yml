@@ -55,6 +55,11 @@ jobs:
           PICO_BOARD=pico2 cmake ..
           make remapper remapper_dual_a remapper_dual_b
           cd ..
+          mkdir build-waveshare_rp2350_usb_a
+          cd build-waveshare_rp2350_usb_a
+          PICO_BOARD=waveshare_rp2350_usb_a cmake ..
+          make remapper
+          cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
           mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board.uf2
@@ -65,6 +70,7 @@ jobs:
           mv build-pico2/remapper.uf2 artifacts/remapper_pico2.uf2
           mv build-pico2/remapper_dual_a.uf2 artifacts/remapper_pico2_dual_a.uf2
           mv build-pico2/remapper_dual_b.uf2 artifacts/remapper_pico2_dual_b.uf2
+          mv build-waveshare_rp2350_usb_a/remapper.uf2 artifacts/remapper_waveshare_rp2350_usb_a.uf2
         working-directory: ./firmware
       - uses: actions/upload-artifact@v4
         with:
