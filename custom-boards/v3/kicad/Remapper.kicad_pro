@@ -550,7 +550,7 @@
       "plot": "../Remapper7-gerber/",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "Remapper-v3.1-pcb.step",
+      "step": "../../../../../tmp2/Remapper-v3.1-pcb.step",
       "svg": "",
       "vrml": ""
     },
