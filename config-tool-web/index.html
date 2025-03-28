@@ -5,10 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link href="styles.css" rel="stylesheet">
     <title>HID Remapper Configuration</title>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
     <script src="code.js" type="module"></script>
-    </script>
 </head>
 
 <body>
@@ -398,6 +398,12 @@
         </div>
     </template>
 
+    <template id="usage_group_header_template">
+        <div class="usage_group_header labeled-hr">
+            <span class="usage_group_name">[Group Name]</span>
+        </div>
+    </template>
+
     <template id="usage_button_template">
         <button type="button" class="btn btn-primary usage_button m-1"></button>
     </template>
@@ -569,6 +575,8 @@
                             </select>
                         </div>
                     </div>
+                    <div class="col default_usages mt-3">
+                    </div>
                     <div class="col mouse_usages mt-3">
                     </div>
                     <div class="col gamepad_usages mt-3">
@@ -618,6 +626,8 @@
                                 <option value="15">15</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="col default_usages mt-3">
                     </div>
                     <div class="col mouse_usages mt-3">
                     </div>

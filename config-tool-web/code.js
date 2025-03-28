@@ -1207,6 +1207,7 @@ function setup_usages_modals() {
 function setup_usage_modal(source_or_target) {
     const modal_element = document.getElementById(source_or_target + '_usage_modal');
     let usage_classes = {
+        'default': modal_element.querySelector('.default_usages'),
         'mouse': modal_element.querySelector('.mouse_usages'),
         'gamepad': modal_element.querySelector('.gamepad_usages'),
         'keyboard': modal_element.querySelector('.keyboard_usages'),
@@ -1214,17 +1215,39 @@ function setup_usage_modal(source_or_target) {
         'other': modal_element.querySelector('.other_usages'),
         'extra': modal_element.querySelector('.extra_usages'),
     };
+    
     for (const [usage_class, element] of Object.entries(usage_classes)) {
         clear_children(element);
     }
-    let template = document.getElementById('usage_button_template');
+
+    let usage_button_template = document.getElementById('usage_button_template');
+    let usage_group_header_template = document.getElementById('usage_group_header_template');
+
     const add_usage_buttons = (relevant_usages) => {
-        for (const [usage, usage_def] of Object.entries(relevant_usages)) {
-            let clone = template.content.cloneNode(true).firstElementChild;
-            clone.innerText = usage_def['name'];
-            clone.title = usage;
-            clone.setAttribute('data-hid-usage', usage);
-            usage_classes[usage_def['class']].appendChild(clone);
+
+        for (const [usage, usageDef] of Object.entries(relevant_usages)) {
+
+            const usageClassDiv = usage_classes[usageDef.class || 'default'];
+
+            let usage_button_clone = usage_button_template.content.cloneNode(true).firstElementChild;
+            usage_button_clone.innerText = usageDef.name;
+            usage_button_clone.title = usage;
+            usage_button_clone.setAttribute('data-hid-usage', usage);
+
+            switch (usageDef.break) {
+
+                case "line":
+                    usageClassDiv.appendChild(document.createElement('br'));
+                    break;
+
+                case "group":
+                    const usage_group_header = usage_group_header_template.content.cloneNode(true).firstElementChild
+                    usage_group_header.querySelector('.usage_group_name').innerText = usageDef.groupName ?? usageDef.class;
+                    usageClassDiv.appendChild(usage_group_header);
+                    break;
+            }
+
+            usageClassDiv.appendChild(usage_button_clone);
         }
     }
 
@@ -1241,7 +1264,7 @@ function setup_usage_modal(source_or_target) {
 
     for (const usage_ of extra_usages[source_or_target]) {
         if (!(usage_ in known_usages)) {
-            let clone = template.content.cloneNode(true).firstElementChild;
+            let clone = usage_button_template.content.cloneNode(true).firstElementChild;
             clone.innerText = readable_usage_name(usage_);
             clone.title = usage_;
             clone.setAttribute('data-hid-usage', usage_);
