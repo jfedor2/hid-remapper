@@ -1,0 +1,20 @@
+.labeled-hr {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 0.4em 0 0.1em 0;
+  }
+  
+  .labeled-hr::before,
+  .labeled-hr::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #ccc;
+  }
+  
+.labeled-hr > span {
+    padding: 0 0.5em;
+    /* font-size: 14px; */
+    color: #666;
+    text-transform: lowercase;
+}
