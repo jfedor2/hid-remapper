@@ -211,6 +211,10 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
     document.getElementById("nav-monitor-tab").addEventListener("hide.bs.tab", monitor_tab_hide);
 
+    document.getElementById("input-column-header").addEventListener("click", sort_by(['source_port', 'source_usage', 'target_usage', 'layers']));
+    document.getElementById("output-column-header").addEventListener("click", sort_by(['target_usage', 'source_port', 'source_usage', 'layers']));
+    document.getElementById("layer-column-header").addEventListener("click", sort_by(['layers', 'source_port', 'source_usage', 'target_usage']));
+
     if ("hid" in navigator) {
         navigator.hid.addEventListener('disconnect', hid_on_disconnect);
     } else {
@@ -1751,4 +1755,26 @@ function set_quirks_ui_state() {
     for (const quirk of config['quirks']) {
         add_quirk(quirk);
     }
+}
+
+function comparison_function(fields) {
+    return (a, b) => {
+        for (const field of fields) {
+            if (a[field] < b[field]) {
+                return -1;
+            }
+            if (a[field] > b[field]) {
+                return 1;
+            }
+        }
+        return 0;
+    };
+}
+
+function sort_by(fields) {
+    return (e) => {
+        e.preventDefault();
+        config['mappings'].sort(comparison_function(fields));
+        set_mappings_ui_state();
+    };
 }
