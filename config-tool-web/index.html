@@ -527,13 +527,13 @@
     </template>
 
     <div id="source_usage_modal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title usage_modal_title">Select input</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: scroll;">
                     <div class="row hub_port_container">
                         <div class="col-auto">
                             <label for="source_port_dropdown" class="col-form-label">Port</label>
@@ -558,7 +558,8 @@
                                 <option value="15">15</option>
                             </select>
                         </div>
-                        <div class="col"></div>
+                        <div class="col">
+                        </div>
                         <div class="col-auto">
                             <label for="input_labels_modal_dropdown" class="col-form-label">Input labels</label>
                         </div>
@@ -567,6 +568,12 @@
                                 <option value="0">mouse</option>
                                 <option value="1">gamepad</option>
                             </select>
+                        </div>
+                        <div class="col">
+                        </div>
+                        <div class="col-3 position-relative">
+                            <span class="position-absolute top-50 start-100 badge bg-success rounded-pill have_preferred_result_checkmark d-none" style="translate: -100% -50%">&check;</span>
+                            <input type="text" class="form-control usage_search_box" placeholder="Search">
                         </div>
                     </div>
                     <div class="col mouse_usages mt-3">
@@ -587,18 +594,18 @@
     </div>
 
     <div id="target_usage_modal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title usage_modal_title">Select output</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="overflow-y: scroll;">
                     <div class="row hub_port_container">
-                        <div class="col-auto">
+                        <div class="col-auto hub_port_inputs">
                             <label for="target_port_dropdown" class="col-form-label">Port</label>
                         </div>
-                        <div class="col-auto">
+                        <div class="col-auto hub_port_inputs">
                             <select class="form-select hub_port_dropdown" id="target_port_dropdown">
                                 <option value="0">all</option>
                                 <option value="1">1</option>
@@ -617,6 +624,12 @@
                                 <option value="14">14</option>
                                 <option value="15">15</option>
                             </select>
+                        </div>
+                        <div class="col">
+                        </div>
+                        <div class="col-3 position-relative">
+                            <span class="position-absolute top-50 start-100 badge bg-success rounded-pill have_preferred_result_checkmark d-none" style="translate: -100% -50%">&check;</span>
+                            <input type="text" class="form-control usage_search_box" placeholder="Search">
                         </div>
                     </div>
                     <div class="col mouse_usages mt-3">

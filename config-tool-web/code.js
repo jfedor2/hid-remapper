@@ -1148,10 +1148,10 @@ function show_usage_modal(mapping_, source_or_target, element_) {
         });
         const hub_port_container = modal_element.querySelector('.hub_port_container');
         if (source_or_target == "macro_item") {
-            hub_port_container.classList.add('d-none');
+            hub_port_container.querySelectorAll('.hub_port_inputs').forEach((x) => x.classList.add('d-none'));
         } else {
             if (source_or_target == "target") {
-                hub_port_container.classList.remove('d-none');
+                hub_port_container.querySelectorAll('.hub_port_inputs').forEach((x) => x.classList.remove('d-none'));
             }
             const hub_port_dropdown = hub_port_container.querySelector('.hub_port_dropdown');
             const clone = hub_port_dropdown.cloneNode(true);
@@ -1200,6 +1200,7 @@ function map_this_onclick(usage) {
 function set_label_groups_visibility() {
     document.getElementById('source_usage_modal').querySelector('.mouse_usages').classList.toggle('d-none', config['input_labels'] != 0);
     document.getElementById('source_usage_modal').querySelector('.gamepad_usages').classList.toggle('d-none', config['input_labels'] != 1);
+    usage_search_onchange(document.getElementById('source_usage_modal').querySelector('.usage_search_box'))();
 }
 
 function setup_usages_modals() {
@@ -1252,6 +1253,25 @@ function setup_usage_modal(source_or_target) {
             usage_classes['extra'].appendChild(clone);
         }
     }
+
+    const search_box = modal_element.querySelector('.usage_search_box');
+    search_box.addEventListener("keyup", usage_search_onchange(search_box));
+    search_box.addEventListener("keydown", (e) => {
+        if (e.key == 'Enter') {
+            modal_element.querySelectorAll('.usage_button').forEach((usage_button) => {
+                if (usage_button.hasAttribute('data-preferred-result')) {
+                    usage_button.click();
+                }
+            });
+        }
+    });
+    modal_element.addEventListener('show.bs.modal', () => {
+        search_box.value = "";
+        usage_search_onchange(search_box)();
+    });
+    modal_element.addEventListener('shown.bs.modal', () => {
+        search_box.focus();
+    });
 }
 
 function setup_macros() {
@@ -1777,4 +1797,37 @@ function sort_by(fields) {
         config['mappings'].sort(comparison_function(fields));
         set_mappings_ui_state();
     };
+}
+
+function usage_search_onchange(element) {
+    return () => {
+        const query = element.value.toLowerCase().replaceAll(" ", "");
+        const modal_element = element.closest('.modal');
+        let exact_match = null;
+        let last_match = null;
+        let hits = 0;
+        modal_element.querySelectorAll('.usage_button').forEach((usage_button) => {
+            const label = usage_button.innerText.toLowerCase().replaceAll(" ", "");
+            usage_button.classList.toggle('d-none', !label.includes(query));
+            usage_button.removeAttribute('data-preferred-result');
+            if (label.includes(query)) {
+                hits++;
+                last_match = usage_button;
+            }
+            if (label == query) {
+                exact_match = usage_button;
+            }
+        });
+        let have_preferred_result = false;
+        if (exact_match) {
+            exact_match.setAttribute('data-preferred-result', "1");
+            have_preferred_result = true;
+        } else {
+            if (hits == 1) {
+                last_match.setAttribute('data-preferred-result', "1");
+                have_preferred_result = true;
+            }
+        }
+        element.closest('div').querySelector('.have_preferred_result_checkmark').classList.toggle('d-none', !have_preferred_result);
+    }
 }
