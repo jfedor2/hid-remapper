@@ -88,7 +88,7 @@ SECTIONS
         /* segments not marked as .flashdata are instead pulled into .data (in RAM) to avoid accidental flash accesses */
         *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.flashdata*)))
         . = ALIGN(4);
-        CMakeFiles/remapper.dir/src/*.obj(.text*)
+        CMakeFiles/remapper.dir/src/*.o(.text*)
         . = ALIGN(4);
     } > FLASH
 
