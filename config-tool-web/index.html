@@ -220,7 +220,16 @@
                     </div>
                 </div>
                 <div class="row mt-3">
-                    <em>Changes to the emulated device type become active after disconnecting and reconnecting HID Remapper.</em>
+                    <div class="col-4 text-end">
+                        <label for="normalize_gamepad_inputs_checkbox" class="col-form-label">Normalize gamepad inputs</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="checkbox" id="normalize_gamepad_inputs_checkbox" class="form-check-input align-middle">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <p><em>Changes to the emulated device type become active after disconnecting and reconnecting HID Remapper.</em></p>
+                    <p><em>Changes to gamepad input normalization are applied after re-plugging the device or HID Remapper.</em></p>
                 </div>
 
                 <h5 class="mt-4">Custom usages</h5>

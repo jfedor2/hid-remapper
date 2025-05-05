@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "constants.h"
 #include "globals.h"
 #include "platform.h"
 #include "quirks.h"
@@ -23,6 +24,9 @@ const uint16_t PRODUCT_ID_CH_PRODUCTS_DT225 = 0xf700;
 const uint16_t VENDOR_ID_3DCONNEXION = 0x256f;
 const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_COMPACT = 0xc635;
 const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PRO = 0xc62b;
+
+const uint16_t VENDOR_ID_GOOGLE = 0x18d1;
+const uint16_t PRODUCT_ID_GOOGLE_STADIA_CONTROLLER = 0x9400;
 
 const uint8_t elecom_huge_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
@@ -605,6 +609,61 @@ const uint8_t spacemouse_pro_descriptor[] = {
     0xC0,              // End Collection
 };
 
+uint32_t stadia_mapping[][2] = {
+    { 0x00090001, 0x00090004 },
+    { 0x00090002, 0x00090001 },
+    { 0x00090003, 0x00090002 },
+    { 0x00090004, 0x00090005 },
+    { 0x00090005, 0x00090007 },
+    { 0x00090006, 0x00090008 },
+    { 0x00090007, 0x00090014 },
+    { 0x00090008, 0x00090013 },
+    { 0x00090009, 0x0009000b },
+    { 0x0009000a, 0x0009000c },
+    { 0x0009000b, 0x0009000e },
+    { 0x0009000c, 0x0009000f },
+    { 0x0009000e, 0x00090012 },
+    { 0x0009000f, 0x00090011 },
+    { 0x00010033, 0x000200c5 },
+    { 0x00010034, 0x000200c4 },
+};
+
+uint32_t xbox_mapping32[][2] = {
+    { 0x00090001, 0x00090007 },
+    { 0x00090002, 0x00090005 },
+    { 0x00090003, 0x00090006 },
+    { 0x00090004, 0x00090008 },
+    { 0x00090005, 0x0009000d },
+    { 0x00090006, 0x0009000e },
+    { 0x00090009, 0x00090004 },
+    { 0x0009000a, 0x00090003 },
+    { 0x0009000b, 0x0009000f },
+    { 0x0009000c, 0x00090010 },
+    { 0x00010033, 0x000200c5 },
+    { 0x00010034, 0x000200c4 },
+    { 0xfff90001, 0x0009000b },
+    { 0xfff90002, 0x0009000c },
+    { 0xfff90003, 0x00090009 },
+    { 0xfff90004, 0x0009000a },
+};
+
+uint32_t xbox_mapping7[][2] = {
+    { 0x0009000d, 0x00090011 },
+};
+
+void gamepad_normalize(std::unordered_map<uint32_t, usage_def_t>& current_map, uint32_t mapping[][2], uint16_t nentries) {
+    auto new_map = current_map;
+
+    for (uint16_t i = 0; i < nentries; i++) {
+        new_map.erase(mapping[i][1]);
+    }
+    for (uint16_t i = 0; i < nentries; i++) {
+        new_map[mapping[i][0]] = current_map[mapping[i][1]];
+    }
+
+    current_map = new_map;
+}
+
 void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_map, const uint8_t* report_descriptor, int len, uint8_t itf_num) {
     // Button Fn1 is described as a constant (padding) in the descriptor.
     // We add it as button 6.
@@ -770,4 +829,16 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
         }
     }
     my_mutex_exit(MutexId::QUIRKS);
+
+    if (normalize_gamepad_inputs) {
+        if (vendor_id == VENDOR_ID_GOOGLE &&
+            product_id == PRODUCT_ID_GOOGLE_STADIA_CONTROLLER) {
+            gamepad_normalize(usage_map[3], stadia_mapping, sizeof(stadia_mapping) / sizeof(stadia_mapping[0]));
+        }
+        if (vendor_id == VENDOR_ID_MICROSOFT &&
+            product_id == PRODUCT_ID_MICROSOFT_XBOX_WIRELESS_CONTROLLER) {
+            gamepad_normalize(usage_map[32], xbox_mapping32, sizeof(xbox_mapping32) / sizeof(xbox_mapping32[0]));
+            gamepad_normalize(usage_map[7], xbox_mapping7, sizeof(xbox_mapping7) / sizeof(xbox_mapping7[0]));
+        }
+    }
 }

@@ -310,7 +310,9 @@ struct __attribute__((packed)) persist_config_v12_t {
 
 typedef persist_config_v12_t persist_config_v13_t;
 
-typedef persist_config_v13_t persist_config_t;
+typedef persist_config_v13_t persist_config_v18_t;
+
+typedef persist_config_v18_t persist_config_t;
 
 struct __attribute__((packed)) get_config_t {
     uint8_t version;

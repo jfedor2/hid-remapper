@@ -1,4 +1,5 @@
 #include "xbox.h"
+#include "constants.h"
 #include "remapper.h"
 
 #define NXDEVS 8
@@ -230,7 +231,15 @@ static void process_setup(struct xdev_t* xdev) {
             uint8_t hub_addr;
             uint8_t hub_port;
             tuh_get_hub_addr_port(xdev->dev_addr, &hub_addr, &hub_port);
-            descriptor_received_callback(0, 0, xbox_one_descriptor, sizeof(xbox_one_descriptor), (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num, hub_port, xdev->itf_num);
+            // We use the same VID/PID for all Xbox controllers to be able to apply quirks.
+            // We should probably find another way to signal that it's an Xbox controller and pass the real ones.
+            descriptor_received_callback(
+                VENDOR_ID_MICROSOFT,
+                PRODUCT_ID_MICROSOFT_XBOX_WIRELESS_CONTROLLER,
+                xbox_one_descriptor,
+                sizeof(xbox_one_descriptor),
+                (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num,
+                hub_port, xdev->itf_num);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
     }

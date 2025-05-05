@@ -34,10 +34,14 @@ our_descriptor_number = config.get("our_descriptor_number", 0)
 ignore_auth_dev_inputs = config.get("ignore_auth_dev_inputs", False)
 macro_entry_duration = config.get("macro_entry_duration", 1) - 1
 gpio_output_mode = config.get("gpio_output_mode", 0)
+normalize_gamepad_inputs = (
+    config.get("normalize_gamepad_inputs", True) if version >= 18 else False
+)
 
 flags = 0
 flags |= IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0
 flags |= GPIO_OUTPUT_MODE_FLAG if gpio_output_mode == 1 else 0
+flags |= NORMALIZE_GAMEPAD_INPUTS_FLAG if normalize_gamepad_inputs else 0
 
 data = struct.pack(
     "<BBBBBLBLBBB12B",

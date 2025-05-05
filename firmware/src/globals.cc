@@ -31,6 +31,7 @@ uint8_t our_descriptor_number = 0;
 bool ignore_auth_dev_inputs = false;
 uint8_t macro_entry_duration = 0;  // 0 means 1ms
 uint8_t gpio_output_mode = 0;
+bool normalize_gamepad_inputs = true;
 
 std::vector<mapping_config11_t> config_mappings;
 
