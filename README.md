@@ -63,10 +63,20 @@ serial | [remapper_serial.uf2](https://github.com/jfedor2/hid-remapper/releases/
 
 The easiest way to compile the firmware is to let GitHub do it for you. This repository has GitHub Actions that build the firmware, so you can just fork, make your changes, wait for the job to complete, and look for the binaries in the artifacts produced.
 
-To compile the RP2040 firmware on your machine, use the following steps (details may vary depending on your Linux distribution):
+To compile the RP2040/RP2350 firmware on your machine, use the following steps 
 
+(details may vary depending on your OS/distribution):
+Debian / Ubuntu Dependancies
 ```
 sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib srecord
+```
+Mac Dependancies
+```
+brew install arm-none-eabi-gcc srecord
+```
+
+Compile
+```
 git clone https://github.com/jfedor2/hid-remapper.git
 cd hid-remapper
 git submodule update --init
