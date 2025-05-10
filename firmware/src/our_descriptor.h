@@ -34,8 +34,8 @@ struct our_descriptor_def_t {
     uint32_t descriptor_length;
     uint16_t vid = 0;
     uint16_t pid = 0;
-    char manufacturer[64] = "";
-    char product[64] = "";
+    char manufacturer[32] = "";
+    char product[32] = "";
     device_connected_t device_connected = nullptr;
     device_disconnected_t device_disconnected = nullptr;
     main_loop_task_t main_loop_task = nullptr;
