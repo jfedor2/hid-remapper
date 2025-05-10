@@ -121,16 +121,6 @@ char* string_desc_arr[] = {
     product,       // 2: Product
 };
 
-// char const* string_desc_arr[] = {
-//     (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
-// #ifdef PICO_RP2350
-//     "RP2350",  // 1: Manufacturer
-// #else
-//     "RP2040",  // 1: Manufacturer
-// #endif
-//     "HID Remapper XXXX",  // 2: Product
-// };
-
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
 uint8_t const* tud_descriptor_device_cb() {
@@ -170,10 +160,10 @@ const char id_chars[33] = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     uint8_t chr_count;
 
-    if (our_descriptor->manufacturer != "") {
+    if (strlen(our_descriptor->manufacturer) != 0) {
         strcpy(manufacturer, our_descriptor->manufacturer);
     }
-    if (our_descriptor->product != "") {
+    if (strlen(our_descriptor->product) != 0) {
         strcpy(product, our_descriptor->product);
     }
 
@@ -199,7 +189,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             _desc_str[1 + i] = str[i];
         }
 
-        if (index == 2 && our_descriptor->product == product) {
+        if (index == 2 && strlen(our_descriptor->product) == 0) {
             uint64_t unique_id = get_unique_id();
             for (uint8_t i = 0; i < 4; i++) {
                 _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
