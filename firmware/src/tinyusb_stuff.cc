@@ -37,6 +37,18 @@
 #define USB_VID 0xCAFE
 #define USB_PID 0xBAF2
 
+// Define maximum string lengths to ensure buffer safety
+#define MAX_STRING_LENGTH 64
+
+// Create modifiable string buffers
+char lang[2] = {0x09, 0x04};
+#ifdef PICO_RP2350
+    char manufacturer[MAX_STRING_LENGTH] = "RP2350";  // 1: Manufacturer
+#else
+    char manufacturer[MAX_STRING_LENGTH] = "RP2040";  // 1: Manufacturer
+#endif
+char product[MAX_STRING_LENGTH] = "HID Remapper XXXX";
+
 tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
@@ -102,15 +114,22 @@ const uint8_t* configuration_descriptors[] = {
     configuration_descriptor5,
 };
 
-char const* string_desc_arr[] = {
-    (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
-#ifdef PICO_RP2350
-    "RP2350",  // 1: Manufacturer
-#else
-    "RP2040",  // 1: Manufacturer
-#endif
-    "HID Remapper XXXX",  // 2: Product
+// // Array of pointers to these modifiable strings
+char* string_desc_arr[] = {
+    lang,          // 0: is supported language is English (0x0409)
+    manufacturer,  // 1: Manufacturer
+    product,       // 2: Product
 };
+
+// char const* string_desc_arr[] = {
+//     (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
+// #ifdef PICO_RP2350
+//     "RP2350",  // 1: Manufacturer
+// #else
+//     "RP2040",  // 1: Manufacturer
+// #endif
+//     "HID Remapper XXXX",  // 2: Product
+// };
 
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
@@ -151,6 +170,13 @@ const char id_chars[33] = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     uint8_t chr_count;
 
+    if (our_descriptor->manufacturer != "") {
+        strcpy(manufacturer, our_descriptor->manufacturer);
+    }
+    if (our_descriptor->product != "") {
+        strcpy(product, our_descriptor->product);
+    }
+
     if (index == 0) {
         memcpy(&_desc_str[1], string_desc_arr[0], 2);
         chr_count = 1;
@@ -173,7 +199,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             _desc_str[1 + i] = str[i];
         }
 
-        if (index == 2) {
+        if (index == 2 && our_descriptor->product == product) {
             uint64_t unique_id = get_unique_id();
             for (uint8_t i = 0; i < 4; i++) {
                 _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
