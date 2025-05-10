@@ -38,7 +38,7 @@
 #define USB_PID 0xBAF2
 
 // Define maximum string lengths to ensure buffer safety
-#define MAX_STRING_LENGTH 64
+#define MAX_STRING_LENGTH 31
 
 // Create modifiable string buffers
 char lang[2] = {0x09, 0x04};
