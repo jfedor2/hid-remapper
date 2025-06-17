@@ -322,6 +322,14 @@ void validate_expressions() {
     }
 }
 
+void invalidate_expr_state_ptr_cache() {
+    for (uint8_t i = 0; i < NEXPRESSIONS; i++) {
+        for (auto& elem : expressions[i]) {
+            elem.state_ptr = NULL;
+        }
+    }
+}
+
 bool assign_state_slot(uint32_t usage, uint8_t hub_port, bool raw) {
     uint64_t key = (raw ? ((uint64_t) 1 << 40) : 0) | ((uint64_t) hub_port << 32) | usage;
     if (usage_state_ptr.count(key) == 0) {
@@ -379,6 +387,7 @@ void set_mapping_from_config() {
     std::unordered_map<uint32_t, uint8_t> mapped_on_layers;  // usage -> layer mask
 
     validate_expressions();
+    invalidate_expr_state_ptr_cache();
 
     reverse_mapping.clear();
     reverse_mapping_macros.clear();
