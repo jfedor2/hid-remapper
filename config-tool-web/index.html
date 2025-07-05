@@ -228,8 +228,41 @@
                     </div>
                 </div>
                 <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="imu_enabled_checkbox" class="col-form-label">Enable IMU (xiao ble sense only)</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="checkbox" id="imu_enabled_checkbox" class="form-check-input align-middle">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="imu_angle_clamp_limit_input" class="col-form-label">IMU angle</label>
+                    </div>
+                    <div class="col-auto">
+                        <div class="input-group">
+                            <input type="number" min="1" max="90" id="imu_angle_clamp_limit_input" class="form-control text-end" style="max-width: 100px;">
+                            <span class="input-group-text">degrees</span>
+                        </div>
+                        <div class="small text-muted mt-1">1 to 90 degrees</div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="imu_filter_buffer_size_input" class="col-form-label">IMU filter buffer</label>
+                    </div>
+                    <div class="col-auto">
+                        <div class="input-group">
+                            <input type="number" min="1" max="16" id="imu_filter_buffer_size_input" class="form-control text-end" style="max-width: 100px;">
+                            <span class="input-group-text">samples</span>
+                        </div>
+                        <div class="small text-muted mt-1">1(slow) to 16(fast)</div>
+                    </div>
+                </div>
+                <div class="row mt-3">
                     <p><em>Changes to the emulated device type become active after disconnecting and reconnecting HID Remapper.</em></p>
                     <p><em>Changes to gamepad input normalization are applied after re-plugging the device or HID Remapper.</em></p>
+                    <p><em>Changes to IMU enable setting are applied after re-plugging the device or HID Remapper.</em></p>
                 </div>
 
                 <h5 class="mt-4">Custom usages</h5>
