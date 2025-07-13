@@ -237,26 +237,42 @@
                 </div>
                 <div class="row mt-3">
                     <div class="col-4 text-end">
-                        <label for="imu_angle_clamp_limit_input" class="col-form-label">IMU angle</label>
+                        <label for="imu_angle_clamp_limit_input" class="col-form-label">IMU max angle</label>
                     </div>
                     <div class="col-auto">
                         <div class="input-group">
                             <input type="number" min="1" max="90" id="imu_angle_clamp_limit_input" class="form-control text-end" style="max-width: 100px;">
-                            <span class="input-group-text">degrees</span>
+                            <span class="input-group-text">°</span>
                         </div>
                         <div class="small text-muted mt-1">1 to 90 degrees</div>
                     </div>
                 </div>
                 <div class="row mt-3">
                     <div class="col-4 text-end">
-                        <label for="imu_filter_buffer_size_input" class="col-form-label">IMU filter buffer</label>
+                        <label for="imu_filter_buffer_size_input" class="col-form-label">IMU filter (stability)</label>
                     </div>
                     <div class="col-auto">
                         <div class="input-group">
                             <input type="number" min="1" max="16" id="imu_filter_buffer_size_input" class="form-control text-end" style="max-width: 100px;">
                             <span class="input-group-text">samples</span>
                         </div>
-                        <div class="small text-muted mt-1">1(slow) to 16(fast)</div>
+                        <div class="small text-muted mt-1">1(reactive) to 16(stable)</div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="imu_roll_inverted_checkbox" class="col-form-label">Invert roll axis</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="checkbox" id="imu_roll_inverted_checkbox" class="form-check-input align-middle">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-4 text-end">
+                        <label for="imu_pitch_inverted_checkbox" class="col-form-label">Invert pitch axis</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="checkbox" id="imu_pitch_inverted_checkbox" class="form-check-input align-middle">
                     </div>
                 </div>
                 <div class="row mt-3">

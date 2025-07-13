@@ -40,6 +40,8 @@ normalize_gamepad_inputs = (
 imu_enabled = config.get("imu_enabled", False)
 imu_angle_clamp_limit = config.get("imu_angle_clamp_limit", 90)
 imu_filter_buffer_size = config.get("imu_filter_buffer_size", 10)
+imu_roll_inverted = config.get("imu_roll_inverted", False)
+imu_pitch_inverted = config.get("imu_pitch_inverted", False)
 
 flags = 0
 flags |= IGNORE_AUTH_DEV_INPUTS_FLAG if ignore_auth_dev_inputs else 0
@@ -48,7 +50,7 @@ flags |= NORMALIZE_GAMEPAD_INPUTS_FLAG if normalize_gamepad_inputs else 0
 flags |= IMU_ENABLE_FLAG if imu_enabled else 0
 
 data = struct.pack(
-    "<BBBBBLBLBBBBB10B",
+    "<BBBBBLBLBBBBB8B",
     REPORT_ID_CONFIG,
     CONFIG_VERSION,
     SET_CONFIG,
@@ -62,7 +64,9 @@ data = struct.pack(
     macro_entry_duration,
     imu_angle_clamp_limit,
     imu_filter_buffer_size,
-    *([0] * 10)
+    imu_roll_inverted,
+    imu_pitch_inverted,
+    *([0] * 8)
 )
 device.send_feature_report(add_crc(data))
 

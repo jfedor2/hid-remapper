@@ -201,7 +201,7 @@ struct __attribute__((packed)) set_feature_t {
 };
 
 struct __attribute__((packed)) get_feature_t {
-    uint8_t data[28];
+    uint8_t data[32];
     uint32_t crc32;
 };
 
@@ -324,6 +324,8 @@ struct __attribute__((packed)) persist_config_v19_t {
     uint16_t quirk_count;
     uint8_t imu_angle_clamp_limit;
     uint8_t imu_filter_buffer_size;
+    uint8_t imu_roll_inverted;
+    uint8_t imu_pitch_inverted;
 };
 
 typedef persist_config_v19_t persist_config_v18_t;
@@ -346,6 +348,8 @@ struct __attribute__((packed)) get_config_t {
     uint16_t quirk_count;
     uint8_t imu_angle_clamp_limit;
     uint8_t imu_filter_buffer_size;
+    uint8_t imu_roll_inverted;
+    uint8_t imu_pitch_inverted;
 };
 
 struct __attribute__((packed)) set_config_t {
@@ -359,6 +363,8 @@ struct __attribute__((packed)) set_config_t {
     uint8_t macro_entry_duration;
     uint8_t imu_angle_clamp_limit;
     uint8_t imu_filter_buffer_size;
+    uint8_t imu_roll_inverted;
+    uint8_t imu_pitch_inverted;
 };
 
 struct __attribute__((packed)) get_indexed_t {

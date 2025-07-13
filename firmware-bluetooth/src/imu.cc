@@ -435,6 +435,13 @@ static void imu_work_fn(struct k_work* work) {
     float pitch_corrected = -(pitch - pitch_offset);
     float roll_corrected = roll - roll_offset;
     
+    if (imu_pitch_inverted) {
+        pitch_corrected = -pitch_corrected;
+    }
+    if (imu_roll_inverted) {
+        roll_corrected = -roll_corrected;
+    }
+    
     pitch_corrected = moving_avg_filter_update(&pitch_filter, pitch_corrected);
     roll_corrected = moving_avg_filter_update(&roll_filter, roll_corrected);
     

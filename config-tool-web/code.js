@@ -7,7 +7,7 @@ const REPORT_ID_MONITOR = 101;
 const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
-const CONFIG_SIZE = 32;
+const CONFIG_SIZE = 36;
 const CONFIG_VERSION = 19;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
@@ -221,6 +221,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("imu_enabled_checkbox").addEventListener("change", imu_enabled_onchange);
     document.getElementById("imu_angle_clamp_limit_input").addEventListener("change", imu_angle_clamp_limit_onchange);
     document.getElementById("imu_filter_buffer_size_input").addEventListener("change", imu_filter_buffer_size_onchange);
+    document.getElementById("imu_roll_inverted_checkbox").addEventListener("change", imu_roll_inverted_onchange);
+    document.getElementById("imu_pitch_inverted_checkbox").addEventListener("change", imu_pitch_inverted_onchange);
 
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
     document.getElementById("nav-monitor-tab").addEventListener("hide.bs.tab", monitor_tab_hide);
@@ -301,8 +303,8 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count, imu_angle_clamp_limit, imu_filter_buffer_size] =
-            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16, UINT8, UINT8]);
+        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count, imu_angle_clamp_limit, imu_filter_buffer_size, imu_roll_inverted, imu_pitch_inverted] =
+            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16, UINT8, UINT8, UINT8, UINT8]);
         check_received_version(config_version);
 
         config['version'] = config_version;
@@ -319,6 +321,8 @@ async function load_from_device() {
         config['macro_entry_duration'] = macro_entry_duration + 1;
         config['imu_angle_clamp_limit'] = imu_angle_clamp_limit;
         config['imu_filter_buffer_size'] = imu_filter_buffer_size;
+        config['imu_roll_inverted'] = !!imu_roll_inverted;
+        config['imu_pitch_inverted'] = !!imu_pitch_inverted;
         config['mappings'] = [];
 
         for (let i = 0; i < mapping_count; i++) {
@@ -469,6 +473,8 @@ async function save_to_device() {
             [UINT8, config['macro_entry_duration'] - 1],
             [UINT8, config['imu_angle_clamp_limit']],
             [UINT8, config['imu_filter_buffer_size']],
+            [UINT8, config['imu_roll_inverted'] ? 1 : 0],
+            [UINT8, config['imu_pitch_inverted'] ? 1 : 0],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -652,6 +658,8 @@ function set_config_ui_state() {
     document.getElementById('imu_enabled_checkbox').checked = config['imu_enabled'];
     document.getElementById('imu_angle_clamp_limit_input').value = config['imu_angle_clamp_limit'] ?? DEFAULT_IMU_ANGLE_CLAMP_LIMIT;
     document.getElementById('imu_filter_buffer_size_input').value = config['imu_filter_buffer_size'] ?? DEFAULT_IMU_FILTER_BUFFER_SIZE;
+    document.getElementById('imu_roll_inverted_checkbox').checked = config['imu_roll_inverted'] ?? false;
+    document.getElementById('imu_pitch_inverted_checkbox').checked = config['imu_pitch_inverted'] ?? false;
 }
 
 function set_mappings_ui_state() {
@@ -1470,6 +1478,14 @@ function imu_angle_clamp_limit_onchange() {
 
 function imu_filter_buffer_size_onchange() {
     config['imu_filter_buffer_size'] = parseInt(document.getElementById("imu_filter_buffer_size_input").value, 10);
+}
+
+function imu_roll_inverted_onchange() {
+    config['imu_roll_inverted'] = document.getElementById("imu_roll_inverted_checkbox").checked;
+}
+
+function imu_pitch_inverted_onchange() {
+    config['imu_pitch_inverted'] = document.getElementById("imu_pitch_inverted_checkbox").checked;
 }
 
 function macro_entry_duration_onchange() {

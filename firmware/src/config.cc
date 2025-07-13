@@ -569,6 +569,8 @@ void load_config(const uint8_t* persisted_config) {
         imu_angle_clamp_limit = 45;
         imu_filter_buffer_size = 10;
         imu_enabled = false;
+        imu_roll_inverted = false;
+        imu_pitch_inverted = false;
     }
 
     if ((version == 3) || (version == 4)) {
@@ -647,6 +649,14 @@ void load_config(const uint8_t* persisted_config) {
             imu_angle_clamp_limit = 90;
         }
         imu_filter_buffer_size = config->imu_filter_buffer_size;
+        if (imu_filter_buffer_size < 1) {
+            imu_filter_buffer_size = 1;
+        }
+        if (imu_filter_buffer_size > 16) {
+            imu_filter_buffer_size = 16;
+        }
+        imu_roll_inverted = config->imu_roll_inverted;
+        imu_pitch_inverted = config->imu_pitch_inverted;
     }
     mapping_config11_t* buffer_mappings = (mapping_config11_t*) (persisted_config + sizeof(persist_config_v19_t));
     for (uint32_t i = 0; i < config->mapping_count; i++) {
@@ -721,6 +731,8 @@ void fill_get_config(get_config_t* config) {
     config->macro_entry_duration = macro_entry_duration;
     config->imu_angle_clamp_limit = imu_angle_clamp_limit;
     config->imu_filter_buffer_size = imu_filter_buffer_size;
+    config->imu_roll_inverted = imu_roll_inverted;
+    config->imu_pitch_inverted = imu_pitch_inverted;
     my_mutex_enter(MutexId::QUIRKS);
     config->quirk_count = quirks.size();
     my_mutex_exit(MutexId::QUIRKS);
@@ -743,6 +755,8 @@ void fill_persist_config(persist_config_t* config) {
     config->macro_entry_duration = macro_entry_duration;
     config->imu_angle_clamp_limit = imu_angle_clamp_limit;
     config->imu_filter_buffer_size = imu_filter_buffer_size;
+    config->imu_roll_inverted = imu_roll_inverted;
+    config->imu_pitch_inverted = imu_pitch_inverted;
     my_mutex_enter(MutexId::QUIRKS);
     config->quirk_count = quirks.size();
     my_mutex_exit(MutexId::QUIRKS);
@@ -1014,6 +1028,14 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                         imu_angle_clamp_limit = 90;
                     }
                     imu_filter_buffer_size = config->imu_filter_buffer_size;
+                    if (imu_filter_buffer_size < 1) {
+                        imu_filter_buffer_size = 1;
+                    }
+                    if (imu_filter_buffer_size > 16) {
+                        imu_filter_buffer_size = 16;
+                    }
+                    imu_roll_inverted = config->imu_roll_inverted;
+                    imu_pitch_inverted = config->imu_pitch_inverted;
                     break;
                 }
                 case ConfigCommand::GET_CONFIG:
