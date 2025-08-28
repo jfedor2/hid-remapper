@@ -8,7 +8,10 @@
 
 #include <stdio.h>
 
+#define SERIAL_MOUSE_TX_PIN 20
 #define SERIAL_MOUSE_RX_PIN 21
+#define SERIAL_MOUSE_DTR_PIN 16
+#define SERIAL_MOUSE_RTS_PIN 27
 #define SERIAL_MOUSE_UART uart1
 
 #define FAKE_VID 0x0001
@@ -54,6 +57,24 @@ const uint8_t fake_descriptor[] = {
 };
 
 void extra_init() {
+#ifdef SERIAL_MOUSE_TX_PIN
+    gpio_init(SERIAL_MOUSE_TX_PIN);
+    gpio_set_dir(SERIAL_MOUSE_TX_PIN, GPIO_OUT);
+    gpio_put(SERIAL_MOUSE_TX_PIN, true);
+#endif
+
+#ifdef SERIAL_MOUSE_DTR_PIN
+    gpio_init(SERIAL_MOUSE_DTR_PIN);
+    gpio_set_dir(SERIAL_MOUSE_DTR_PIN, GPIO_OUT);
+    gpio_put(SERIAL_MOUSE_DTR_PIN, false);
+#endif
+
+#ifdef SERIAL_MOUSE_RTS_PIN
+    gpio_init(SERIAL_MOUSE_RTS_PIN);
+    gpio_set_dir(SERIAL_MOUSE_RTS_PIN, GPIO_OUT);
+    gpio_put(SERIAL_MOUSE_RTS_PIN, false);
+#endif
+
     gpio_set_function(SERIAL_MOUSE_RX_PIN, GPIO_FUNC_UART);
     uart_init(SERIAL_MOUSE_UART, 1200);
     uart_set_hw_flow(SERIAL_MOUSE_UART, false, false);
@@ -70,6 +91,15 @@ uint32_t get_gpio_valid_pins_mask() {
 #endif
 #ifdef PICO_DEFAULT_UART_RX_PIN
                                       (1 << PICO_DEFAULT_UART_RX_PIN) |
+#endif
+#ifdef SERIAL_MOUSE_TX_PIN
+                                      (1 << SERIAL_MOUSE_TX_PIN) |
+#endif
+#ifdef SERIAL_MOUSE_DTR_PIN
+                                      (1 << SERIAL_MOUSE_DTR_PIN) |
+#endif
+#ifdef SERIAL_MOUSE_RTS_PIN
+                                      (1 << SERIAL_MOUSE_RTS_PIN) |
 #endif
                                       (1 << SERIAL_MOUSE_RX_PIN));
 }
