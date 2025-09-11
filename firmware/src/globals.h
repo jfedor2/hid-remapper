@@ -48,7 +48,7 @@ extern uint8_t resolution_multiplier;
 #define NMACROS 32
 extern std::vector<std::vector<uint32_t>> macros[NMACROS];
 
-#define NEXPRESSIONS 8
+#define NEXPRESSIONS 16
 extern std::vector<expr_elem_t> expressions[NEXPRESSIONS];
 
 extern bool monitor_enabled;
