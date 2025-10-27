@@ -41,6 +41,13 @@ static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
 static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
 
+struct haptic_command {
+    uint8_t conn_idx;
+    uint8_t report_id;
+    uint8_t len;
+    uint8_t data[64];
+};
+
 static K_SEM_DEFINE(usb_sem0, 1, 1);
 static K_SEM_DEFINE(usb_sem1, 1, 1);
 
@@ -515,6 +522,51 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
     return BT_GATT_ITER_CONTINUE;
 }
 
+static void send_haptic_feedback(uint8_t conn_idx, uint8_t report_id, const uint8_t* data, uint8_t len) {
+    if (conn_idx >= CONFIG_BT_MAX_CONN) {
+        LOG_ERR("Invalid conn_idx: %d", conn_idx);
+        return;
+    }
+
+    struct bt_hogp* hogp = &hogps[conn_idx];
+    
+    if (!bt_hogp_assign_check(hogp)) {
+        LOG_WRN("HOGP not assigned for conn_idx: %d", conn_idx);
+        return;
+    }
+
+    struct bt_hogp_rep_info* rep = NULL;
+    
+    // Find the output report with matching report ID
+    while (NULL != (rep = bt_hogp_rep_next(hogp, rep))) {
+        if ((bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_OUTPUT) && 
+            (bt_hogp_rep_id(rep) == report_id)) {
+            
+            LOG_DBG("Sending haptic to conn_idx=%d, report_id=%d, len=%d", 
+                    conn_idx, report_id, len);
+            LOG_HEXDUMP_DBG(data, len, "haptic data");
+            
+            int err = bt_hogp_rep_write_wo_rsp(hogp, rep, data, len, NULL);
+            if (err) {
+                LOG_ERR("Failed to send haptic: %d", err);
+            }
+            return;
+        }
+    }
+    
+    LOG_WRN("Output report %d not found for conn_idx=%d", report_id, conn_idx);
+}
+
+static void haptic_work_fn(struct k_work* work) {
+    struct haptic_command cmd;
+    
+    while (!k_msgq_get(&haptic_q, &cmd, K_NO_WAIT)) {
+        send_haptic_feedback(cmd.conn_idx, cmd.report_id, cmd.data, cmd.len);
+    }
+}
+static K_WORK_DEFINE(haptic_work, haptic_work_fn);
+
+
 // XXX is this ready for simultaneous connection setup? is discovery ready? do we care?
 static struct descriptor_type their_descriptor;
 
@@ -885,7 +937,69 @@ void interval_override_updated() {
 }
 
 void queue_out_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
-    // TODO
+    // Extract connection index from interface (high byte)
+    uint8_t conn_idx = interface >> 8;
+    
+    if (len > 64) {
+        LOG_ERR("Haptic data too large: %d", len);
+        return;
+    }
+    
+    struct haptic_command cmd;
+    cmd.conn_idx = conn_idx;
+    cmd.report_id = report_id;
+    cmd.len = len;
+    memcpy(cmd.data, buffer, len);
+    
+    if (k_msgq_put(&haptic_q, &cmd, K_NO_WAIT)) {
+        LOG_WRN("Haptic queue full");
+    } else {
+        k_work_submit(&haptic_work);
+    }
+}
+
+// Alternative implementation using bt_hogp_rep_write (with response):
+static void haptic_write_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep,
+                            uint8_t err, const uint8_t* data) {
+    if (err) {
+        LOG_ERR("Haptic write failed: %d", err);
+    } else {
+        LOG_DBG("Haptic write success");
+    }
+}
+
+static void send_haptic_feedback_with_response(uint8_t conn_idx, uint8_t report_id, 
+                                               const uint8_t* data, uint8_t len) {
+    if (conn_idx >= CONFIG_BT_MAX_CONN) {
+        LOG_ERR("Invalid conn_idx: %d", conn_idx);
+        return;
+    }
+
+    struct bt_hogp* hogp = &hogps[conn_idx];
+    
+    if (!bt_hogp_assign_check(hogp)) {
+        LOG_WRN("HOGP not assigned for conn_idx: %d", conn_idx);
+        return;
+    }
+
+    struct bt_hogp_rep_info* rep = NULL;
+    
+    while (NULL != (rep = bt_hogp_rep_next(hogp, rep))) {
+        if ((bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_OUTPUT) && 
+            (bt_hogp_rep_id(rep) == report_id)) {
+            
+            LOG_DBG("Sending haptic with response to conn_idx=%d, report_id=%d, len=%d", 
+                    conn_idx, report_id, len);
+            
+            int err = bt_hogp_rep_write(hogp, rep, haptic_write_cb, data, len);
+            if (err) {
+                LOG_ERR("Failed to send haptic: %d", err);
+            }
+            return;
+        }
+    }
+    
+    LOG_WRN("Output report %d not found for conn_idx=%d", report_id, conn_idx);
 }
 
 void queue_set_feature_report(uint16_t interface, uint8_t report_id, const uint8_t* buffer, uint8_t len) {
