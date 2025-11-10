@@ -1,5 +1,216 @@
 const examples = [
     {
+        'description': 'IMU mouse control',
+        'config': {
+            "version": 19,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
+            "tap_hold_threshold": 200000,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0xfff30002",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                },
+                {
+                    "target_usage": "0x00090001",
+                    "source_usage": "0xfff30003",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": true,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x0020008f input_state dup abs 5000000 gt mul 5000000 div",
+                "0x0020008e input_state dup abs 5000000 gt mul 5000000 div",
+                "0x00200073 input_state 100000 gt",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
+            "gpio_debounce_time_ms": 5,
+            "our_descriptor_number": 0,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "quirks": [],
+            "input_labels": 0,
+            "normalize_gamepad_inputs": false,
+            "imu_enabled": true,
+            "imu_angle_clamp_limit": 30,
+            "imu_filter_buffer_size": 5
+        }
+    },
+    {
+        'description': 'IMU Switch gamepad',
+        'config': {
+            "version": 19,
+            "unmapped_passthrough_layers": [],
+            "partial_scroll_timeout": 1000000,
+            "interval_override": 0,
+            "tap_hold_threshold": 200000,
+            "mappings": [
+                {
+                    "target_usage": "0x00010030",
+                    "source_usage": "0x0020008f",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 2
+                },
+                {
+                    "target_usage": "0x00010031",
+                    "source_usage": "0x0020008e",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": false,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 2
+                },
+                {
+                    "target_usage": "0x00090003",
+                    "source_usage": "0xfff30001",
+                    "scaling": 1000,
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "tap": true,
+                    "hold": false,
+                    "source_port": 0,
+                    "target_port": 0
+                }
+            ],
+            "macros": [
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                [],
+                []
+            ],
+            "expressions": [
+                "0x00200073 input_state 100000 gt",
+                "",
+                "",
+                "",
+                "",
+                "",
+                             ""
+ ],
+            "gpio_debounce_time_ms": 5,
+            "our_descriptor_number": 2,
+            "ignore_auth_dev_inputs": false,
+            "macro_entry_duration": 1,
+            "gpio_output_mode": 0,
+            "quirks": [],
+            "input_labels": 0,
+            "normalize_gamepad_inputs": false,
+            "imu_enabled": true,
+            "imu_angle_clamp_limit": 30,
+            "imu_filter_buffer_size": 5
+        }
+    },
+    {
         'description': 'map caps lock to control',
         'config': {
             "version": 3,

@@ -11,8 +11,8 @@ PRODUCT_ID = 0xBAF2
 CONFIG_USAGE_PAGE = 0xFF00
 CONFIG_USAGE = 0x0020
 
-CONFIG_VERSION = 18
-CONFIG_SIZE = 32
+CONFIG_VERSION = 19
+CONFIG_SIZE = 36
 REPORT_ID_CONFIG = 100
 
 DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000
@@ -61,6 +61,7 @@ HOLD_FLAG = 1 << 2
 IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4
 GPIO_OUTPUT_MODE_FLAG = 1 << 5
 NORMALIZE_GAMEPAD_INPUTS_FLAG = 1 << 6
+IMU_ENABLE_FLAG = 1 << 7
 
 NMACROS = 32
 NEXPRESSIONS = 8
@@ -132,12 +133,12 @@ opcodes = {v: k for k, v in ops.items()}
 
 
 def check_crc(buf, crc_):
-    if binascii.crc32(buf[1:29]) != crc_:
+    if binascii.crc32(buf[1:CONFIG_SIZE-3]) != crc_:
         raise Exception("CRC mismatch")
 
 
 def add_crc(buf):
-    return buf + struct.pack("<L", binascii.crc32(buf[1:]))
+    return buf + struct.pack("<L", binascii.crc32(buf[1:CONFIG_SIZE-3]))
 
 
 def get_device():
