@@ -885,12 +885,18 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
     // Buttons Fn1, Fn2, Fn3 are described as constants (padding) in the descriptor.
     // We add them as buttons 6, 7, 8.
     if (vendor_id == VENDOR_ID_ELECOM &&
-        (product_id == PRODUCT_ID_ELECOM_M_DT1URBK ||
-            product_id == PRODUCT_ID_ELECOM_M_DT1DRBK ||
-            product_id == PRODUCT_ID_ELECOM_M_HT1URBK ||
-            product_id == PRODUCT_ID_ELECOM_M_HT1DRBK_010D) &&
-        len == sizeof(elecom_huge_descriptor) &&
-        !memcmp(report_descriptor, elecom_huge_descriptor, len)) {
+        (((product_id == PRODUCT_ID_ELECOM_M_DT1URBK ||
+              product_id == PRODUCT_ID_ELECOM_M_DT1DRBK ||
+              product_id == PRODUCT_ID_ELECOM_M_HT1URBK ||
+              product_id == PRODUCT_ID_ELECOM_M_HT1DRBK_010D) &&
+             len == sizeof(elecom_huge_descriptor) &&
+             !memcmp(report_descriptor, elecom_huge_descriptor, len)) ||
+            (product_id == PRODUCT_ID_ELECOM_M_HT1MRBK_01AA &&
+                len == sizeof(elecom_huge_plus_01aa_descriptor) &&
+                !memcmp(report_descriptor, elecom_huge_plus_01aa_descriptor, len)) ||
+            (product_id == PRODUCT_ID_ELECOM_M_HT1MRBK_01AB &&
+                len == sizeof(elecom_huge_plus_01ab_descriptor) &&
+                !memcmp(report_descriptor, elecom_huge_plus_01ab_descriptor, len)))) {
         usage_map[1][0x00090006] = (usage_def_t){
             .report_id = 1,
             .size = 1,
@@ -919,62 +925,6 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
         product_id == PRODUCT_ID_ELECOM_M_HT1DRBK_011C &&
         len == sizeof(elecom_huge_descriptor2) &&
         !memcmp(report_descriptor, elecom_huge_descriptor2, len)) {
-        usage_map[1][0x00090006] = (usage_def_t){
-            .report_id = 1,
-            .size = 1,
-            .bitpos = 5,
-            .is_relative = false,
-            .logical_minimum = 0,
-        };
-        usage_map[1][0x00090007] = (usage_def_t){
-            .report_id = 1,
-            .size = 1,
-            .bitpos = 6,
-            .is_relative = false,
-            .logical_minimum = 0,
-        };
-        usage_map[1][0x00090008] = (usage_def_t){
-            .report_id = 1,
-            .size = 1,
-            .bitpos = 7,
-            .is_relative = false,
-            .logical_minimum = 0,
-        };
-    }
-
-    // Buttons Fn1, Fn2, Fn3 don't work because Usage Maximum=5 when it should be 8
-    if (vendor_id == VENDOR_ID_ELECOM &&
-        product_id == PRODUCT_ID_ELECOM_M_HT1MRBK_01AA &&
-        len == sizeof(elecom_huge_plus_01aa_descriptor) &&
-        !memcmp(report_descriptor, elecom_huge_plus_01aa_descriptor, len)) {
-        usage_map[1][0x00090006] = (usage_def_t){
-            .report_id = 1,
-            .size = 1,
-            .bitpos = 5,
-            .is_relative = false,
-            .logical_minimum = 0,
-        };
-        usage_map[1][0x00090007] = (usage_def_t){
-            .report_id = 1,
-            .size = 1,
-            .bitpos = 6,
-            .is_relative = false,
-            .logical_minimum = 0,
-        };
-        usage_map[1][0x00090008] = (usage_def_t){
-            .report_id = 1,
-            .size = 1,
-            .bitpos = 7,
-            .is_relative = false,
-            .logical_minimum = 0,
-        };
-    }
-
-    // Buttons Fn1, Fn2, Fn3 don't work because Usage Maximum=5 when it should be 8
-    if (vendor_id == VENDOR_ID_ELECOM &&
-        product_id == PRODUCT_ID_ELECOM_M_HT1MRBK_01AB &&
-        len == sizeof(elecom_huge_plus_01ab_descriptor) &&
-        !memcmp(report_descriptor, elecom_huge_plus_01ab_descriptor, len)) {
         usage_map[1][0x00090006] = (usage_def_t){
             .report_id = 1,
             .size = 1,
