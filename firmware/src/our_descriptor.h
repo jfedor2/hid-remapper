@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define CONFIG_SIZE 32
+#define CONFIG_SIZE 36
 #define RESOLUTION_MULTIPLIER 120
 
 #define REPORT_ID_LEDS 98
