@@ -40,16 +40,19 @@ When the board is fresh from the factory (has never been flashed), it should ent
 
 ### v1, v2, v5 and v6
 
-There are two RP2040 chips on each board and each chip has to be flashed with appropriate firmware. The procedure to do it goes as follows:
+Flash the board with [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board.uf2) file by putting it in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
 
-1. Flash A side (the one that connects to your computer) with [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board.uf2) file by putting the board in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
-2. Flash B side by going to the [web config tool](https://www.remapper.org/config/), opening the device and pressing the "Flash B side" button. When you do this, the A side flashes the B side with the appropriate firmware (there's no separate UF2 file).
+Disconnect and reconnect your HID Remapper after flashing the firmware.
 
-In the future, I'd like to remove the need for step 2, it should be possible to make it happen automatically.
+_(Please note that previously a manual "Flash B side" step was required on these boards. That is no longer necessary.)_
 
 ### v7
 
-The procedure for the v7 board is the same as for v1, v2, v5 and v6, but you need to use the [remapper\_board\_v7.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v7.uf2) firmware file.
+Flash the board with [remapper\_board\_v7.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v7.uf2) file by putting it in firmware flashing mode and copying the file to the "RPI-RP2" drive that should appear on your computer.
+
+Disconnect and reconnect your HID Remapper after flashing the firmware.
+
+_(Please note that previously a manual "Flash B side" step was required on this board. That is no longer necessary.)_
 
 ### v3 and v4
 
