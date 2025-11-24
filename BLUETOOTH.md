@@ -12,8 +12,24 @@ The Bluetooth version of the remapper runs on Nordic's nRF52840 chip. Currently 
 
 * [Adafruit Feather nRF52840 Express](https://www.adafruit.com/product/4062)
 * [Seeed Studio Xiao nRF52840](https://www.seeedstudio.com/Seeed-XIAO-BLE-nRF52840-p-5201.html)
+* [nRF52840 Dongle](https://www.nordicsemi.com/Products/Development-hardware/nRF52840-Dongle)
 
+## Flashing for Adafruit and Seed Studio
 To flash the [firmware](firmware-bluetooth), first put the board in flashing mode by double clicking the reset button quickly. A drive should appear on your computer. Copy the [UF2 file that matches your board](https://github.com/jfedor2/hid-remapper/releases/latest) to that drive and that's it. If you want to flash a newer version of the firmware in the future, you can also put the board in firmware flashing mode using the HID Remapper [web configuration tool](https://www.remapper.org/config/).
+
+## Flashing for nRF52840 Dongle
+For flashing the firmware for the nRF52840 Dongle, put the dongle into [flashing mode](https://academy.nordicsemi.com/flash-instructions-for-nrf52840-dongle/) by clicking the RESET button once, while it is connected to the computer.
+A new device should appear as `/dev/ttyACM0`, and can be flashed by doing `nrfutil dfu usb-serial -pkg remapper_nrf52840dongle.zip -p /dev/ttyACM0`.
+
+Flashing can be done using Docker like so:
+
+```bash
+docker run --device=/dev/ttyACM0:/dev/ttyACM0 -v $PWD:/src -it nordicplayground/nrfconnect-sdk:v2.2-branch bash
+nrfutil install nrf5sdk-tools
+nrfutil dfu usb-serial -pkg remapper_nrf52840dongle.zip -p /dev/ttyACM0
+```
+
+## Paring devices
 
 To connect Bluetooth devices to the remapper, you need to put the device in pairing mode. This is device-specific, but usually involves holding a button for a few seconds. Then you also need to put HID Remapper in pairing mode. You do this by either pressing the "user switch" button on the board or by clicking the "Pair new device" button on the web configuration tool (the Xiao board doesn't have a user button so you have to either do it through the web interface or by shorting pin 0 to GND). The remapper will also automatically enter pairing mode if no devices are currently paired.
 
