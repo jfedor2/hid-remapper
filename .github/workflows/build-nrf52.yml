@@ -25,3 +25,25 @@ jobs:
         with:
           name: artifact-${{ matrix.board }}
           path: firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+
+  build-nrf52840dongle:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build nrf52840dongle
+        run: |
+          docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch \
+            west build -b nrf52840dongle_nrf52840
+      - name: Generate DFU package
+        run: |
+          docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth \
+            --entrypoint=nrfutil \
+            nordicplayground/nrfconnect-sdk:v2.2-branch \
+            toolchain-manager launch /bin/bash -- -c \
+            "nrfutil install nrf5sdk-tools && nrfutil pkg generate --hw-version 52 --sd-req=0x00 --application build/zephyr/remapper.hex --application-version 1 remapper.zip" \
+      - name: Rename DFU Package
+        run: cp firmware-bluetooth/remapper.zip firmware-bluetooth/remapper_nrf52840dongle.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifact-nrf52840dongle_nrf52840
+          path: firmware-bluetooth/remapper_nrf52840dongle.zip
