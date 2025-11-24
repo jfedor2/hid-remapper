@@ -184,3 +184,33 @@ target_link_libraries(remapper_serial
     tinyusb_board
 )
 pico_add_extra_outputs(remapper_serial)
+
+add_executable(flash_b_side
+    src/flash_b_side.cc
+    dual_b_binary.c
+    src/pico_debug/swd.c
+    src/pico_debug/flash.c
+    src/pico_debug/adi.c
+)
+target_include_directories(flash_b_side PRIVATE
+    src
+    src/pico_debug
+)
+target_link_libraries(flash_b_side
+    pico_stdlib
+    hardware_pio
+)
+pico_generate_pio_header(flash_b_side ${CMAKE_CURRENT_LIST_DIR}/src/pico_debug/swd.pio)
+pico_add_extra_outputs(flash_b_side)
+pico_set_binary_type(flash_b_side no_flash)
+
+add_custom_command(
+    OUTPUT remapper_dual_combined.uf2
+    DEPENDS remapper_dual_a flash_b_side
+    COMMAND ${CMAKE_CURRENT_LIST_DIR}/combine_uf2.py remapper_dual_a.uf2 flash_b_side.uf2 remapper_dual_combined.uf2
+    VERBATIM
+)
+
+add_custom_target(remapper_dual_combined ALL
+    DEPENDS remapper_dual_combined.uf2
+)

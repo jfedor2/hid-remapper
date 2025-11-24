@@ -28,12 +28,12 @@ jobs:
           mkdir build-boards
           cd build-boards
           PICO_BOARD=remapper cmake ..
-          make remapper_dual_a
+          make remapper_dual_combined
           cd ..
           mkdir build-board_v7
           cd build-board_v7
           PICO_BOARD=remapper_v7 cmake ..
-          make remapper_dual_a
+          make remapper_dual_combined
           cd ..
           mkdir build-board_v8
           cd build-board_v8
@@ -53,7 +53,7 @@ jobs:
           mkdir build-pico2
           cd build-pico2
           PICO_BOARD=pico2 cmake ..
-          make remapper remapper_dual_a remapper_dual_b
+          make remapper remapper_dual_a remapper_dual_b remapper_dual_combined
           cd ..
           mkdir build-waveshare_rp2350_usb_a
           cd build-waveshare_rp2350_usb_a
@@ -72,14 +72,16 @@ jobs:
           cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
-          mv build-boards/remapper_dual_a.uf2 artifacts/remapper_board.uf2
-          mv build-board_v7/remapper_dual_a.uf2 artifacts/remapper_board_v7.uf2
+          rm artifacts/flash_b_side.uf2
+          mv build-boards/remapper_dual_combined.uf2 artifacts/remapper_board.uf2
+          mv build-board_v7/remapper_dual_combined.uf2 artifacts/remapper_board_v7.uf2
           mv build-board_v8/remapper.uf2 artifacts/remapper_board_v8.uf2
           mv build-feather/remapper.uf2 artifacts/remapper_feather.uf2
           mv build-waveshare_rp2040_pizero/remapper.uf2 artifacts/remapper_waveshare_rp2040_pizero.uf2
           mv build-pico2/remapper.uf2 artifacts/remapper_pico2.uf2
           mv build-pico2/remapper_dual_a.uf2 artifacts/remapper_pico2_dual_a.uf2
           mv build-pico2/remapper_dual_b.uf2 artifacts/remapper_pico2_dual_b.uf2
+          mv build-pico2/remapper_dual_combined.uf2 artifacts/remapper_pico2_dual_combined.uf2
           mv build-waveshare_rp2350_usb_a/remapper.uf2 artifacts/remapper_waveshare_rp2350_usb_a.uf2
           mv build-flatbox_rev4/remapper.uf2 artifacts/remapper_flatbox_rev4.uf2
           mv build-flatbox_rev8/remapper.uf2 artifacts/remapper_flatbox_rev8.uf2
