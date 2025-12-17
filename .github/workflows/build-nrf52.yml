@@ -2,8 +2,8 @@ name: build-nrf52
 on:
   push:
     paths:
-      - 'firmware/**'
-      - 'firmware-bluetooth/**'
+      - "firmware/**"
+      - "firmware-bluetooth/**"
   workflow_call:
 defaults:
   run:
@@ -11,17 +11,33 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    container: ghcr.io/zephyrproject-rtos/ci:v0.28.7
     strategy:
       matrix:
-        board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840"]
+        board: ["adafruit_feather_nrf52840/nrf52840", "xiao_ble/nrf52840"]
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+      - name: Initialize
         run: |
-          docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch \
-            west build -b ${{ matrix.board }}
-          cp firmware-bluetooth/build/zephyr/remapper.uf2 firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+          west init -l .
+          west config build.sysbuild False
+          west update -o=--depth=1 -n
+      - name: Set board name
+        id: board
+        run: |
+          BOARD_FILE="${{ matrix.board }}"
+          BOARD_FILE="${BOARD_FILE//\//_}"
+          echo "name=${BOARD_FILE}" >> $GITHUB_OUTPUT
+      - name: Build firmware
+        working-directory: firmware-bluetooth
+        run: |
+          west build -b ${{ matrix.board }}
+          if [[ "${{ matrix.board }}" == "nrf52840dongle/nrf52840" ]]; then
+            cp build/zephyr/remapper.uf2 "remapper_${{ steps.board.outputs.name }}.uf2"
+          else
+            cp build/zephyr/remapper.hex "remapper_${{ steps.board.outputs.name }}.hex"
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{ matrix.board }}
-          path: firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+          name: artifact-${{ steps.board.outputs.name }}
+          path: firmware-bluetooth/remapper_*.*
