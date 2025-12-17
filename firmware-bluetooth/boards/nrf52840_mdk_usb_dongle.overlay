@@ -1,0 +1,7 @@
+/ {
+    aliases {
+        led0 = &led0_red;
+        led1 = &led0_blue;
+        sw0 = &reset_button;
+    };
+};
