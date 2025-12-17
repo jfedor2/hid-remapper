@@ -4,39 +4,62 @@ on:
     paths:
       - "firmware/**"
       - "firmware-bluetooth/**"
+      - ".github/workflows/build-nrf52.yml"
   workflow_call:
 defaults:
   run:
     shell: bash --noprofile --norc -x -e -o pipefail {0}
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    container: ghcr.io/zephyrproject-rtos/ci:v0.28.7
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        board: ["adafruit_feather_nrf52840/nrf52840", "xiao_ble/nrf52840"]
+        board:
+          [
+            "adafruit_feather_nrf52840/nrf52840",
+            "xiao_ble/nrf52840",
+            "nrf52840dongle/nrf52840",
+            "nrf52840_mdk_usb_dongle",
+          ]
     steps:
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+
       - uses: actions/checkout@v4
-      - name: Initialize
-        run: |
-          west init -l .
-          west config build.sysbuild False
-          west update -o=--depth=1 -n
+
       - name: Set board name
         id: board
         run: |
           BOARD_FILE="${{ matrix.board }}"
           BOARD_FILE="${BOARD_FILE//\//_}"
           echo "name=${BOARD_FILE}" >> $GITHUB_OUTPUT
-      - name: Build firmware
-        working-directory: firmware-bluetooth
+
+      - name: Initialize and Build
         run: |
-          west build -b ${{ matrix.board }}
-          if [[ "${{ matrix.board }}" == "nrf52840dongle/nrf52840" ]]; then
-            cp build/zephyr/remapper.uf2 "remapper_${{ steps.board.outputs.name }}.uf2"
-          else
-            cp build/zephyr/remapper.hex "remapper_${{ steps.board.outputs.name }}.hex"
-          fi
+          docker run --rm \
+            -v ${{ github.workspace }}:/workdir \
+            -w /workdir \
+            ghcr.io/zephyrproject-rtos/ci:v0.28.7 \
+            bash -c "
+              west init -l .
+              west config build.sysbuild False
+              west update -o=--depth=1 -n
+              cd firmware-bluetooth
+              west build -b ${{ matrix.board }}
+              BOARD_FILE='${{ steps.board.outputs.name }}'
+              if [[ '${{ matrix.board }}' == 'nrf52840dongle/nrf52840' ]]; then
+                cp build/zephyr/remapper.hex remapper_\${BOARD_FILE}.hex
+              else
+                cp build/zephyr/remapper.uf2 remapper_\${BOARD_FILE}.uf2
+              fi
+            "
+
       - uses: actions/upload-artifact@v4
         with:
           name: artifact-${{ steps.board.outputs.name }}
