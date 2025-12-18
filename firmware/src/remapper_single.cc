@@ -57,6 +57,8 @@ void flash_b_side() {
 
 void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port, uint8_t itf_num) {
     parse_descriptor(vendor_id, product_id, report_descriptor, len, interface, itf_num);
+
+    device_connected_callback(interface, vendor_id, product_id, hub_port);
 }
 
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
@@ -75,8 +77,6 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
     uint8_t itf_num = itf_info.desc.bInterfaceNumber;
 
     descriptor_received_callback(vid, pid, desc_report, desc_len, (uint16_t) (dev_addr << 8) | instance, hub_port, itf_num);
-
-    device_connected_callback((uint16_t) (dev_addr << 8) | instance, vid, pid, hub_port);
 
     tuh_hid_receive_report(dev_addr, instance);
 }
