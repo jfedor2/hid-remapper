@@ -76,11 +76,80 @@ static const uint8_t xbox_one_descriptor[] = {
     0xC0,              // End Collection
 };
 
+static const uint8_t xbox_360_descriptor[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x02,        //   Report Count (2)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x10,        //   Report Count (16)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x06, 0xF9, 0xFF,  //   Usage Page (Vendor Defined 0xFFF9)
+    0x09, 0x03,        //   Usage (0x03)
+    0x09, 0x04,        //   Usage (0x04)
+    0x09, 0x01,        //   Usage (0x01)
+    0x09, 0x02,        //   Usage (0x02)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x09, 0x0A,        //   Usage (0x0A)
+    0x09, 0x09,        //   Usage (0x09)
+    0x09, 0x0B,        //   Usage (0x0B)
+    0x09, 0x0C,        //   Usage (0x0C)
+    0x09, 0x05,        //   Usage (0x05)
+    0x09, 0x06,        //   Usage (0x06)
+    0x09, 0x0D,        //   Usage (0x0D)
+    0x09, 0x0E,        //   Usage (0x0E)
+    0x09, 0x02,        //   Usage (0x02)
+    0x09, 0x03,        //   Usage (0x03)
+    0x09, 0x01,        //   Usage (0x01)
+    0x09, 0x04,        //   Usage (0x04)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x02,        //   Report Count (2)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x26, 0xFF, 0x00,  //   Logical Maximum (255)
+    0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
+    0x09, 0x33,        //   Usage (Rx)
+    0x09, 0x34,        //   Usage (Ry)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x10,        //   Report Size (16)
+    0x95, 0x01,        //   Report Count (1)
+    0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x09, 0x30,        //   Usage (X)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x26, 0x00, 0x80,  //   Logical Maximum (-32768)
+    0x16, 0xFF, 0x7F,  //   Logical Minimum (32767)
+    0x09, 0x31,        //   Usage (Y)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x16, 0x00, 0x80,  //   Logical Minimum (-32768)
+    0x26, 0xFF, 0x7F,  //   Logical Maximum (32767)
+    0x09, 0x32,        //   Usage (Z)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x26, 0x00, 0x80,  //   Logical Maximum (-32768)
+    0x16, 0xFF, 0x7F,  //   Logical Minimum (32767)
+    0x09, 0x35,        //   Usage (Rz)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x75, 0x08,        //   Report Size (8)
+    0x95, 0x06,        //   Report Count (6)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,              // End Collection
+};
+
 static uint8_t init1[] = { 0x05, 0x20, 0x01, 0x01, 0x00 };
 static uint8_t init2[] = { 0x05, 0x20, 0x02, 0x0f, 0x06 };
 static uint8_t init3[] = { 0x06, 0x20, 0x03, 0x02, 0x01, 0x00 };
 
+enum class XType : int8_t {
+    UNKNOWN = 0,
+    XBOX_360 = 1,
+    XBOX_ONE = 2,
+};
+
 struct xdev_t {
+    XType type = XType::UNKNOWN;
     uint8_t dev_addr = 0;
     uint8_t itf_num = 0;
     uint8_t in_ep = 0;
@@ -129,19 +198,26 @@ bool xboxh_init(void) {
 }
 
 bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* desc_itf, uint16_t max_len) {
-    if ((desc_itf->bNumEndpoints != 2) ||
-        (desc_itf->bInterfaceClass != 255) ||
-        (desc_itf->bInterfaceSubClass != 71) ||
-        (desc_itf->bInterfaceProtocol != 208)) {
-        return false;
-    }
-
     if (max_len < sizeof(tusb_desc_interface_t) + desc_itf->bNumEndpoints * sizeof(tusb_desc_endpoint_t)) {
         return false;
     }
 
     struct xdev_t* xdev = allocate_xdev();
     if (xdev == nullptr) {
+        return false;
+    }
+
+    if ((desc_itf->bNumEndpoints == 2) &&
+        (desc_itf->bInterfaceClass == 255) &&
+        (desc_itf->bInterfaceSubClass == 71) &&
+        (desc_itf->bInterfaceProtocol == 208)) {
+        xdev->type = XType::XBOX_ONE;
+    } else if ((desc_itf->bNumEndpoints == 2) &&
+               (desc_itf->bInterfaceClass == 255) &&
+               (desc_itf->bInterfaceSubClass == 93) &&
+               (desc_itf->bInterfaceProtocol == 1)) {  // XXX this is 129 for wireless
+        xdev->type = XType::XBOX_360;
+    } else {
         return false;
     }
 
@@ -152,14 +228,17 @@ bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* d
 
     uint8_t const* p_desc = (uint8_t const*) desc_itf;
 
-    for (int i = 0; i < 2; i++) {
+    while (true) {
         p_desc = tu_desc_next(p_desc);
+        if (p_desc >= ((uint8_t*) desc_itf) + max_len) {
+            break;
+        }
         tusb_desc_endpoint_t const* desc_ep = (tusb_desc_endpoint_t const*) p_desc;
         if (desc_ep->bDescriptorType != TUSB_DESC_ENDPOINT) {
-            return false;
+            continue;
         }
         if (desc_ep->bmAttributes.xfer != TUSB_XFER_INTERRUPT) {
-            return false;
+            continue;
         }
         if (!tuh_edpt_open(dev_addr, desc_ep)) {
             return false;
@@ -251,8 +330,31 @@ bool xboxh_set_config(uint8_t dev_addr, uint8_t itf_num) {
         return false;
     }
 
-    xdev->setup_stage = 1;
-    process_setup(xdev);
+    switch (xdev->type) {
+        case XType::XBOX_ONE:
+            xdev->setup_stage = 1;
+            process_setup(xdev);
+            break;
+        case XType::XBOX_360:
+            xxfer_in(xdev);
+
+            uint8_t hub_addr;
+            uint8_t hub_port;
+            tuh_get_hub_addr_port(xdev->dev_addr, &hub_addr, &hub_port);
+            // We use the same VID/PID for all Xbox controllers to be able to apply quirks.
+            // We should probably find another way to signal that it's an Xbox controller and pass the real ones.
+            descriptor_received_callback(
+                VENDOR_ID_MICROSOFT,
+                PRODUCT_ID_MICROSOFT_XBOX_360_CONTROLLER,
+                xbox_360_descriptor,
+                sizeof(xbox_360_descriptor),
+                (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num,
+                hub_port, xdev->itf_num);
+            usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
+            break;
+        default:
+            break;
+    }
 
     return true;
 }
@@ -263,24 +365,38 @@ bool xboxh_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint
         return false;
     }
 
-    if (ep_addr == xdev->in_ep) {
-        if (xferred_bytes > 0) {
-            if ((xdev->buf[0] == 0x07) && (xdev->buf[1] == 0x30)) {
-                // this kind of packet requires ack
-                uint8_t ack[] = { 0x01, 0x20, xdev->buf[2], 9, 0x00, 0x07, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
-                xxfer_out(xdev, ack, sizeof(ack));  // we should have a queue or something
+    switch (xdev->type) {
+        case XType::XBOX_ONE:
+            if (ep_addr == xdev->in_ep) {
+                if (xferred_bytes > 0) {
+                    if ((xdev->buf[0] == 0x07) && (xdev->buf[1] == 0x30)) {
+                        // this kind of packet requires ack
+                        uint8_t ack[] = { 0x01, 0x20, xdev->buf[2], 9, 0x00, 0x07, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                        xxfer_out(xdev, ack, sizeof(ack));  // we should have a queue or something
+                    }
+                    if ((xdev->buf[0] == 0x20) || (xdev->buf[0] == 0x07)) {  // only pass stuff we know
+                        report_received_callback(xdev->dev_addr, xdev->itf_num, xdev->buf, xferred_bytes);
+                    }
+                }
+                xxfer_in(xdev);
             }
-            if ((xdev->buf[0] == 0x20) || (xdev->buf[0] == 0x07)) {  // only pass stuff we know
-                report_received_callback(xdev->dev_addr, xdev->itf_num, xdev->buf, xferred_bytes);
+            if (ep_addr == xdev->out_ep) {
+                if (xdev->setup_stage != 0) {
+                    xdev->setup_stage++;
+                    process_setup(xdev);
+                }
             }
-        }
-        xxfer_in(xdev);
-    }
-    if (ep_addr == xdev->out_ep) {
-        if (xdev->setup_stage != 0) {
-            xdev->setup_stage++;
-            process_setup(xdev);
-        }
+            break;
+        case XType::XBOX_360:
+            if (ep_addr == xdev->in_ep) {
+                if ((xferred_bytes > 0) && (xdev->buf[0] == 0x00)) {
+                    report_received_callback(xdev->dev_addr, xdev->itf_num, xdev->buf, xferred_bytes);
+                }
+                xxfer_in(xdev);
+            }
+            break;
+        default:
+            break;
     }
     return true;
 }
