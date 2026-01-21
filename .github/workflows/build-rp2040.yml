@@ -70,6 +70,11 @@ jobs:
           PICO_BOARD=flatbox_rev8 cmake ..
           make remapper
           cd ..
+          mkdir build-waveshare_rp2350_pizero
+          cd build-waveshare_rp2350_pizero
+          PICO_BOARD=waveshare_rp2350_pizero cmake ..
+          make remapper
+          cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
           rm artifacts/flash_b_side.uf2
@@ -85,6 +90,7 @@ jobs:
           mv build-waveshare_rp2350_usb_a/remapper.uf2 artifacts/remapper_waveshare_rp2350_usb_a.uf2
           mv build-flatbox_rev4/remapper.uf2 artifacts/remapper_flatbox_rev4.uf2
           mv build-flatbox_rev8/remapper.uf2 artifacts/remapper_flatbox_rev8.uf2
+          mv build-waveshare_rp2350_pizero/remapper.uf2 artifacts/remapper_waveshare_rp2350_pizero.uf2
         working-directory: ./firmware
       - uses: actions/upload-artifact@v4
         with:
