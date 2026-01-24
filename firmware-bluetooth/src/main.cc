@@ -9,6 +9,7 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -21,6 +22,7 @@
 #include <zephyr/usb/usb_device.h>
 
 #include "config.h"
+#include "imu.h"
 #include "descriptor_parser.h"
 #include "globals.h"
 #include "our_descriptor.h"
@@ -52,6 +54,9 @@ static bool get_report_response_ready = false;
 
 static const struct device* hid_dev0;
 static const struct device* hid_dev1;  // config interface
+
+// Forward declarations
+static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len);
 
 struct report_type {
     uint16_t interface;
@@ -106,7 +111,7 @@ static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(SW0_NODE, gpios);
 
 static struct gpio_callback button_cb_data;
 
-static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(LED1_NODE, gpios);
 
 static bool scanning = false;
@@ -117,7 +122,7 @@ static struct bt_le_conn_param* conn_param = BT_LE_CONN_PARAM(6, 6, 44, 400);
 static void activity_led_off_work_fn(struct k_work* work) {
     gpio_pin_set_dt(&led0, false);
 }
-static K_WORK_DELAYABLE_DEFINE(activity_led_off_work, activity_led_off_work_fn);
+K_WORK_DELAYABLE_DEFINE(activity_led_off_work, activity_led_off_work_fn);
 
 enum class LedMode {
     OFF = 0,
@@ -718,6 +723,7 @@ static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uin
     if (interface == 1) {
         return CHK(hid_int_ep_write(hid_dev1, report_with_id, len, NULL));
     }
+    return false;
 }
 
 static void button_init() {
@@ -905,6 +911,7 @@ int main() {
     my_mutexes_init();
     button_init();
     leds_init();
+    
     bt_init();
     CHK(settings_subsys_init());
     CHK(settings_register(&our_settings_handlers));
@@ -914,6 +921,19 @@ int main() {
     scan_init();
     parse_our_descriptor();
     set_mapping_from_config();
+    
+    // Initialize 6-axis IMU AFTER mapping system is ready
+#if DT_NODE_EXISTS(DT_NODELABEL(lsm6ds3tr_c))
+    if (imu_enabled) {
+        if (!imu_init()) {
+            LOG_ERR("Failed to initialize 6-axis IMU");
+        }
+    } else {
+        LOG_INF("IMU disabled in configuration - skipping IMU initialization");
+    }
+#else
+    LOG_INF("IMU not available on this board - skipping IMU initialization");
+#endif
 
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 
