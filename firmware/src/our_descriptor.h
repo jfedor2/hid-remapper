@@ -27,6 +27,7 @@ typedef void (*handle_set_report_complete_t)(uint16_t interface, uint8_t report_
 typedef void (*clear_report_t)(uint8_t* report, uint8_t report_id, uint16_t len);
 typedef int32_t (*default_value_t)(uint32_t usage);
 typedef void (*sanitize_report_t)(uint8_t report_id, uint8_t* buffer, uint16_t len);
+typedef bool (*should_cause_wakeup_t)(uint8_t report_id, const uint8_t* buffer, uint16_t len);
 
 struct our_descriptor_def_t {
     uint8_t idx;
@@ -46,6 +47,7 @@ struct our_descriptor_def_t {
     clear_report_t clear_report = nullptr;
     default_value_t default_value = nullptr;
     sanitize_report_t sanitize_report = nullptr;
+    should_cause_wakeup_t should_cause_wakeup = nullptr;
 };
 
 extern const our_descriptor_def_t our_descriptors[];

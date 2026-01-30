@@ -541,6 +541,26 @@ uint16_t kb_mouse_handle_get_report(uint8_t report_id, uint8_t* buffer, uint16_t
     return 0;
 }
 
+bool kb_mouse_should_cause_wakeup(uint8_t report_id, const uint8_t* buffer, uint16_t len) {
+    if ((report_id == REPORT_ID_KEYBOARD) || (report_id == REPORT_ID_CONSUMER)) {
+        for (uint16_t i = 0; i < len; i++) {
+            if (buffer[i] != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (report_id == REPORT_ID_MOUSE) {
+        if ((len > 0) && (buffer[0] != 0)) {
+            return true;
+        }
+        return false;
+    }
+
+    return false;
+}
+
 static const uint8_t horipad_neutral[] = { 0x00, 0x00, 0x0F, 0x80, 0x80, 0x80, 0x80, 0x00 };
 
 void horipad_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
@@ -618,6 +638,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
         .set_report_synchronous = kb_mouse_set_report_synchronous,
+        .should_cause_wakeup = kb_mouse_should_cause_wakeup,
     },
     {
         .idx = 1,
@@ -627,6 +648,7 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
         .set_report_synchronous = kb_mouse_set_report_synchronous,
+        .should_cause_wakeup = kb_mouse_should_cause_wakeup,
     },
     {
         .idx = 2,

@@ -72,7 +72,9 @@ void __no_inline_not_in_flash_func(sof_handler)(uint32_t frame_count) {
 }
 
 bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
-    if (tud_suspended()) {
+    if (tud_suspended() &&
+        (our_descriptor->should_cause_wakeup != nullptr) &&
+        our_descriptor->should_cause_wakeup(report_with_id[0], report_with_id + 1, len - 1)) {
         tud_remote_wakeup();
     } else {
         tud_hid_n_report(interface, report_with_id[0], report_with_id + 1, len - 1);
