@@ -12,6 +12,11 @@ const usages = {
         "0x00010031": { 'name': 'Cursor Y', 'class': 'mouse' },
         "0x00010038": { 'name': 'V scroll', 'class': 'mouse' },
         "0x000c0238": { 'name': 'H scroll', 'class': 'mouse' },
+
+        "0x0020008d": { 'name': 'Yaw', 'class': 'mouse' },
+        "0x0020008e": { 'name': 'Pitch', 'class': 'mouse' },
+        "0x0020008f": { 'name': 'Roll', 'class': 'mouse' },
+        "0x00200073": { 'name': 'Shake', 'class': 'mouse' },
     },
     'source_1': {
         "0x00010030": { 'name': 'Left stick X', 'class': 'gamepad' },
@@ -199,6 +204,11 @@ const usages = {
         "0x000c00b6": { 'name': 'Previous track', 'class': 'media' },
 
         "0x00000000": { 'name': 'Nothing', 'class': 'other' },
+
+        "0x0020008d": { 'name': 'Yaw', 'class': 'mouse' },
+        "0x0020008e": { 'name': 'Pitch', 'class': 'mouse' },
+        "0x0020008f": { 'name': 'Roll', 'class': 'mouse' },
+        "0x00200073": { 'name': 'Shake', 'class': 'mouse' },
         "0xfff30001": { 'name': 'Expression 1', 'class': 'other' },
         "0xfff30002": { 'name': 'Expression 2', 'class': 'other' },
         "0xfff30003": { 'name': 'Expression 3', 'class': 'other' },
@@ -425,6 +435,11 @@ const usages = {
         "0x000c00b7": { 'name': 'Stop', 'class': 'media' },
         "0x000c00b5": { 'name': 'Next track', 'class': 'media' },
         "0x000c00b6": { 'name': 'Previous track', 'class': 'media' },
+
+        "0x0020008d": { 'name': 'Yaw', 'class': 'mouse' },
+        "0x0020008e": { 'name': 'Pitch', 'class': 'mouse' },
+        "0x0020008f": { 'name': 'Roll', 'class': 'mouse' },
+        "0x00200073": { 'name': 'Shake', 'class': 'mouse' },
     },
     2: {
         "0x00090001": { 'name': 'Y', 'class': 'mouse' },

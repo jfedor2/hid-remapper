@@ -5,6 +5,7 @@ on:
       - 'firmware/**'
       - 'firmware-bluetooth/**'
   workflow_call:
+  workflow_dispatch: 
 defaults:
   run:
     shell: bash --noprofile --norc -x -e -o pipefail {0}
@@ -13,15 +14,24 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840"]
+        include:
+          - board: "adafruit_feather_nrf52840"
+            name: "adafruit_feather_nrf52840"
+            extra_args: ""
+          - board: "seeed_xiao_nrf52840"
+            name: "seeed_xiao_nrf52840"
+            extra_args: ""
+          - board: "seeed_xiao_nrf52840"
+            name: "seeed_xiao_nrf52840_sense"
+            extra_args: "-- \"-DOVERLAY_CONFIG=boards/arm/seeed_xiao_nrf52840/seeed_xiao_nrf52840_sense.conf\" \"-DDTC_OVERLAY_FILE=boards/arm/seeed_xiao_nrf52840/seeed_xiao_nrf52840_sense.overlay\""
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: |
           docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch \
-            west build -b ${{ matrix.board }}
-          cp firmware-bluetooth/build/zephyr/remapper.uf2 firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+            west build -b ${{ matrix.board }} ${{ matrix.extra_args }}
+          cp firmware-bluetooth/build/zephyr/remapper.uf2 firmware-bluetooth/remapper_${{ matrix.name }}.uf2
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{ matrix.board }}
-          path: firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+          name: artifact-${{ matrix.name }}
+          path: firmware-bluetooth/remapper_${{ matrix.name }}.uf2
