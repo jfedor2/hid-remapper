@@ -52,9 +52,14 @@
                     <div style="min-width: 720px; width: 100%;">
                         <div class="row my-2 align-items-end">
                             <div class="col-1"></div>
-                            <div class="col-3 text-center"><a href="#" id="input-column-header" class="text-decoration-none text-reset d-block">Input</a></div>
-                            <div class="col-3 text-center"><a href="#" id="output-column-header" class="text-decoration-none text-reset d-block">Output</a></div>
-                            <div class="col-3">
+                            <div class="col-5 text-center">
+                                <div class="d-flex gap-1 align-items-center">
+                                    <div class="w-50 text-center"><a href="#" id="input-column-header" class="text-decoration-none text-reset d-block">Input</a></div>
+                                    <span class="text-muted">&rarr;</span>
+                                    <div class="w-50 text-center"><a href="#" id="output-column-header" class="text-decoration-none text-reset d-block">Output</a></div>
+                                </div>
+                            </div>
+                            <div class="col-4">
                                 <div class="d-flex align-items-end">
                                     <div class="flex-fill text-center"><a href="#" id="layer-column-header" class="text-decoration-none text-reset d-block">Layer</a></div>
                                     <div class="text-start pt-1" style="writing-mode: vertical-rl; transform: rotate(180deg); line-height: 1.2em;">Sticky<br>Tap<br>Hold</div>
@@ -97,19 +102,19 @@
                             <input type="checkbox" id="unmapped_passthrough_checkbox3" class="form-check-input">
                             <label for="unmapped_passthrough_checkbox3" class="form-check-label">3</label>
                         </div>
-                        <div class="form-check form-check-inline d-none">
+                        <div class="form-check form-check-inline">
                             <input type="checkbox" id="unmapped_passthrough_checkbox4" class="form-check-input">
                             <label for="unmapped_passthrough_checkbox4" class="form-check-label">4</label>
                         </div>
-                        <div class="form-check form-check-inline d-none">
+                        <div class="form-check form-check-inline">
                             <input type="checkbox" id="unmapped_passthrough_checkbox5" class="form-check-input">
                             <label for="unmapped_passthrough_checkbox5" class="form-check-label">5</label>
                         </div>
-                        <div class="form-check form-check-inline d-none">
+                        <div class="form-check form-check-inline">
                             <input type="checkbox" id="unmapped_passthrough_checkbox6" class="form-check-input">
                             <label for="unmapped_passthrough_checkbox6" class="form-check-label">6</label>
                         </div>
-                        <div class="form-check form-check-inline d-none">
+                        <div class="form-check form-check-inline">
                             <input type="checkbox" id="unmapped_passthrough_checkbox7" class="form-check-input">
                             <label for="unmapped_passthrough_checkbox7" class="form-check-label">7</label>
                         </div>
@@ -337,21 +342,22 @@
     </div>
 
     <template id="mapping_template">
-        <div class="row mb-1 mapping_container">
+        <div class="row mb-1 mapping_container align-items-center">
             <div class="col-1"><button type="button" class="btn btn-primary delete_button">×</button></div>
-            <div class="col-3">
-                <button type="button" class="btn btn-primary w-100 source_button position-relative">
-                    <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
-                    <span class="button_label">source</span>
-                </button>
+            <div class="col-5">
+                <div class="d-flex gap-1 align-items-center">
+                    <button type="button" class="btn btn-primary btn-sm w-50 text-truncate px-1 source_button position-relative">
+                        <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
+                        <span class="button_label">source</span>
+                    </button>
+                    <span class="text-muted">&rarr;</span>
+                    <button type="button" class="btn btn-primary btn-sm w-50 text-truncate px-1 target_button position-relative">
+                        <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
+                        <span class="button_label">target</span>
+                    </button>
+                </div>
             </div>
-            <div class="col-3">
-                <button type="button" class="btn btn-primary w-100 target_button position-relative">
-                    <span class="position-absolute top-50 start-0 translate-middle badge bg-info rounded-pill hub_port_badge">0</span>
-                    <span class="button_label">target</span>
-                </button>
-            </div>
-            <div class="col-3">
+            <div class="col-4">
                 <div class="d-flex lh-1 text-center">
                     <div class="flex-fill row gx-1 justify-content-center">
                         <div class="col-auto">
@@ -370,19 +376,19 @@
                             <input class="form-check-input layer_checkbox3" type="checkbox" value="">
                             <br><span class="text-muted small">3</span>
                         </div>
-                        <div class="col-auto d-none">
+                        <div class="col-auto">
                             <input class="form-check-input layer_checkbox4" type="checkbox" value="">
                             <br><span class="text-muted small">4</span>
                         </div>
-                        <div class="col-auto d-none">
+                        <div class="col-auto">
                             <input class="form-check-input layer_checkbox5" type="checkbox" value="">
                             <br><span class="text-muted small">5</span>
                         </div>
-                        <div class="col-auto d-none">
+                        <div class="col-auto">
                             <input class="form-check-input layer_checkbox6" type="checkbox" value="">
                             <br><span class="text-muted small">6</span>
                         </div>
-                        <div class="col-auto d-none">
+                        <div class="col-auto">
                             <input class="form-check-input layer_checkbox7" type="checkbox" value="">
                             <br><span class="text-muted small">7</span>
                         </div>
