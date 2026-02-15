@@ -309,6 +309,69 @@ const uint8_t our_report_descriptor_horipad[] = {
     0xC0,              // End Collection
 };
 
+const uint8_t our_report_descriptor_horipad_o[] = {
+    0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,        // Usage (Game Pad)
+    0xA1, 0x01,        // Collection (Application)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x19, 0x01,        //   Usage Minimum (0x01)
+    0x29, 0x0E,        //   Usage Maximum (0x0E)
+    0x15, 0x00,        //   Logical Minimum (0)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x35, 0x00,        //   Physical Minimum (0)
+    0x45, 0x01,        //   Physical Maximum (1)
+    0x65, 0x00,        //   Unit (None)
+    0x55, 0x00,        //   Unit Exponent (0)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x0E,        //   Report Count (14)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, 0x02,        //   Report Count (2)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
+    0x09, 0x39,        //   Usage (Hat switch)
+    0x25, 0x07,        //   Logical Maximum (7)
+    0x46, 0x3B, 0x01,  //   Physical Maximum (315)
+    0x65, 0x14,        //   Unit (System: English Rotation, Length: Centimeter)
+    0x75, 0x04,        //   Report Size (4)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x42,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,Null State)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x45, 0x01,        //   Physical Maximum (1)
+    0x65, 0x00,        //   Unit (None)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x03,        //   Report Count (3)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x09,        //   Usage Page (Button)
+    0x09, 0x0F,        //   Usage (0x0F)
+    0x95, 0x01,        //   Report Count (1)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x05, 0x01,        //   Usage Page (Generic Desktop Ctrls)
+    0x09, 0x30,        //   Usage (X)
+    0x25, 0xFF,        //   Logical Maximum (255)
+    0x45, 0xFF,        //   Physical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x31,        //   Usage (Y)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x32,        //   Usage (Z)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x09, 0x35,        //   Usage (Rz)
+    0x81, 0x02,        //   Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x25, 0x01,        //   Logical Maximum (1)
+    0x45, 0x01,        //   Physical Maximum (1)
+    0x75, 0x01,        //   Report Size (1)
+    0x95, 0x08,        //   Report Count (8)
+    0x81, 0x03,        //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x0A, 0x4F, 0x48,  //   Usage (0x484F)
+    0x25, 0xFF,        //   Logical Maximum (255)
+    0x45, 0xFF,        //   Physical Maximum (255)
+    0x75, 0x08,        //   Report Size (8)
+    0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0x0A, 0x4F, 0x48,  //   Usage (0x484F)
+    0xB1, 0x02,        //   Feature (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
+    0xC0,              // End Collection
+};
+
 uint8_t const our_report_descriptor_ps4[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
     0x09, 0x05,        // Usage (Game Pad)
@@ -695,6 +758,16 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = xac_compat_clear_report,
         .default_value = ps4_stadia_default_value,  // sic
+    },
+    {
+        .idx = 6,
+        .descriptor = our_report_descriptor_horipad_o,
+        .descriptor_length = sizeof(our_report_descriptor_horipad_o),
+        .vid = 0x0F0D,
+        .pid = 0x0202,
+        .handle_received_report = do_handle_received_report,
+        .clear_report = horipad_clear_report,
+        .default_value = horipad_default_value,
     },
 };
 
