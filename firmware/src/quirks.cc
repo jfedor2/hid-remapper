@@ -12,6 +12,7 @@ const uint16_t PRODUCT_ID_ELECOM_M_XT4DRBK = 0x00fd;
 const uint16_t PRODUCT_ID_ELECOM_M_DT1URBK = 0x00fe;
 const uint16_t PRODUCT_ID_ELECOM_M_DT1DRBK = 0x00ff;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1URBK = 0x010c;
+const uint16_t PRODUCT_ID_ELECOM_M_HT1URBK_019B = 0x019b;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1DRBK_010D = 0x010d;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1DRBK_011C = 0x011c;
 const uint16_t PRODUCT_ID_ELECOM_M_HT1MRBK_01AA = 0x01aa;
@@ -1041,6 +1042,7 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
         (((product_id == PRODUCT_ID_ELECOM_M_DT1URBK ||
               product_id == PRODUCT_ID_ELECOM_M_DT1DRBK ||
               product_id == PRODUCT_ID_ELECOM_M_HT1URBK ||
+              product_id == PRODUCT_ID_ELECOM_M_HT1URBK_019B ||
               product_id == PRODUCT_ID_ELECOM_M_HT1DRBK_010D) &&
              len == sizeof(elecom_huge_descriptor) &&
              !memcmp(report_descriptor, elecom_huge_descriptor, len)) ||
