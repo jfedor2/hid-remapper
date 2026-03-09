@@ -634,6 +634,8 @@ const our_descriptor_def_t our_descriptors[] = {
         .idx = 0,
         .descriptor = our_report_descriptor_kb_mouse,
         .descriptor_length = sizeof(our_report_descriptor_kb_mouse),
+        .vid = 0x046D,  // ← LOGITECH VID
+        .pid = 0xC24E,  // ← G600
         .handle_received_report = do_handle_received_report,
         .handle_get_report = kb_mouse_handle_get_report,
         .handle_set_report = kb_mouse_handle_set_report,
@@ -695,6 +697,15 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = xac_compat_clear_report,
         .default_value = ps4_stadia_default_value,  // sic
+    },
+    // G600 Mouse Interface
+    {
+        .idx = 6,
+        .descriptor = g600_mouse_report_descriptor,
+        .descriptor_length = 72,
+        .vid = 0x046D,
+        .pid = 0xC24A,
+        .handle_received_report = do_handle_received_report,
     },
 };
 
