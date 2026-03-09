@@ -71,15 +71,50 @@ void __no_inline_not_in_flash_func(sof_handler)(uint32_t frame_count) {
     sof_callback();
 }
 
-bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
-    if (tud_suspended() &&
-        (our_descriptor->should_cause_wakeup != nullptr) &&
-        our_descriptor->should_cause_wakeup(report_with_id[0], report_with_id + 1, len - 1)) {
-        tud_remote_wakeup();
-    } else {
-        tud_hid_n_report(interface, report_with_id[0], report_with_id + 1, len - 1);
+bool do_send_report(uint8_t report_id, const uint8_t* report, uint8_t len) {
+    if (len == 0) return true;
+
+    // Filtro 1: MOUSE. (A estrutura interna do remapper para mouse SEMPRE tem 7 bytes)
+    // Isso ignora qualquer erro de Report ID gerado pela configuração web.
+    if (len == 7) {
+        if (!tud_hid_n_ready(0)) return false; 
+
+        uint8_t g600_mouse[5] = {0};
+        
+        // Botões (Copiamos os botões normais, deixamos os extras em branco)
+        g600_mouse[0] = report[0]; 
+        g600_mouse[1] = 0x00;      
+        
+        // Eixo X: Reconstrução dos 16 bits nativos (Little-Endian) para 8 bits (-127 a 127)
+        int16_t x = (int16_t)((report[2] << 8) | report[1]);
+        if (x > 127) x = 127;
+        if (x < -127) x = -127;
+        g600_mouse[2] = (uint8_t)(x & 0xFF);
+        
+        // Eixo Y: Reconstrução e Compressão
+        int16_t y = (int16_t)((report[4] << 8) | report[3]);
+        if (y > 127) y = 127;
+        if (y < -127) y = -127;
+        g600_mouse[3] = (uint8_t)(y & 0xFF);
+        
+        // Scroll Wheel (Copiamos o 6º byte do array original)
+        g600_mouse[4] = report[5]; 
+        
+        // Dispara o pacote na Interface 0 (A porta oficial e forjada do nosso mouse G600)
+        return tud_hid_n_report(0, 0, g600_mouse, 5);
     }
-    return true;  // XXX?
+    
+    // Filtro 2: TECLADO. (A estrutura interna de teclado SEMPRE tem 8 bytes)
+    if (len == 8) {
+        if (!tud_hid_n_ready(1)) return false; 
+        
+        // Envia para a Interface 1 (Teclado)
+        return tud_hid_n_report(1, 0, report, len);
+    }
+    
+    // Se o hid-remapper tentar enviar pacotes de configuração da interface web (32 bytes),
+    // nós retornamos TRUE para jogar fora e enganar a placa para que ela não trave a fila.
+    return true; 
 }
 
 void gpio_pins_init() {
