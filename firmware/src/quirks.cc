@@ -24,10 +24,24 @@ const uint16_t VENDOR_ID_CH_PRODUCTS = 0x068e;
 const uint16_t PRODUCT_ID_CH_PRODUCTS_DT225 = 0xf700;
 
 const uint16_t VENDOR_ID_3DCONNEXION = 0x256f;
-const uint16_t VENDOR_ID_LOGITECH = 0x046D;
+const uint16_t VENDOR_ID_LOGITECH = 0x046d;
 const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_COMPACT = 0xc635;
 const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PRO = 0xc62b;
 const uint16_t PRODUCT_ID_3DCONNEXION_SPACEPILOT = 0xc625;
+const uint16_t PRODUCT_ID_3DCONNEXION_CADMAN = 0xc605;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACENAVIGATOR = 0xc626;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACENAVIGATOR_NOTEBOOK = 0xc628;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEEXPLORER = 0xc627;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEPILOT_PRO = 0xc629;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACETRAVELLER = 0xc623;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEBALL_5000 = 0xc621;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_CLASSIC = 0xc606;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_WIRELESS = 0xc62f;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_WIRELESS_CAB = 0xc62e;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PRO_WIRELESS = 0xc632;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PRO_WIRELESS_CAB = 0xc631;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PLUS = 0xc603;
+const uint16_t PRODUCT_ID_3DCONNEXION_SPACEMOUSE_ENTERPRISE = 0xc633;
 
 const uint16_t VENDOR_ID_GOOGLE = 0x18d1;
 const uint16_t PRODUCT_ID_GOOGLE_STADIA_CONTROLLER = 0x9400;
@@ -1152,17 +1166,31 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
     }
 
     // SpaceMouse says its usages are relative, but they're not.
-    if ((vendor_id == VENDOR_ID_3DCONNEXION &&
-            ((product_id == PRODUCT_ID_3DCONNEXION_SPACEMOUSE_COMPACT &&
-                 len == sizeof(spacemouse_compact_descriptor) &&
-                 !memcmp(report_descriptor, spacemouse_compact_descriptor, len)) ||
-                (product_id == PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PRO &&
-                    len == sizeof(spacemouse_pro_descriptor) &&
-                    !memcmp(report_descriptor, spacemouse_pro_descriptor, len)))) ||
-        (vendor_id == VENDOR_ID_LOGITECH &&
-            product_id == PRODUCT_ID_3DCONNEXION_SPACEPILOT &&
-            len == sizeof(spacepilot_descriptor) &&
-            !memcmp(report_descriptor, spacepilot_descriptor, len))) {
+    if (vendor_id == VENDOR_ID_3DCONNEXION &&
+        ((product_id == PRODUCT_ID_3DCONNEXION_SPACEMOUSE_COMPACT &&
+             len == sizeof(spacemouse_compact_descriptor) &&
+             !memcmp(report_descriptor, spacemouse_compact_descriptor, len)) ||
+            (product_id == PRODUCT_ID_3DCONNEXION_SPACEMOUSE_PRO &&
+                len == sizeof(spacemouse_pro_descriptor) &&
+                !memcmp(report_descriptor, spacemouse_pro_descriptor, len)))) {
+        usage_map[1][0x00010030].is_relative = false;
+        usage_map[1][0x00010031].is_relative = false;
+        usage_map[1][0x00010032].is_relative = false;
+        usage_map[2][0x00010033].is_relative = false;
+        usage_map[2][0x00010034].is_relative = false;
+        usage_map[2][0x00010035].is_relative = false;
+    }
+
+    // Try to catch all other SpaceMouse models.
+    if (((vendor_id == VENDOR_ID_3DCONNEXION) || (vendor_id = 0x046d)) &&
+        usage_map.count(1) &&
+        usage_map.count(2) &&
+        usage_map[1].count(0x00010030) &&
+        usage_map[1].count(0x00010031) &&
+        usage_map[1].count(0x00010032) &&
+        usage_map[2].count(0x00010033) &&
+        usage_map[2].count(0x00010034) &&
+        usage_map[2].count(0x00010035)) {
         usage_map[1][0x00010030].is_relative = false;
         usage_map[1][0x00010031].is_relative = false;
         usage_map[1][0x00010032].is_relative = false;
