@@ -10291,6 +10291,66 @@ const examples = [
                     "hold": false,
                     "source_port": 0,
                     "target_port": 0
+                },
+                {
+                    "source_usage": "0x00010030",
+                    "source_name": "Axis X",
+                    "target_usage": "0x00010030",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010031",
+                    "source_name": "Axis Y",
+                    "target_usage": "0x00010031",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010032",
+                    "source_name": "Axis Z",
+                    "target_usage": "0x00010032",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010033",
+                    "source_name": "Axis RX",
+                    "target_usage": "0x00010033",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010034",
+                    "source_name": "Axis RY",
+                    "target_usage": "0x00010034",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "scaling": 1000
+                },
+                {
+                    "source_usage": "0x00010035",
+                    "source_name": "Axis RZ",
+                    "target_usage": "0x00010035",
+                    "layers": [
+                        0
+                    ],
+                    "sticky": false,
+                    "scaling": 1000
                 }
             ],
             "macros": [
