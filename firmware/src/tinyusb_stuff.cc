@@ -161,7 +161,14 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
             return NULL;
 
-        const char* str = string_desc_arr[index];
+        const char* str = NULL;
+        if (index == 1 && our_descriptor->manufacturer[0] != '\0') {
+        str = our_descriptor->manufacturer;
+        } else if (index == 2 && our_descriptor->product[0] != '\0') {
+        str = our_descriptor->product;
+        } else {
+        str = string_desc_arr[index];
+        }
 
         // Cap at max char
         chr_count = strlen(str);
@@ -173,7 +180,8 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             _desc_str[1 + i] = str[i];
         }
 
-        if (index == 2) {
+        //write unique id, only if we haven't defined a specific device name
+        if (index == 2 && our_descriptor->product[0] == '\0') {
             uint64_t unique_id = get_unique_id();
             for (uint8_t i = 0; i < 4; i++) {
                 _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
