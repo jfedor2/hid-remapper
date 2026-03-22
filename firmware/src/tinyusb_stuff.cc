@@ -109,22 +109,15 @@ const uint8_t* configuration_descriptors[] = {
     configuration_descriptor6,
 };
 
-// XXX make it customizable per emulated device type
 char const* string_desc_arr[] = {
     (const char[]){ 0x09, 0x04 },  // 0: is supported language is English (0x0409)
 
-/*
 #ifdef PICO_RP2350
     "RP2350",  // 1: Manufacturer
 #else
     "RP2040",  // 1: Manufacturer
 #endif
     "HID Remapper XXXX",  // 2: Product
-*/
-
-//required for SpaceMouse driver
-    "3Dconnexion",                 // 1: Manufacturer
-    "SpaceMouse Pro",              // 2: Product
 };
 
 // Invoked when received GET DEVICE DESCRIPTOR
@@ -176,7 +169,14 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         if (!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])))
             return NULL;
 
-        const char* str = string_desc_arr[index];
+        const char* str = NULL;
+        if (index == 1 && our_descriptor->manufacturer[0] != '\0') {
+        str = our_descriptor->manufacturer;
+        } else if (index == 2 && our_descriptor->product[0] != '\0') {
+        str = our_descriptor->product;
+        } else {
+        str = string_desc_arr[index];
+        }
 
         // Cap at max char
         chr_count = strlen(str);
@@ -188,12 +188,12 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             _desc_str[1 + i] = str[i];
         }
 
-        // if (index == 2) {
-        //     uint64_t unique_id = get_unique_id();
-        //     for (uint8_t i = 0; i < 4; i++) {
-        //         _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
-        //     }
-        // }
+        if (index == 2 && our_descriptor->product[0] == '\0') {
+            uint64_t unique_id = get_unique_id();
+            for (uint8_t i = 0; i < 4; i++) {
+                _desc_str[1 + chr_count - 4 + i] = id_chars[(unique_id >> (15 - i * 5)) & 0x1F];
+            }
+        }
     }
 
     // first byte is length (including header), second byte is string type
