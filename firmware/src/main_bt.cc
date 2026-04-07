@@ -31,6 +31,7 @@ extern "C" {
 
 #include "hardware/flash.h"
 #include "hardware/sync.h"
+#include "hardware/watchdog.h"
 
 #include "config.h"
 #include "descriptor_parser.h"
@@ -114,6 +115,10 @@ void do_persist_config(uint8_t* buffer) {
 
 void reset_to_bootloader() {
     reset_usb_boot(0, 0);
+}
+
+void reboot() {
+    watchdog_reboot(0, 0, 0);
 }
 
 void flash_b_side() {

@@ -11,6 +11,7 @@
 #endif
 #include <hardware/flash.h>
 #include <hardware/gpio.h>
+#include <hardware/watchdog.h>
 #include <pico/bootrom.h>
 #include <pico/mutex.h>
 #include <pico/platform.h>
@@ -205,6 +206,10 @@ void do_persist_config(uint8_t* buffer) {
 
 void reset_to_bootloader() {
     reset_usb_boot(0, 0);
+}
+
+void reboot() {
+    watchdog_reboot(0, 0, 0);
 }
 
 void pair_new_device() {

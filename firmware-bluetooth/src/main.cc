@@ -1113,6 +1113,10 @@ void reset_to_bootloader() {
 #endif
 }
 
+void reboot() {
+    sys_reboot(SYS_REBOOT_COLD);
+}
+
 void flash_b_side() {
 }
 

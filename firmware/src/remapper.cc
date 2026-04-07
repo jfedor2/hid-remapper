@@ -47,6 +47,7 @@ const uint8_t resolution_multiplier_masks[] = {
 std::vector<reverse_mapping_t> reverse_mapping;
 std::vector<reverse_mapping_t> reverse_mapping_macros;
 std::vector<reverse_mapping_t> reverse_mapping_layers;
+std::vector<reverse_mapping_t> reverse_mapping_system;
 
 std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>> our_usages;  // report_id -> usage -> usage_def
 std::unordered_map<uint32_t, usage_def_t> our_usages_flat;
@@ -392,6 +393,7 @@ void set_mapping_from_config() {
     reverse_mapping.clear();
     reverse_mapping_macros.clear();
     reverse_mapping_layers.clear();
+    reverse_mapping_system.clear();
     used_state_slots = 0;
     usage_state_ptr.clear();
     register_ptrs.clear();
@@ -694,6 +696,8 @@ void set_mapping_from_config() {
             reverse_mapping_macros.push_back(rev_map);
         } else if ((target & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
             reverse_mapping_layers.push_back(rev_map);
+        } else if ((target & 0xFFFF0000) == SYSTEM_USAGE_PAGE) {
+            reverse_mapping_system.push_back(rev_map);
         } else {
             reverse_mapping.push_back(rev_map);
         }
@@ -1197,6 +1201,21 @@ void process_mapping(bool auto_repeat) {
                     macro_queue.push((macro_entry_t){ duration_left : macro_entry_duration, items : usages });
                 }
                 my_mutex_exit(MutexId::MACROS);
+            }
+        }
+    }
+
+    // handle system actions (reboot, etc.)
+    for (auto const& rev_map : reverse_mapping_system) {
+        for (auto const& map_source : rev_map.sources) {
+            if ((layer_state_mask & map_source.layer_mask) &&
+                ((!map_source.tap && !map_source.hold && (*(map_source.input_state + PREV_STATE_OFFSET) == 0) && (*map_source.input_state != 0)) ||
+                    (map_source.hold && map_source.tap_hold_state->hold && !map_source.tap_hold_state->prev_hold) ||
+                    (map_source.tap && map_source.tap_hold_state->tap))) {
+                uint16_t action = rev_map.target & 0xFFFF;
+                if (action == 1) {
+                    reboot();
+                }
             }
         }
     }
