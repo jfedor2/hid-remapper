@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install compiler, libraries and tools
@@ -92,6 +92,6 @@ jobs:
           mv build-flatbox_rev8/remapper.uf2 artifacts/remapper_flatbox_rev8.uf2
           mv build-waveshare_rp2350_pizero/remapper.uf2 artifacts/remapper_waveshare_rp2350_pizero.uf2
         working-directory: ./firmware
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           path: firmware/artifacts/*
