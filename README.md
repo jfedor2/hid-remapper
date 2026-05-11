@@ -57,8 +57,9 @@ custom board v5 | [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/
 custom board v6 | [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board.uf2) | disconnect and reconnect after flashing
 custom board v7 | [remapper\_board\_v7.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v7.uf2) | disconnect and reconnect after flashing
 custom board v8 | [remapper\_board\_v8.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v8.uf2) |
-Feather nRF52840 Express | [remapper_adafruit_feather_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_adafruit_feather_nrf52840.uf2) |
-Xiao nRF52840 | [remapper_seeed_xiao_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_seeed_xiao_nrf52840.uf2) |
+Feather nRF52840 Express | [remapper_adafruit_feather_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_adafruit_feather_nrf52840.uf2) | see [BLUETOOTH.md](BLUETOOTH.md) for more details
+Xiao nRF52840 | [remapper_seeed_xiao_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_seeed_xiao_nrf52840.uf2) | see [BLUETOOTH.md](BLUETOOTH.md) for more details
+Raytac MDBT50Q-CX Dongle | [remapper_mdbt50q_cx_40_dongle_nrf52840.zip](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_mdbt50q_cx_40_dongle_nrf52840.zip) | see [BLUETOOTH.md](BLUETOOTH.md) for more details
 serial | [remapper_serial.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_serial.uf2) |
 
 For boards not listed above, use the same file name you used when flashing it for the first time.

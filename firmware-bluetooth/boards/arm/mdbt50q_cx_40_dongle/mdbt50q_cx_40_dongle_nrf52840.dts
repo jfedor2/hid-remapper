@@ -1,0 +1,100 @@
+/*
+ * Copyright (c) 2018-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2025 Raytac Corporation
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include "mdbt50q_cx_40_dongle_nrf52840-pinctrl.dtsi"
+
+/ {
+        model = "Raytac MDBT50Q-CX-40 Dongle";
+        compatible = "raytac,mdbt50q-cx-40-dongle";
+
+        chosen {
+                zephyr,console = &uart0;
+                zephyr,shell-uart = &uart0;
+                zephyr,uart-mcumgr = &uart0;
+                zephyr,bt-mon-uart = &uart0;
+                zephyr,bt-c2h-uart = &uart0;
+                zephyr,sram = &sram0;
+                zephyr,flash = &flash0;
+                zephyr,code-partition = &code_partition;
+        };
+
+        leds {
+                compatible = "gpio-leds";
+                led0: led_0 {
+                        gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
+                        label = "Green LED";
+                };
+                led1: led_1 {
+                        gpios = <&gpio0 6 GPIO_ACTIVE_LOW>;
+                        label = "Blue LED";
+                };
+        };
+
+        buttons {
+                compatible = "gpio-keys";
+                button0: button_0 {
+                        gpios = <&gpio1 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+                        label = "Push button switch 0";
+                };
+        };
+
+        aliases {
+                led0 = &led0;
+                led1 = &led1;
+                sw0 = &button0;
+        };
+};
+
+&gpiote {
+        status = "okay";
+};
+
+&gpio0 {
+        status = "okay";
+};
+
+&gpio1 {
+        status = "okay";
+};
+
+&uart0 {
+        compatible = "nordic,nrf-uart";
+        current-speed = <115200>;
+        status = "okay";
+        pinctrl-0 = <&uart0_default>;
+        pinctrl-1 = <&uart0_sleep>;
+        pinctrl-names = "default", "sleep";
+};
+
+&flash0 {
+        partitions {
+                compatible = "fixed-partitions";
+                #address-cells = <1>;
+                #size-cells = <1>;
+
+                /* Nordic MBR occupies 0x0 - 0x1000.
+                 * Application is loaded by Nordic nRF5 DFU bootloader
+                 * which lives at 0xf4000 - 0xfe000 (outside these partitions).
+                 */
+                code_partition: partition@1000 {
+                        label = "code_partition";
+                        reg = <0x00001000 0x000eb000>;
+                };
+
+                storage_partition: partition@ec000 {
+                        label = "storage";
+                        reg = <0x000ec000 0x00008000>;
+                };
+        };
+};
+
+zephyr_udc0: &usbd {
+        compatible = "nordic,nrf-usbd";
+        status = "okay";
+};
+

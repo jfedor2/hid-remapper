@@ -1,0 +1,11 @@
+identifier: mdbt50q_cx_40_dongle_nrf52840
+name: Raytac MDBT50Q-CX-40 Dongle
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - usb_device
+  - ble
+  - gpio

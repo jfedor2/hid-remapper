@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+
+CONFIG_SOC_SERIES_NRF52X=y
+CONFIG_SOC_NRF52840_QIAA=y
+CONFIG_BOARD_MDBT50Q_CX_40_DONGLE_NRF52840=y
+
+# Enable MPU
+CONFIG_ARM_MPU=y
+
+# Enable GPIO
+CONFIG_GPIO=y
+
+# Enable UART
+CONFIG_SERIAL=y
+
+# Board options
+CONFIG_GPIO_AS_PINRESET=y
+CONFIG_PINCTRL=y
+
+# Nordic nRF5 DFU bootloader support: link app after Nordic MBR at 0x1000
+# CONFIG_BOARD_HAS_NRF5_BOOTLOADER=y
+# CONFIG_FLASH_LOAD_OFFSET=0x1000
+# CONFIG_FLASH_LOAD_SIZE=0xeb000
+
+# USB: disable remote wakeup (nrfx driver conflict)
+CONFIG_USB_DEVICE_REMOTE_WAKEUP=n

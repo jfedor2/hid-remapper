@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_MDBT50Q_CX_40_DONGLE_NRF52840
+
+config BOARD
+        default "mdbt50q_cx_40_dongle_nrf52840"
+
+config BT_CTLR
+        default BT
+
+config FLASH_LOAD_OFFSET
+        default 0x1000
+
+config FLASH_LOAD_SIZE
+        default 0xeb000
+
+endif # BOARD_MDBT50Q_CX_40_DONGLE_NRF52840

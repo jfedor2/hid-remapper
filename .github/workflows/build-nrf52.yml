@@ -13,15 +13,35 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840"]
+        include:
+          - board: adafruit_feather_nrf52840
+            artifact_ext: uf2
+          - board: seeed_xiao_nrf52840
+            artifact_ext: uf2
+          - board: mdbt50q_cx_40_dongle_nrf52840
+            artifact_ext: zip
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: |
           docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch \
             west build -b ${{ matrix.board }}
-          cp firmware-bluetooth/build/zephyr/remapper.uf2 firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+      - name: Package UF2
+        if: matrix.artifact_ext == 'uf2'
+        run: |
+          cp firmware-bluetooth/build/zephyr/remapper.uf2 \
+             firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+      - name: Package DFU zip
+        if: matrix.artifact_ext == 'zip'
+        run: |
+          pip install nrfutil
+          nrfutil pkg generate \
+            --hw-version 52 \
+            --sd-req 0x00 \
+            --application firmware-bluetooth/build/zephyr/remapper.hex \
+            --application-version 1 \
+            firmware-bluetooth/remapper_${{ matrix.board }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: artifact-${{ matrix.board }}
-          path: firmware-bluetooth/remapper_${{ matrix.board }}.uf2
+          path: firmware-bluetooth/remapper_${{ matrix.board }}.${{ matrix.artifact_ext }}
