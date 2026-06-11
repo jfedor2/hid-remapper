@@ -7,8 +7,8 @@ const REPORT_ID_MONITOR = 101;
 const STICKY_FLAG = 1 << 0;
 const TAP_FLAG = 1 << 1;
 const HOLD_FLAG = 1 << 2;
-const CONFIG_SIZE = 32;
-const CONFIG_VERSION = 18;
+const CONFIG_SIZE = 36;
+const CONFIG_VERSION = 19;
 const VENDOR_ID = 0xCAFE;
 const PRODUCT_ID = 0xBAF2;
 const DEFAULT_PARTIAL_SCROLL_TIMEOUT = 1000000;
@@ -16,6 +16,8 @@ const DEFAULT_TAP_HOLD_THRESHOLD = 200000;
 const DEFAULT_GPIO_DEBOUNCE_TIME = 5;
 const DEFAULT_SCALING = 1000;
 const DEFAULT_MACRO_ENTRY_DURATION = 1;
+const DEFAULT_IMU_ANGLE_CLAMP_LIMIT = 45;
+const DEFAULT_IMU_FILTER_BUFFER_SIZE = 10;
 
 const NLAYERS = 8;
 const NMACROS = 32;
@@ -24,6 +26,7 @@ const MACRO_ITEMS_IN_PACKET = 6;
 const IGNORE_AUTH_DEV_INPUTS_FLAG = 1 << 4;
 const GPIO_OUTPUT_MODE_FLAG = 1 << 5;
 const NORMALIZE_GAMEPAD_INPUTS_FLAG = 1 << 6;
+const IMU_ENABLE_FLAG = 1 << 7;
 const HUB_PORT_NONE = 255;
 
 const QUIRK_FLAG_RELATIVE_MASK = 0b10000000;
@@ -148,6 +151,9 @@ let config = {
     'gpio_output_mode': 0,
     'input_labels': 0,
     'normalize_gamepad_inputs': true,
+    'imu_enabled': false,
+    'imu_angle_clamp_limit': DEFAULT_IMU_ANGLE_CLAMP_LIMIT,
+    'imu_filter_buffer_size': DEFAULT_IMU_FILTER_BUFFER_SIZE,
     mappings: [{
         'source_usage': '0x00000000',
         'target_usage': '0x00000000',
@@ -200,6 +206,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("tap_hold_threshold_input").addEventListener("change", tap_hold_threshold_onchange);
     document.getElementById("gpio_debounce_time_input").addEventListener("change", gpio_debounce_time_onchange);
     document.getElementById("macro_entry_duration_input").addEventListener("change", macro_entry_duration_onchange);
+    document.getElementById("imu_angle_clamp_limit_input").addEventListener("change", imu_angle_clamp_limit_onchange);
+    document.getElementById("imu_filter_buffer_size_input").addEventListener("change", imu_filter_buffer_size_onchange);
     for (let i = 0; i < NLAYERS; i++) {
         document.getElementById("unmapped_passthrough_checkbox" + i).addEventListener("change", unmapped_passthrough_onchange);
     }
@@ -210,6 +218,11 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("input_labels_modal_dropdown").addEventListener("change", input_labels_onchange("input_labels_modal_dropdown"));
     document.getElementById("ignore_auth_dev_inputs_checkbox").addEventListener("change", ignore_auth_dev_inputs_onchange);
     document.getElementById("normalize_gamepad_inputs_checkbox").addEventListener("change", normalize_gamepad_inputs_onchange);
+    document.getElementById("imu_enabled_checkbox").addEventListener("change", imu_enabled_onchange);
+    document.getElementById("imu_angle_clamp_limit_input").addEventListener("change", imu_angle_clamp_limit_onchange);
+    document.getElementById("imu_filter_buffer_size_input").addEventListener("change", imu_filter_buffer_size_onchange);
+    document.getElementById("imu_roll_inverted_checkbox").addEventListener("change", imu_roll_inverted_onchange);
+    document.getElementById("imu_pitch_inverted_checkbox").addEventListener("change", imu_pitch_inverted_onchange);
 
     document.getElementById("nav-monitor-tab").addEventListener("shown.bs.tab", monitor_tab_shown);
     document.getElementById("nav-monitor-tab").addEventListener("hide.bs.tab", monitor_tab_hide);
@@ -290,8 +303,8 @@ async function load_from_device() {
 
     try {
         await send_feature_command(GET_CONFIG);
-        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count] =
-            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16]);
+        const [config_version, flags, unmapped_passthrough_layer_mask, partial_scroll_timeout, mapping_count, our_usage_count, their_usage_count, interval_override, tap_hold_threshold, gpio_debounce_time_ms, our_descriptor_number, macro_entry_duration, quirk_count, imu_angle_clamp_limit, imu_filter_buffer_size, imu_roll_inverted, imu_pitch_inverted] =
+            await read_config_feature([UINT8, UINT8, UINT8, UINT32, UINT16, UINT32, UINT32, UINT8, UINT32, UINT8, UINT8, UINT8, UINT16, UINT8, UINT8, UINT8, UINT8]);
         check_received_version(config_version);
 
         config['version'] = config_version;
@@ -304,7 +317,12 @@ async function load_from_device() {
         config['ignore_auth_dev_inputs'] = !!(flags & IGNORE_AUTH_DEV_INPUTS_FLAG);
         config['gpio_output_mode'] = (flags & GPIO_OUTPUT_MODE_FLAG) ? 1 : 0;
         config['normalize_gamepad_inputs'] = !!(flags & NORMALIZE_GAMEPAD_INPUTS_FLAG);
+        config['imu_enabled'] = !!(flags & IMU_ENABLE_FLAG);
         config['macro_entry_duration'] = macro_entry_duration + 1;
+        config['imu_angle_clamp_limit'] = imu_angle_clamp_limit;
+        config['imu_filter_buffer_size'] = imu_filter_buffer_size;
+        config['imu_roll_inverted'] = !!imu_roll_inverted;
+        config['imu_pitch_inverted'] = !!imu_pitch_inverted;
         config['mappings'] = [];
 
         for (let i = 0; i < mapping_count; i++) {
@@ -442,7 +460,8 @@ async function save_to_device() {
         await send_feature_command(SUSPEND);
         const flags = (config['ignore_auth_dev_inputs'] ? IGNORE_AUTH_DEV_INPUTS_FLAG : 0) |
             (config['gpio_output_mode'] ? GPIO_OUTPUT_MODE_FLAG : 0) |
-            (config['normalize_gamepad_inputs'] ? NORMALIZE_GAMEPAD_INPUTS_FLAG : 0);
+            (config['normalize_gamepad_inputs'] ? NORMALIZE_GAMEPAD_INPUTS_FLAG : 0) |
+            (config['imu_enabled'] ? IMU_ENABLE_FLAG : 0);
         await send_feature_command(SET_CONFIG, [
             [UINT8, flags],
             [UINT8, layer_list_to_mask(config['unmapped_passthrough_layers'])],
@@ -452,6 +471,10 @@ async function save_to_device() {
             [UINT8, config['gpio_debounce_time_ms']],
             [UINT8, config['our_descriptor_number']],
             [UINT8, config['macro_entry_duration'] - 1],
+            [UINT8, config['imu_angle_clamp_limit']],
+            [UINT8, config['imu_filter_buffer_size']],
+            [UINT8, config['imu_roll_inverted'] ? 1 : 0],
+            [UINT8, config['imu_pitch_inverted'] ? 1 : 0],
         ]);
         await send_feature_command(CLEAR_MAPPING);
 
@@ -632,6 +655,11 @@ function set_config_ui_state() {
     document.getElementById('input_labels_dropdown').value = config['input_labels'];
     document.getElementById('input_labels_modal_dropdown').value = config['input_labels'];
     document.getElementById('normalize_gamepad_inputs_checkbox').checked = config['normalize_gamepad_inputs'];
+    document.getElementById('imu_enabled_checkbox').checked = config['imu_enabled'];
+    document.getElementById('imu_angle_clamp_limit_input').value = config['imu_angle_clamp_limit'] ?? DEFAULT_IMU_ANGLE_CLAMP_LIMIT;
+    document.getElementById('imu_filter_buffer_size_input').value = config['imu_filter_buffer_size'] ?? DEFAULT_IMU_FILTER_BUFFER_SIZE;
+    document.getElementById('imu_roll_inverted_checkbox').checked = config['imu_roll_inverted'] ?? false;
+    document.getElementById('imu_pitch_inverted_checkbox').checked = config['imu_pitch_inverted'] ?? false;
 }
 
 function set_mappings_ui_state() {
@@ -763,6 +791,11 @@ function set_ui_state() {
         // Normalize gamepad inputs defaults to true, but if we're loading a <18 config,
         // set it to false to preserve previous behavior.
         config['normalize_gamepad_inputs'] = false;
+    }
+    if (config['version'] < 19) {
+        // IMU settings were added in version 19
+        config['imu_angle_clamp_limit'] = DEFAULT_IMU_ANGLE_CLAMP_LIMIT;
+        config['imu_filter_buffer_size'] = DEFAULT_IMU_FILTER_BUFFER_SIZE;
     }
     if (config['version'] < CONFIG_VERSION) {
         config['version'] = CONFIG_VERSION;
@@ -1425,6 +1458,34 @@ function ignore_auth_dev_inputs_onchange() {
 
 function normalize_gamepad_inputs_onchange() {
     config['normalize_gamepad_inputs'] = document.getElementById("normalize_gamepad_inputs_checkbox").checked;
+}
+
+function imu_enabled_onchange() {
+    config['imu_enabled'] = document.getElementById("imu_enabled_checkbox").checked;
+}
+
+function imu_angle_clamp_limit_onchange() {
+    let value = parseInt(document.getElementById("imu_angle_clamp_limit_input").value, 10);
+    if (isNaN(value)) {
+        value = DEFAULT_IMU_ANGLE_CLAMP_LIMIT;
+    }
+    if (value > 90) {
+        value = 90;
+        document.getElementById("imu_angle_clamp_limit_input").value = 90;
+    }
+    config['imu_angle_clamp_limit'] = value;
+}
+
+function imu_filter_buffer_size_onchange() {
+    config['imu_filter_buffer_size'] = parseInt(document.getElementById("imu_filter_buffer_size_input").value, 10);
+}
+
+function imu_roll_inverted_onchange() {
+    config['imu_roll_inverted'] = document.getElementById("imu_roll_inverted_checkbox").checked;
+}
+
+function imu_pitch_inverted_onchange() {
+    config['imu_pitch_inverted'] = document.getElementById("imu_pitch_inverted_checkbox").checked;
 }
 
 function macro_entry_duration_onchange() {

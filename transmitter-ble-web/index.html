@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HID Remapper BLE NUS Test</title>
+    <script src="code.js" type="module"></script>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 720px;
+            margin: 32px auto;
+            padding: 0 16px;
+            color: #202124;
+        }
+
+        button, input, select {
+            font: inherit;
+        }
+
+        button {
+            min-height: 40px;
+            padding: 0 14px;
+            margin: 4px;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .panel {
+            border: 1px solid #d8dadd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f1f3f4;
+            min-height: 24px;
+        }
+
+        label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>HID Remapper BLE NUS Test</h1>
+
+    <div class="panel">
+        <div class="row">
+            <button id="connect">Connect</button>
+            <button id="connect-filtered">Connect by NUS UUID</button>
+            <button id="pair" disabled>Pair / test write</button>
+            <button id="disconnect" disabled>Disconnect</button>
+            <label>
+                Descriptor
+                <select id="descriptor">
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </label>
+        </div>
+        <div id="status" class="status">Disconnected. Use Connect first; the first write may ask to pair so the BLE link can be encrypted.</div>
+    </div>
+
+    <div class="panel">
+        <h2>Buttons</h2>
+        <div class="row">
+            <button data-button="0">A</button>
+            <button data-button="1">B</button>
+            <button data-button="2">X</button>
+            <button data-button="3">Y</button>
+            <button data-button="4">L1</button>
+            <button data-button="5">R1</button>
+        </div>
+        <div class="row">
+            <button id="neutral">Send neutral</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>D-pad</h2>
+        <div class="row">
+            <button data-hat="0">Up</button>
+            <button data-hat="2">Right</button>
+            <button data-hat="4">Down</button>
+            <button data-hat="6">Left</button>
+            <button data-hat="15">Center</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Axes</h2>
+        <div class="row">
+            <label>X <input id="axis-x" type="range" min="0" max="255" value="128"></label>
+            <label>Y <input id="axis-y" type="range" min="0" max="255" value="128"></label>
+            <label>Z <input id="axis-z" type="range" min="0" max="255" value="128"></label>
+            <label>Rz <input id="axis-rz" type="range" min="0" max="255" value="128"></label>
+        </div>
+    </div>
+</body>
+</html>

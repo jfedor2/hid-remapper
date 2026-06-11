@@ -21,6 +21,36 @@ You can tell the remapper is in pairing mode if the blue LED is lit constantly. 
 
 To make the remapper forget all currently paired devices, hold the "user switch" button for over 3 seconds, or click the "Forget all devices" button on the web configuration tool (or short pin 0 to GND for over 3 seconds on the Seeed Xiao board).
 
+## BLE GATT peripheral input
+
+The Bluetooth firmware also advertises a Nordic UART Service compatible GATT
+peripheral while continuing to scan for Bluetooth LE HID devices as a central.
+Reports written to this service are treated as a separate virtual input device,
+so they can be remapped together with connected BLE HID devices.
+
+* Service UUID: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
+* Write characteristic: `6e400002-b5a3-f393-e0a9-e50e24dcca9e`
+* Notify characteristic: `6e400003-b5a3-f393-e0a9-e50e24dcca9e`
+
+The write characteristic requires an encrypted BLE connection, so clients may
+need to pair before reports can be written.
+
+Writes are SLIP-style framed packets with a little-endian CRC32 trailer:
+start `0xc0`, escaped payload bytes, four CRC bytes, end `0xc0`.
+The decoded payload is:
+
+| Byte | Meaning |
+| ---: | --- |
+| 0 | Protocol version, currently `1` |
+| 1 | Advisory output descriptor number |
+| 2 | HID report payload length |
+| 3 | HID report ID |
+| 4..N | HID report payload bytes, without the report ID |
+
+The descriptor number in the packet does not switch the USB descriptor at
+runtime. Choose the USB descriptor through the normal HID Remapper configuration
+so it is active when the board enumerates over USB.
+
 ## Known issues
 
 * Quirks mechanism for fixing broken report descriptors doesn't work.

@@ -27,9 +27,13 @@ data = get_feature_report(device, REPORT_ID_CONFIG, CONFIG_SIZE + 1)
     our_descriptor_number,
     macro_entry_duration,
     quirk_count,
+    imu_angle_clamp_limit,
+    imu_filter_buffer_size,
+    imu_roll_inverted,
+    imu_pitch_inverted,
     *_,
     crc,
-) = struct.unpack("<BBBBLHLLBLBBBHBL", data)
+) = struct.unpack("<BBBBLHLLBLBBBHBBBBL", data)
 check_crc(data, crc)
 
 config = {
@@ -45,6 +49,11 @@ config = {
     "gpio_output_mode": 1 if (flags & GPIO_OUTPUT_MODE_FLAG) else 0,
     "input_labels": 0,
     "normalize_gamepad_inputs": bool(flags & NORMALIZE_GAMEPAD_INPUTS_FLAG),
+    "imu_enabled": bool(flags & IMU_ENABLE_FLAG),
+    "imu_angle_clamp_limit": min(imu_angle_clamp_limit, 90),
+    "imu_filter_buffer_size": imu_filter_buffer_size,
+    "imu_roll_inverted": bool(imu_roll_inverted),
+    "imu_pitch_inverted": bool(imu_pitch_inverted),
     "mappings": [],
     "macros": [],
     "expressions": [],

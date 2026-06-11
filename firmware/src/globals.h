@@ -39,6 +39,11 @@ extern bool ignore_auth_dev_inputs;
 extern uint8_t macro_entry_duration;
 extern uint8_t gpio_output_mode;
 extern bool normalize_gamepad_inputs;
+extern bool imu_enabled;
+extern uint8_t imu_angle_clamp_limit;
+extern uint8_t imu_filter_buffer_size;
+extern bool imu_roll_inverted;
+extern bool imu_pitch_inverted;
 
 extern std::vector<mapping_config11_t> config_mappings;
 
