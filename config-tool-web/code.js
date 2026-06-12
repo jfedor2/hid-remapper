@@ -60,6 +60,7 @@ const SET_MONITOR_ENABLED = 22;
 const CLEAR_QUIRKS = 23;
 const ADD_QUIRK = 24;
 const GET_QUIRK = 25;
+const GET_SWITCH_PRO_DIAG = 26;
 
 const PERSIST_CONFIG_SUCCESS = 1;
 const PERSIST_CONFIG_CONFIG_TOO_BIG = 2;
@@ -190,6 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("flash_b_side").addEventListener("click", flash_b_side);
     document.getElementById("pair_new_device").addEventListener("click", pair_new_device);
     document.getElementById("clear_bonds").addEventListener("click", clear_bonds);
+    document.getElementById("switch_pro_diag").addEventListener("click", switch_pro_diag);
     document.getElementById("monitor_clear").addEventListener("click", monitor_clear);
     document.getElementById("file_input").addEventListener("change", file_uploaded);
     document.getElementById("add_quirk").addEventListener("click", add_empty_quirk);
@@ -866,6 +868,82 @@ async function clear_bonds() {
     await send_feature_command(CLEAR_BONDS);
 }
 
+function hex_byte(value) {
+    return (value & 0xff).toString(16).padStart(2, '0');
+}
+
+function hex_word(value) {
+    return (value >>> 0).toString(16).padStart(8, '0');
+}
+
+async function switch_pro_diag() {
+    clear_error();
+    try {
+        const pages = [];
+        for (let page = 0; page < 10; page++) {
+            await send_feature_command(GET_SWITCH_PRO_DIAG, [[UINT32, page]]);
+            pages.push(await read_config_feature([UINT32, UINT32, UINT32, UINT32, UINT32, UINT32, UINT32]));
+        }
+
+        const format_pages = (label, offset) => {
+            const p0 = pages[offset];
+            const p1 = pages[offset + 1];
+            const p2 = pages[offset + 2];
+            const p3 = pages[offset + 3];
+            const p4 = pages[offset + 4];
+            const buttons = p3[0];
+            const left_stick = p3[1];
+            const right_stick = p3[2];
+            const bt_connected = p3[5] & 0xffff;
+            const hogp_ready = p3[5] >>> 16;
+            const bt_disconnected = p3[6] & 0xffff;
+            const last_disconnect = (p3[6] >>> 16) & 0xff;
+            const conn_high = p3[6] >>> 24;
+
+            return [
+                label,
+                'magic=0x' + hex_word(p0[0]) + ' version=' + p0[1] + ' enabled=' + p0[2],
+                'report_q=' + (p0[3] & 0xffff) + ' high=' + (p0[3] >>> 16) +
+                ' response_q=' + (p0[4] & 0xffff) + ' high=' + (p0[4] >>> 16) +
+                ' out_q=' + p0[5] + ' out_overflows=' + p0[6],
+                'ble=' + p1[0] + ' ble_drop=' + p1[1] +
+                ' host=' + p1[2] + ' host_drop=' + p1[3] +
+                ' set=' + p1[4] + ' translated=' + p1[5] + ' response_drop=' + p1[6],
+                'mapped=' + p2[0] + ' mapped_fail=' + p2[1] +
+                ' heartbeat=' + p2[2] + ' heartbeat_fail=' + p2[3] +
+                ' response=' + p2[4] + ' response_fail=' + p2[5] + ' timer=' + p2[6],
+                'buttons=' + hex_byte(buttons) + ' ' + hex_byte(buttons >> 8) + ' ' + hex_byte(buttons >> 16) +
+                ' left_stick=' + hex_byte(left_stick) + ' ' + hex_byte(left_stick >> 8) + ' ' + hex_byte(left_stick >> 16) +
+                ' right_stick=' + hex_byte(right_stick) + ' ' + hex_byte(right_stick >> 8) + ' ' + hex_byte(right_stick >> 16) +
+                ' last_input_ms=' + p3[4],
+                'bt_connected=' + bt_connected + ' hogp_ready=' + hogp_ready +
+                ' bt_disconnected=' + bt_disconnected + ' last_disconnect=' + last_disconnect + ' conn_high=' + conn_high,
+                'axis_last lx=0x' + (p4[0] & 0xffff).toString(16).padStart(4, '0') +
+                ' ly=0x' + (p4[0] >>> 16).toString(16).padStart(4, '0') +
+                ' rx=0x' + (p4[1] & 0xffff).toString(16).padStart(4, '0') +
+                ' ry=0x' + (p4[1] >>> 16).toString(16).padStart(4, '0'),
+                'axis_range lx=0x' + (p4[2] & 0xffff).toString(16).padStart(4, '0') + '..0x' + (p4[2] >>> 16).toString(16).padStart(4, '0') +
+                ' ly=0x' + (p4[3] & 0xffff).toString(16).padStart(4, '0') + '..0x' + (p4[3] >>> 16).toString(16).padStart(4, '0') +
+                ' rx=0x' + (p4[4] & 0xffff).toString(16).padStart(4, '0') + '..0x' + (p4[4] >>> 16).toString(16).padStart(4, '0') +
+                ' ry=0x' + (p4[5] & 0xffff).toString(16).padStart(4, '0') + '..0x' + (p4[5] >>> 16).toString(16).padStart(4, '0'),
+            ];
+        };
+
+        const lines = [
+            'Switch Pro diagnostics',
+            ...format_pages('live', 0),
+            '',
+            ...format_pages('saved', 5),
+            '',
+            'raw=' + pages.map((page) => page.map((value) => '0x' + hex_word(value)).join(' ')).join(' | '),
+        ];
+
+        display_error_html('<pre class="mb-0 user-select-all">' + lines.join('\n') + '</pre>');
+    } catch (e) {
+        display_error(e);
+    }
+}
+
 function file_uploaded() {
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -1484,6 +1562,7 @@ function device_buttons_set_disabled_state(state) {
     document.getElementById("flash_b_side").disabled = state;
     document.getElementById("pair_new_device").disabled = state;
     document.getElementById("clear_bonds").disabled = state;
+    document.getElementById("switch_pro_diag").disabled = state;
 }
 
 function bluetooth_buttons_set_visibility(visible) {

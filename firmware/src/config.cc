@@ -23,6 +23,10 @@ ConfigCommand last_config_command = ConfigCommand::NO_COMMAND;
 uint32_t requested_index = 0;
 uint32_t requested_secondary_index = 0;
 
+__attribute__((weak)) void get_switch_pro_diagnostics(uint32_t page, uint32_t values[7]) {
+    memset(values, 0, 7 * sizeof(uint32_t));
+}
+
 bool checksum_ok(const uint8_t* buffer, uint16_t data_size) {
     return crc32(buffer, data_size - 4) == ((crc32_t*) (buffer + data_size - 4))->crc32;
 }
@@ -934,6 +938,13 @@ uint16_t handle_get_report1(uint8_t report_id, uint8_t* buffer, uint16_t reqlen)
                 my_mutex_exit(MutexId::QUIRKS);
                 break;
             }
+            case ConfigCommand::GET_SWITCH_PRO_DIAG: {
+                switch_pro_diag_t* diag = (switch_pro_diag_t*) config_buffer;
+                uint32_t values[7];
+                get_switch_pro_diagnostics(requested_index, values);
+                memcpy(diag->values, values, sizeof(values));
+                break;
+            }
             case ConfigCommand::PERSIST_CONFIG: {
                 persist_config_response_t* returned = (persist_config_response_t*) config_buffer;
                 if (persist_config_return_code == PersistConfigReturnCode::UNKNOWN) {
@@ -999,7 +1010,8 @@ void handle_set_report1(uint8_t report_id, uint8_t const* buffer, uint16_t bufsi
                 case ConfigCommand::GET_MAPPING:
                 case ConfigCommand::GET_OUR_USAGES:
                 case ConfigCommand::GET_THEIR_USAGES:
-                case ConfigCommand::GET_QUIRK: {
+                case ConfigCommand::GET_QUIRK:
+                case ConfigCommand::GET_SWITCH_PRO_DIAG: {
                     get_indexed_t* get_indexed = (get_indexed_t*) config_buffer->data;
                     requested_index = get_indexed->requested_index;
                     break;

@@ -11,9 +11,9 @@
 #define REPORT_ID_CONFIG 100
 #define REPORT_ID_MONITOR 101
 
-#define MAX_INPUT_REPORT_ID 3
+#define MAX_INPUT_REPORT_ID 0x81
 
-#define NOUR_DESCRIPTORS 6
+#define NOUR_DESCRIPTORS 7
 
 typedef void (*device_connected_t)(uint16_t interface, uint16_t vid, uint16_t pid);
 typedef void (*device_disconnected_t)(uint8_t dev_addr);

@@ -32,6 +32,7 @@ enum class ConfigCommand : int8_t {
     CLEAR_QUIRKS = 23,
     ADD_QUIRK = 24,
     GET_QUIRK = 25,
+    GET_SWITCH_PRO_DIAG = 26,
 };
 
 struct usage_def_t {
@@ -432,6 +433,10 @@ struct __attribute__((packed)) monitor_report_t {
 
 struct __attribute__((packed)) uint16_val_t {
     uint16_t val;
+};
+
+struct __attribute__((packed)) switch_pro_diag_t {
+    uint32_t values[7];
 };
 
 #endif

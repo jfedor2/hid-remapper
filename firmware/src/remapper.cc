@@ -76,6 +76,7 @@ uint8_t outgoing_reports[OR_BUFSIZE][MAX_REPORT_SIZE + 1];
 uint8_t or_head = 0;
 uint8_t or_tail = 0;
 uint8_t or_items = 0;
+uint32_t or_overflows = 0;
 
 std::vector<uint8_t> report_ids;
 
@@ -358,6 +359,14 @@ inline int32_t* get_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_a
     }
 
     return NULL;
+}
+
+int32_t get_input_state_value(uint32_t usage, uint8_t hub_port, bool raw, bool* found) {
+    int32_t* state_ptr = get_state_ptr(usage, hub_port, false, raw);
+    if (found != NULL) {
+        *found = state_ptr != NULL;
+    }
+    return state_ptr == NULL ? 0 : *state_ptr;
 }
 
 inline tap_hold_state_t* get_tap_hold_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false) {
@@ -1397,7 +1406,28 @@ void process_mapping(bool auto_repeat) {
             our_descriptor->sanitize_report(report_id, reports[report_id], report_sizes[report_id]);
         }
         if (needs_to_be_sent(report_id)) {
+            bool replaced_pending = false;
+            if ((our_descriptor->idx == 6) && (report_id == 0x30)) {
+                for (uint8_t n = 0; n < or_items; n++) {
+                    uint8_t idx = (or_head + n) % OR_BUFSIZE;
+                    if (outgoing_reports[idx][0] == report_id) {
+                        memcpy(outgoing_reports[idx] + 1, reports[report_id], report_sizes[report_id]);
+                        memcpy(prev_reports[report_id], reports[report_id], report_sizes[report_id]);
+                        replaced_pending = true;
+                        break;
+                    }
+                }
+            }
+            if (replaced_pending) {
+                if (our_descriptor->clear_report != nullptr) {
+                    our_descriptor->clear_report(reports[report_id], report_id, report_sizes[report_id]);
+                } else {
+                    memset(reports[report_id], 0, report_sizes[report_id]);
+                }
+                continue;
+            }
             if (or_items == OR_BUFSIZE) {
+                or_overflows++;
                 printf("overflow!\n");
                 break;
             }
@@ -2026,6 +2056,14 @@ void print_stats() {
     reports_received = 0;
     reports_sent = 0;
     processing_time = 0;
+}
+
+uint8_t debug_outgoing_report_count() {
+    return or_items;
+}
+
+uint32_t debug_outgoing_report_overflows() {
+    return or_overflows;
 }
 
 void reset_state() {

@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stddef.h>
+#include <string.h>
 
 #include <bluetooth/gatt_dm.h>
 #include <bluetooth/scan.h>
@@ -85,6 +86,7 @@ K_MSGQ_DEFINE(descriptor_q, sizeof(struct descriptor_type), 2, 4);
 K_MSGQ_DEFINE(hogp_ready_q, sizeof(struct hogp_ready_type), CONFIG_BT_MAX_CONN, 4);
 K_MSGQ_DEFINE(disconnected_q, sizeof(struct disconnected_type), CONFIG_BT_MAX_CONN, 4);
 K_MSGQ_DEFINE(set_report_q, sizeof(struct set_report_type), 8, 4);
+K_MSGQ_DEFINE(switch_pro_response_q, 64, 8, 4);
 ATOMIC_DEFINE(tick_pending, 1);
 
 #define SW0_NODE DT_ALIAS(sw0)
@@ -113,6 +115,560 @@ static bool scanning = false;
 static bool peers_only = true;
 
 static struct bt_le_conn_param* conn_param = BT_LE_CONN_PARAM(6, 6, 44, 400);
+
+static bool switch_pro_input_enabled = false;
+static uint8_t switch_pro_timer = 0;
+static int64_t switch_pro_last_input_ms = 0;
+static int64_t switch_pro_last_stats_ms = 0;
+static int64_t switch_pro_last_button_log_ms = 0;
+static uint8_t switch_pro_current_input[64];
+
+static uint32_t switch_pro_ble_reports = 0;
+static uint32_t switch_pro_ble_report_drops = 0;
+static uint32_t switch_pro_host_reports = 0;
+static uint32_t switch_pro_host_report_drops = 0;
+static uint32_t switch_pro_set_reports = 0;
+static uint32_t switch_pro_translated_reports = 0;
+static uint32_t switch_pro_mapped_writes = 0;
+static uint32_t switch_pro_mapped_write_fails = 0;
+static uint32_t switch_pro_heartbeat_writes = 0;
+static uint32_t switch_pro_heartbeat_write_fails = 0;
+static uint32_t switch_pro_response_writes = 0;
+static uint32_t switch_pro_response_write_fails = 0;
+static uint32_t switch_pro_response_drops = 0;
+static uint32_t switch_pro_report_q_highwater = 0;
+static uint32_t switch_pro_response_q_highwater = 0;
+static uint32_t switch_pro_bt_connected_events = 0;
+static uint32_t switch_pro_bt_disconnected_events = 0;
+static uint32_t switch_pro_hogp_ready_events = 0;
+static uint32_t switch_pro_conn_count_highwater = 0;
+static uint32_t switch_pro_last_disconnect_reason = 0;
+
+#define SWITCH_PRO_DIAG_PAGES 5
+#define SWITCH_PRO_DIAG_VALUES 7
+
+static uint32_t switch_pro_saved_diag[SWITCH_PRO_DIAG_PAGES][SWITCH_PRO_DIAG_VALUES];
+static int64_t switch_pro_last_diag_persist_ms = 0;
+static uint16_t switch_pro_axis_last[4] = { 0x8000, 0x8000, 0x8000, 0x8000 };
+static uint16_t switch_pro_axis_min[4] = { 0xffff, 0xffff, 0xffff, 0xffff };
+static uint16_t switch_pro_axis_max[4] = { 0, 0, 0, 0 };
+
+static bool is_switch_pro_mode() {
+    return our_descriptor_number == 6;
+}
+
+static void switch_pro_reset_input() {
+    memset(switch_pro_current_input, 0, sizeof(switch_pro_current_input));
+    switch_pro_current_input[0] = 0x30;
+    switch_pro_current_input[2] = 0x91;
+    switch_pro_current_input[4] = 0x80;
+    switch_pro_current_input[6] = 0x00;
+    switch_pro_current_input[7] = 0x08;
+    switch_pro_current_input[8] = 0x80;
+    switch_pro_current_input[9] = 0x00;
+    switch_pro_current_input[10] = 0x08;
+    switch_pro_current_input[11] = 0x80;
+    switch_pro_current_input[12] = 0x0c;
+}
+
+static void switch_pro_reset_axis_diagnostics() {
+    for (uint8_t axis = 0; axis < 4; axis++) {
+        switch_pro_axis_last[axis] = 0x8000;
+        switch_pro_axis_min[axis] = 0xffff;
+        switch_pro_axis_max[axis] = 0;
+    }
+}
+
+static void switch_pro_reset_session() {
+    switch_pro_input_enabled = false;
+    switch_pro_timer = 0;
+    switch_pro_last_input_ms = 0;
+    switch_pro_last_stats_ms = 0;
+    switch_pro_last_button_log_ms = 0;
+    k_msgq_purge(&switch_pro_response_q);
+    switch_pro_reset_input();
+    switch_pro_reset_axis_diagnostics();
+}
+
+static uint32_t queue_depth(struct k_msgq* queue) {
+    return k_msgq_num_used_get(queue);
+}
+
+static void note_switch_pro_report_q_depth() {
+    uint32_t depth = queue_depth(&report_q);
+    if (depth > switch_pro_report_q_highwater) {
+        switch_pro_report_q_highwater = depth;
+    }
+}
+
+static void note_switch_pro_response_q_depth() {
+    uint32_t depth = queue_depth(&switch_pro_response_q);
+    if (depth > switch_pro_response_q_highwater) {
+        switch_pro_response_q_highwater = depth;
+    }
+}
+
+static bool report_button_pressed(const uint8_t* report, size_t button_index) {
+    const size_t bit = button_index - 1;
+    return (report[1 + bit / 8] & BIT(bit % 8)) != 0;
+}
+
+static uint16_t report_axis_16(const uint8_t* report, size_t offset) {
+    return (uint16_t) report[offset] | ((uint16_t) report[offset + 1] << 8);
+}
+
+static uint16_t switch_pro_apply_axis_deadzone(uint16_t value) {
+    const uint16_t center = 0x8000;
+    const uint16_t threshold = 0x0100;
+
+    if (value >= center - threshold && value <= center + threshold) {
+        return center;
+    }
+    return value;
+}
+
+static uint16_t switch_pro_expand_axis(uint16_t value) {
+    if (value <= 0x00ff) {
+        return value * 0x0101;
+    }
+    return value;
+}
+
+static uint16_t switch_pro_invert_axis(uint16_t value) {
+    return 0xffff - value;
+}
+
+static uint16_t switch_pro_normalize_axis(uint16_t value, bool invert) {
+    value = switch_pro_expand_axis(value);
+    if (invert) {
+        value = switch_pro_invert_axis(value);
+    }
+    return switch_pro_apply_axis_deadzone(value);
+}
+
+static uint16_t switch_pro_axis_from_state_or_report(uint32_t usage, uint16_t report_value) {
+    bool found = false;
+    int32_t value = get_input_state_value(usage, 0, false, &found);
+    if (!found) {
+        return report_value;
+    }
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 255) {
+        value = 255;
+    }
+    return (uint16_t) (value * 0x0101);
+}
+
+static void switch_pro_note_axis(uint8_t axis, uint16_t value) {
+    switch_pro_axis_last[axis] = value;
+    if (value < switch_pro_axis_min[axis]) {
+        switch_pro_axis_min[axis] = value;
+    }
+    if (value > switch_pro_axis_max[axis]) {
+        switch_pro_axis_max[axis] = value;
+    }
+}
+
+static uint16_t switch_pro_clamp_axis_range(uint16_t value) {
+    const uint16_t min = 0x2000;
+    const uint16_t max = 0xe000;
+
+    if (value < min) {
+        return min;
+    }
+    if (value > max) {
+        return max;
+    }
+    return value;
+}
+
+static void pack_switch_pro_stick(uint8_t* out, uint16_t x16, uint16_t y16) {
+    /*
+     * Report 0x30 uses packed 12-bit stick positions. Values passed here are
+     * normalized to the 16-bit HID Remapper output range.
+     */
+    x16 = switch_pro_clamp_axis_range(x16);
+    y16 = switch_pro_clamp_axis_range(y16);
+    uint16_t x = x16 >> 4;
+    uint16_t y = y16 >> 4;
+
+    out[0] = x & 0xff;
+    out[1] = ((x >> 8) & 0x0f) | ((y & 0x0f) << 4);
+    out[2] = (y >> 4) & 0xff;
+}
+
+static void apply_switch_pro_hat(uint8_t hat, uint8_t* buttons2) {
+    if (hat > 7) {
+        return;
+    }
+
+    if (hat == 3 || hat == 4 || hat == 5) {
+        *buttons2 |= BIT(0);  // Down
+    }
+    if (hat == 7 || hat == 0 || hat == 1) {
+        *buttons2 |= BIT(1);  // Up
+    }
+    if (hat == 1 || hat == 2 || hat == 3) {
+        *buttons2 |= BIT(2);  // Right
+    }
+    if (hat == 5 || hat == 6 || hat == 7) {
+        *buttons2 |= BIT(3);  // Left
+    }
+}
+
+static void switch_pro_translate_report(const uint8_t* report_with_id, uint8_t len) {
+    if ((len < 12) || (report_with_id[0] != 0x30)) {
+        return;
+    }
+
+    uint8_t next[64];
+    memcpy(next, switch_pro_current_input, sizeof(next));
+    next[0] = 0x30;
+    next[2] = 0x91;
+    next[3] = 0;
+    next[4] = 0x80;
+    next[5] = 0;
+
+    if (report_button_pressed(report_with_id, 1)) next[3] |= BIT(0);   // Y
+    if (report_button_pressed(report_with_id, 4)) next[3] |= BIT(1);   // X
+    if (report_button_pressed(report_with_id, 2)) next[3] |= BIT(2);   // B
+    if (report_button_pressed(report_with_id, 3)) next[3] |= BIT(3);   // A
+    if (report_button_pressed(report_with_id, 6)) next[3] |= BIT(6);   // R
+    if (report_button_pressed(report_with_id, 8)) next[3] |= BIT(7);   // ZR
+    if (report_button_pressed(report_with_id, 9)) next[4] |= BIT(0);   // Minus
+    if (report_button_pressed(report_with_id, 10)) next[4] |= BIT(1);  // Plus
+    if (report_button_pressed(report_with_id, 12)) next[4] |= BIT(2);  // RS
+    if (report_button_pressed(report_with_id, 11)) next[4] |= BIT(3);  // LS
+    if (report_button_pressed(report_with_id, 13)) next[4] |= BIT(4);  // Home
+    if (report_button_pressed(report_with_id, 14)) next[4] |= BIT(5);  // Capture
+    if (report_button_pressed(report_with_id, 5)) next[5] |= BIT(6);   // L
+    if (report_button_pressed(report_with_id, 7)) next[5] |= BIT(7);   // ZL
+
+    apply_switch_pro_hat(report_with_id[11] & 0x0f, &next[5]);
+    uint16_t lx = switch_pro_normalize_axis(
+        switch_pro_axis_from_state_or_report(0x00010030, report_axis_16(report_with_id, 3)), false);
+    uint16_t ly = switch_pro_normalize_axis(
+        switch_pro_axis_from_state_or_report(0x00010031, report_axis_16(report_with_id, 5)), true);
+    uint16_t rx = switch_pro_normalize_axis(
+        switch_pro_axis_from_state_or_report(0x00010032, report_axis_16(report_with_id, 7)), false);
+    uint16_t ry = switch_pro_normalize_axis(
+        switch_pro_axis_from_state_or_report(0x00010035, report_axis_16(report_with_id, 9)), true);
+    switch_pro_note_axis(0, lx);
+    switch_pro_note_axis(1, ly);
+    switch_pro_note_axis(2, rx);
+    switch_pro_note_axis(3, ry);
+    pack_switch_pro_stick(next + 6, lx, ly);
+    pack_switch_pro_stick(next + 9, rx, ry);
+    next[12] = 0x0c;
+
+    bool buttons_changed = next[3] != switch_pro_current_input[3] || next[4] != switch_pro_current_input[4] || next[5] != switch_pro_current_input[5];
+    memcpy(switch_pro_current_input, next, sizeof(switch_pro_current_input));
+    switch_pro_translated_reports++;
+
+    int64_t now = k_uptime_get();
+    if (buttons_changed && (now - switch_pro_last_button_log_ms >= 20)) {
+        switch_pro_last_button_log_ms = now;
+        LOG_INF("switch_pro buttons=%02x %02x %02x sticks=%02x %02x %02x %02x %02x %02x out_q=%u report_q=%u",
+            switch_pro_current_input[3], switch_pro_current_input[4], switch_pro_current_input[5],
+            switch_pro_current_input[6], switch_pro_current_input[7], switch_pro_current_input[8],
+            switch_pro_current_input[9], switch_pro_current_input[10], switch_pro_current_input[11],
+            debug_outgoing_report_count(), queue_depth(&report_q));
+    }
+}
+
+static void switch_pro_queue_response(const uint8_t* response, size_t len) {
+    uint8_t buf[64] = {};
+    if (len > sizeof(buf)) {
+        len = sizeof(buf);
+    }
+    memcpy(buf, response, len);
+    if (k_msgq_put(&switch_pro_response_q, buf, K_NO_WAIT)) {
+        switch_pro_response_drops++;
+    }
+    note_switch_pro_response_q_depth();
+}
+
+static void switch_pro_queue_81(uint8_t command) {
+    uint8_t response[64] = { 0x81, command };
+
+    if (command == 0x01) {
+        static const uint8_t mac_response[] = { 0x81, 0x01, 0x00, 0x03, 0x1f, 0x86, 0x1d, 0xd6, 0x03, 0x04 };
+        memcpy(response, mac_response, sizeof(mac_response));
+    }
+
+    switch_pro_queue_response(response, sizeof(response));
+}
+
+static void switch_pro_queue_21(uint8_t subcommand, uint8_t ack, const uint8_t* data, uint8_t data_len) {
+    uint8_t response[64] = {};
+    response[0] = 0x21;
+    response[1] = switch_pro_timer++;
+    memcpy(response + 2, switch_pro_current_input + 2, 11);
+    response[13] = ack;
+    response[14] = subcommand;
+    if (data && data_len) {
+        if (data_len > sizeof(response) - 15) {
+            data_len = sizeof(response) - 15;
+        }
+        memcpy(response + 15, data, data_len);
+    }
+    switch_pro_queue_response(response, sizeof(response));
+}
+
+static void switch_pro_spi_read(const uint8_t* args, uint8_t args_len) {
+    uint8_t data[48];
+    memset(data, 0xff, sizeof(data));
+    if (args_len < 5) {
+        switch_pro_queue_21(0x10, 0x90, data, sizeof(data));
+        return;
+    }
+
+    uint32_t address = (uint32_t) args[0] | ((uint32_t) args[1] << 8) | ((uint32_t) args[2] << 16) | ((uint32_t) args[3] << 24);
+    uint8_t read_len = args[4];
+    memcpy(data, args, 5);
+
+    static const uint8_t stick_cal[] = {
+        0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00,
+        0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x80
+    };
+    static const uint8_t body_color[] = { 0x46, 0x46, 0x46 };
+    static const uint8_t button_color[] = { 0xff, 0xff, 0xff };
+
+    if (address == 0x0000603d) {
+        memcpy(data + 5, stick_cal, MIN(read_len, (uint8_t) sizeof(stick_cal)));
+    } else if (address == 0x00006050) {
+        memcpy(data + 5, stick_cal, MIN(read_len, (uint8_t) sizeof(stick_cal)));
+    } else if (address == 0x00006086) {
+        memcpy(data + 5, body_color, MIN(read_len, (uint8_t) sizeof(body_color)));
+    } else if (address == 0x00006089) {
+        memcpy(data + 5, button_color, MIN(read_len, (uint8_t) sizeof(button_color)));
+    }
+
+    switch_pro_queue_21(0x10, 0x90, data, MIN((uint8_t) sizeof(data), (uint8_t) (read_len + 5)));
+}
+
+static void switch_pro_handle_subcommand(const uint8_t* report, uint8_t len, bool has_report_id) {
+    uint8_t base = has_report_id ? 1 : 0;
+    if (len <= base + 9) {
+        return;
+    }
+
+    uint8_t subcommand = report[base + 9];
+    const uint8_t* args = report + base + 10;
+    uint8_t args_len = len - base - 10;
+
+    switch (subcommand) {
+        case 0x01: {
+            static const uint8_t pairing_response[] = { 0x03 };
+            switch_pro_queue_21(subcommand, 0x81, pairing_response, sizeof(pairing_response));
+            break;
+        }
+        case 0x02: {
+            static const uint8_t device_info[] = { 0x03, 0x48, 0x03, 0x02, 0x53, 0x50, 0x00, 0x01, 0x03, 0x04, 0x01, 0x01 };
+            switch_pro_queue_21(subcommand, 0x82, device_info, sizeof(device_info));
+            break;
+        }
+        case 0x04:
+            switch_pro_queue_21(subcommand, 0x83, NULL, 0);
+            break;
+        case 0x10:
+            switch_pro_spi_read(args, args_len);
+            break;
+        case 0x21: {
+            static const uint8_t imu_status[] = { 0x01, 0x00, 0xff, 0x00, 0x03, 0x00, 0x05, 0x01 };
+            switch_pro_queue_21(subcommand, 0xa0, imu_status, sizeof(imu_status));
+            break;
+        }
+        case 0x30:
+            switch_pro_input_enabled = args_len == 0 || args[0] != 0;
+            switch_pro_last_input_ms = 0;
+            switch_pro_queue_21(subcommand, 0x80, NULL, 0);
+            break;
+        default:
+            switch_pro_queue_21(subcommand, 0x80, NULL, 0);
+            break;
+    }
+}
+
+static bool switch_pro_handle_output_report(const uint8_t* report, uint8_t len) {
+    if (!is_switch_pro_mode() || len == 0) {
+        return false;
+    }
+
+    uint8_t report_id = report[0];
+    bool has_report_id = true;
+
+    if (report_id != 0x01 && report_id != 0x10 && report_id != 0x80 && report_id != 0x82) {
+        has_report_id = false;
+        report_id = len == 1 ? 0x80 : report[0];
+    }
+
+    if (report_id == 0x80) {
+        uint8_t command = has_report_id ? (len > 1 ? report[1] : 0) : report[0];
+        switch (command) {
+            case 0x04:
+                switch_pro_input_enabled = true;
+                switch_pro_last_input_ms = 0;
+                break;
+            case 0x05:
+                switch_pro_input_enabled = false;
+                break;
+            case 0x01:
+            case 0x02:
+            case 0x03:
+            default:
+                switch_pro_queue_81(command);
+                break;
+        }
+        return true;
+    }
+
+    if (report_id == 0x01) {
+        switch_pro_handle_subcommand(report, len, has_report_id);
+        return true;
+    }
+
+    return true;
+}
+
+static bool switch_pro_send_response() {
+    uint8_t response[64];
+    if (!is_switch_pro_mode() || k_msgq_get(&switch_pro_response_q, response, K_NO_WAIT)) {
+        return false;
+    }
+    bool sent = CHK(hid_int_ep_write(hid_dev0, response, sizeof(response), NULL));
+    if (sent) {
+        switch_pro_response_writes++;
+    } else {
+        switch_pro_response_write_fails++;
+    }
+    return sent;
+}
+
+static bool switch_pro_send_input_heartbeat() {
+    if (!is_switch_pro_mode() || !switch_pro_input_enabled) {
+        return false;
+    }
+
+    int64_t now = k_uptime_get();
+    if (switch_pro_last_input_ms && (now - switch_pro_last_input_ms < 8)) {
+        return false;
+    }
+
+    switch_pro_current_input[1] = switch_pro_timer++;
+    switch_pro_last_input_ms = now;
+    bool sent = CHK(hid_int_ep_write(hid_dev0, switch_pro_current_input, sizeof(switch_pro_current_input), NULL));
+    if (sent) {
+        switch_pro_heartbeat_writes++;
+    } else {
+        switch_pro_heartbeat_write_fails++;
+    }
+    return sent;
+}
+
+static void switch_pro_fill_diagnostics(uint32_t page, uint32_t values[SWITCH_PRO_DIAG_VALUES]) {
+    memset(values, 0, SWITCH_PRO_DIAG_VALUES * sizeof(uint32_t));
+
+    switch (page) {
+        case 0:
+            values[0] = 0x44315053;  // SP1D
+            values[1] = 1;
+            values[2] = switch_pro_input_enabled;
+            values[3] = (queue_depth(&report_q) & 0xffff) | (switch_pro_report_q_highwater << 16);
+            values[4] = (queue_depth(&switch_pro_response_q) & 0xffff) | (switch_pro_response_q_highwater << 16);
+            values[5] = debug_outgoing_report_count();
+            values[6] = debug_outgoing_report_overflows();
+            break;
+        case 1:
+            values[0] = switch_pro_ble_reports;
+            values[1] = switch_pro_ble_report_drops;
+            values[2] = switch_pro_host_reports;
+            values[3] = switch_pro_host_report_drops;
+            values[4] = switch_pro_set_reports;
+            values[5] = switch_pro_translated_reports;
+            values[6] = switch_pro_response_drops;
+            break;
+        case 2:
+            values[0] = switch_pro_mapped_writes;
+            values[1] = switch_pro_mapped_write_fails;
+            values[2] = switch_pro_heartbeat_writes;
+            values[3] = switch_pro_heartbeat_write_fails;
+            values[4] = switch_pro_response_writes;
+            values[5] = switch_pro_response_write_fails;
+            values[6] = switch_pro_timer;
+            break;
+        case 3:
+            values[0] = switch_pro_current_input[3] | (switch_pro_current_input[4] << 8) | (switch_pro_current_input[5] << 16);
+            values[1] = switch_pro_current_input[6] | (switch_pro_current_input[7] << 8) | (switch_pro_current_input[8] << 16);
+            values[2] = switch_pro_current_input[9] | (switch_pro_current_input[10] << 8) | (switch_pro_current_input[11] << 16);
+            values[3] = switch_pro_current_input[1];
+            values[4] = switch_pro_last_input_ms;
+            values[5] = (switch_pro_bt_connected_events & 0xffff) | ((switch_pro_hogp_ready_events & 0xffff) << 16);
+            values[6] = (switch_pro_bt_disconnected_events & 0xffff) | ((switch_pro_last_disconnect_reason & 0xff) << 16) | ((switch_pro_conn_count_highwater & 0xff) << 24);
+            break;
+        case 4:
+            values[0] = switch_pro_axis_last[0] | (switch_pro_axis_last[1] << 16);
+            values[1] = switch_pro_axis_last[2] | (switch_pro_axis_last[3] << 16);
+            values[2] = switch_pro_axis_min[0] | (switch_pro_axis_max[0] << 16);
+            values[3] = switch_pro_axis_min[1] | (switch_pro_axis_max[1] << 16);
+            values[4] = switch_pro_axis_min[2] | (switch_pro_axis_max[2] << 16);
+            values[5] = switch_pro_axis_min[3] | (switch_pro_axis_max[3] << 16);
+            break;
+        default:
+            break;
+    }
+}
+
+static void switch_pro_persist_diagnostics() {
+    if (!is_switch_pro_mode() || !switch_pro_input_enabled) {
+        return;
+    }
+    if (switch_pro_ble_reports == 0 && switch_pro_translated_reports <= 2) {
+        return;
+    }
+
+    int64_t now = k_uptime_get();
+    if (switch_pro_last_diag_persist_ms && (now - switch_pro_last_diag_persist_ms < 2000)) {
+        return;
+    }
+    switch_pro_last_diag_persist_ms = now;
+
+    for (uint32_t page = 0; page < SWITCH_PRO_DIAG_PAGES; page++) {
+        switch_pro_fill_diagnostics(page, switch_pro_saved_diag[page]);
+    }
+    settings_save_one("remapper/switch_pro_diag", switch_pro_saved_diag, sizeof(switch_pro_saved_diag));
+}
+
+static void switch_pro_log_stats() {
+    if (!is_switch_pro_mode()) {
+        return;
+    }
+
+    int64_t now = k_uptime_get();
+    if (switch_pro_last_stats_ms && (now - switch_pro_last_stats_ms < 1000)) {
+        return;
+    }
+    switch_pro_last_stats_ms = now;
+
+    LOG_INF("switch_pro_stats enabled=%u report_q=%u/%u response_q=%u/%u out_q=%u out_overflows=%u ble=%u ble_drop=%u host=%u host_drop=%u set=%u translated=%u mapped=%u/%u heartbeat=%u/%u response=%u/%u response_drop=%u buttons=%02x %02x %02x",
+        switch_pro_input_enabled,
+        queue_depth(&report_q), switch_pro_report_q_highwater,
+        queue_depth(&switch_pro_response_q), switch_pro_response_q_highwater,
+        debug_outgoing_report_count(), debug_outgoing_report_overflows(),
+        switch_pro_ble_reports, switch_pro_ble_report_drops,
+        switch_pro_host_reports, switch_pro_host_report_drops,
+        switch_pro_set_reports,
+        switch_pro_translated_reports,
+        switch_pro_mapped_writes, switch_pro_mapped_write_fails,
+        switch_pro_heartbeat_writes, switch_pro_heartbeat_write_fails,
+        switch_pro_response_writes, switch_pro_response_write_fails,
+        switch_pro_response_drops,
+        switch_pro_current_input[3], switch_pro_current_input[4], switch_pro_current_input[5]);
+
+    switch_pro_persist_diagnostics();
+}
 
 static void activity_led_off_work_fn(struct k_work* work) {
     gpio_pin_set_dt(&led0, false);
@@ -395,7 +951,10 @@ static void connected(struct bt_conn* conn, uint8_t conn_err) {
     char addr[BT_ADDR_LE_STR_LEN];
 
     scanning = false;
-    count_connections();
+    int conn_count = count_connections();
+    if (is_switch_pro_mode() && conn_count > (int) switch_pro_conn_count_highwater) {
+        switch_pro_conn_count_highwater = conn_count;
+    }
     set_led_mode(LedMode::BLINK);
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
@@ -409,6 +968,10 @@ static void connected(struct bt_conn* conn, uint8_t conn_err) {
 
     LOG_INF("%s", addr);
 
+    if (is_switch_pro_mode()) {
+        switch_pro_bt_connected_events++;
+    }
+
     CHK(bt_conn_set_security(conn, BT_SECURITY_L2));
 }
 
@@ -418,6 +981,11 @@ static void disconnected(struct bt_conn* conn, uint8_t reason) {
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
     LOG_INF("%s (reason=%u)", addr, reason);
+
+    if (is_switch_pro_mode()) {
+        switch_pro_bt_disconnected_events++;
+        switch_pro_last_disconnect_reason = reason;
+    }
 
     uint8_t conn_idx = bt_conn_index(conn);
 
@@ -509,7 +1077,12 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
 
     memcpy(buf.data + 1, data, buf.len);
     if (k_msgq_put(&report_q, &buf, K_NO_WAIT)) {
-        //        printk("error in k_msg_put(report_q\n");
+        if (is_switch_pro_mode()) {
+            switch_pro_ble_report_drops++;
+        }
+    } else if (is_switch_pro_mode()) {
+        switch_pro_ble_reports++;
+        note_switch_pro_report_q_depth();
     }
 
     return BT_GATT_ITER_CONTINUE;
@@ -551,6 +1124,9 @@ static void hogp_ready_work_fn(struct k_work* work) {
 
     while (!k_msgq_get(&hogp_ready_q, &item, K_NO_WAIT)) {
         LOG_INF("hogp_ready");
+        if (is_switch_pro_mode()) {
+            switch_pro_hogp_ready_events++;
+        }
 
         struct find_bond_t find_bond = {
             .i = 0,
@@ -684,9 +1260,21 @@ static void int_out_ready_cb0(const struct device* dev) {
     static struct report_type buf;
     uint32_t len;
     if (CHK(hid_int_ep_read(hid_dev0, buf.data, sizeof(buf.data), &len))) {
+        if (is_switch_pro_mode() && switch_pro_handle_output_report(buf.data, len)) {
+            switch_pro_host_reports++;
+            return;
+        }
+
         buf.interface = OUR_OUT_INTERFACE;
         buf.len = len;
-        CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
+        if (k_msgq_put(&report_q, &buf, K_NO_WAIT)) {
+            if (is_switch_pro_mode()) {
+                switch_pro_host_report_drops++;
+            }
+        } else if (is_switch_pro_mode()) {
+            switch_pro_host_reports++;
+            note_switch_pro_report_q_depth();
+        }
     }
 }
 
@@ -708,6 +1296,19 @@ static const struct hid_ops ops1 = {
 };
 
 static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
+    if (is_switch_pro_mode() && interface == 0 && len > 0 && report_with_id[0] == 0x30) {
+        switch_pro_translate_report(report_with_id, len);
+        switch_pro_current_input[1] = switch_pro_timer++;
+        switch_pro_last_input_ms = k_uptime_get();
+        bool sent = CHK(hid_int_ep_write(hid_dev0, switch_pro_current_input, sizeof(switch_pro_current_input), NULL));
+        if (sent) {
+            switch_pro_mapped_writes++;
+        } else {
+            switch_pro_mapped_write_fails++;
+        }
+        return sent;
+    }
+
     if (report_with_id[0] == 0) {
         report_with_id++;
         len--;
@@ -718,6 +1319,7 @@ static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uin
     if (interface == 1) {
         return CHK(hid_int_ep_write(hid_dev1, report_with_id, len, NULL));
     }
+    return false;
 }
 
 static void button_init() {
@@ -757,6 +1359,10 @@ static void leds_init() {
 static void status_cb(enum usb_dc_status_code status, const uint8_t* param) {
     if (status == USB_DC_SOF) {
         atomic_set_bit(tick_pending, 0);
+    } else if (status == USB_DC_RESET || status == USB_DC_CONFIGURED || status == USB_DC_SUSPEND) {
+        if (is_switch_pro_mode()) {
+            switch_pro_reset_session();
+        }
     }
 }
 
@@ -808,7 +1414,23 @@ static void bt_init() {
 }
 
 static int remapper_settings_set(const char* name, size_t len, settings_read_cb read_cb, void* cb_arg) {
-    LOG_INF("len=%d", len);
+    LOG_INF("%s len=%d", name, len);
+
+    if (!strcmp(name, "switch_pro_diag")) {
+        if (len != sizeof(switch_pro_saved_diag)) {
+            return -EINVAL;
+        }
+
+        int bytes_read = read_cb(cb_arg, switch_pro_saved_diag, len);
+        if (bytes_read < 0) {
+            return bytes_read;
+        }
+        return bytes_read == sizeof(switch_pro_saved_diag) ? 0 : -EINVAL;
+    }
+
+    if (strcmp(name, "config")) {
+        return -ENOENT;
+    }
 
     static uint8_t buffer[PERSISTED_CONFIG_SIZE];
 
@@ -851,6 +1473,21 @@ void reset_to_bootloader() {
 }
 
 void flash_b_side() {
+}
+
+void get_switch_pro_diagnostics(uint32_t page, uint32_t values[7]) {
+    if (page < SWITCH_PRO_DIAG_PAGES) {
+        switch_pro_fill_diagnostics(page, values);
+        return;
+    }
+
+    page -= SWITCH_PRO_DIAG_PAGES;
+    if (page < SWITCH_PRO_DIAG_PAGES) {
+        memcpy(values, switch_pro_saved_diag[page], SWITCH_PRO_DIAG_VALUES * sizeof(uint32_t));
+        return;
+    }
+
+    memset(values, 0, SWITCH_PRO_DIAG_VALUES * sizeof(uint32_t));
 }
 
 void pair_new_device() {
@@ -910,6 +1547,9 @@ int main() {
     CHK(settings_register(&our_settings_handlers));
     settings_load();
     descriptor_init();
+    if (is_switch_pro_mode()) {
+        switch_pro_reset_session();
+    }
     usb_init();
     scan_init();
     parse_our_descriptor();
@@ -926,16 +1566,24 @@ int main() {
     bool get_report_response_pending = false;
 
     while (true) {
-        if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
-            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
-            process_pending = true;
+        if (!process_pending) {
+            uint8_t reports_to_drain = is_switch_pro_mode() ? 6 : 1;
+            while (reports_to_drain-- && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
+                if (incoming_report.interface == OUR_OUT_INTERFACE && switch_pro_handle_output_report(incoming_report.data, incoming_report.len)) {
+                    // Switch Pro output reports are host commands, not remapper inputs.
+                } else {
+                    handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
+                }
+                process_pending = true;
+            }
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
             process_mapping(true);
             process_pending = false;
+            switch_pro_log_stats();
         }
         if (!k_sem_take(&usb_sem0, K_NO_WAIT)) {
-            if (!send_report(do_send_report)) {
+            if (!switch_pro_send_response() && !send_report(do_send_report) && !switch_pro_send_input_heartbeat()) {
                 k_sem_give(&usb_sem0);
             }
         }
@@ -947,7 +1595,15 @@ int main() {
 
         if (!k_msgq_get(&set_report_q, &set_report_item, K_NO_WAIT)) {
             if (set_report_item.interface == 0) {
-                handle_set_report0(set_report_item.report_id, set_report_item.data, set_report_item.len);
+                uint8_t switch_report[65];
+                switch_report[0] = set_report_item.report_id;
+                memcpy(switch_report + 1, set_report_item.data, set_report_item.len);
+                if (is_switch_pro_mode()) {
+                    switch_pro_set_reports++;
+                }
+                if (!switch_pro_handle_output_report(switch_report, set_report_item.len + 1)) {
+                    handle_set_report0(set_report_item.report_id, set_report_item.data, set_report_item.len);
+                }
             }
             if (set_report_item.interface == 1) {
                 handle_set_report1(set_report_item.report_id, set_report_item.data, set_report_item.len);

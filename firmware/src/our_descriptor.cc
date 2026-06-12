@@ -309,6 +309,100 @@ const uint8_t our_report_descriptor_horipad[] = {
     0xC0,              // End Collection
 };
 
+const uint8_t our_report_descriptor_switch_pro[] = {
+    0x05, 0x01,  // Usage Page (Generic Desktop Ctrls)
+    0x15, 0x00,  // Logical Minimum (0)
+    0x09, 0x04,  // Usage (Joystick)
+    0xA1, 0x01,  // Collection (Application)
+    0x85, 0x30,  //   Report ID (48)
+    0x05, 0x01,  //   Usage Page (Generic Desktop Ctrls)
+    0x05, 0x09,  //   Usage Page (Button)
+    0x19, 0x01,  //   Usage Minimum (0x01)
+    0x29, 0x0A,  //   Usage Maximum (0x0A)
+    0x15, 0x00,  //   Logical Minimum (0)
+    0x25, 0x01,  //   Logical Maximum (1)
+    0x75, 0x01,  //   Report Size (1)
+    0x95, 0x0A,  //   Report Count (10)
+    0x55, 0x00,  //   Unit Exponent (0)
+    0x65, 0x00,  //   Unit (None)
+    0x81, 0x02,  //   Input (Data,Var,Abs)
+    0x05, 0x09,  //   Usage Page (Button)
+    0x19, 0x0B,  //   Usage Minimum (0x0B)
+    0x29, 0x0E,  //   Usage Maximum (0x0E)
+    0x15, 0x00,  //   Logical Minimum (0)
+    0x25, 0x01,  //   Logical Maximum (1)
+    0x75, 0x01,  //   Report Size (1)
+    0x95, 0x04,  //   Report Count (4)
+    0x81, 0x02,  //   Input (Data,Var,Abs)
+    0x75, 0x01,  //   Report Size (1)
+    0x95, 0x02,  //   Report Count (2)
+    0x81, 0x03,  //   Input (Const,Var,Abs)
+    0x0B, 0x01, 0x00, 0x01, 0x00,  //   Usage (Pointer)
+    0xA1, 0x00,  //   Collection (Physical)
+    0x0B, 0x30, 0x00, 0x01, 0x00,  //     Usage (X)
+    0x0B, 0x31, 0x00, 0x01, 0x00,  //     Usage (Y)
+    0x0B, 0x32, 0x00, 0x01, 0x00,  //     Usage (Z)
+    0x0B, 0x35, 0x00, 0x01, 0x00,  //     Usage (Rz)
+    0x15, 0x00,  //     Logical Minimum (0)
+    0x27, 0xFF, 0xFF, 0x00, 0x00,  // Logical Maximum (65534)
+    0x75, 0x10,  //     Report Size (16)
+    0x95, 0x04,  //     Report Count (4)
+    0x81, 0x02,  //     Input (Data,Var,Abs)
+    0xC0,        //   End Collection
+    0x0B, 0x39, 0x00, 0x01, 0x00,  //   Usage (Hat switch)
+    0x15, 0x00,  //   Logical Minimum (0)
+    0x25, 0x07,  //   Logical Maximum (7)
+    0x35, 0x00,  //   Physical Minimum (0)
+    0x46, 0x3B, 0x01,  // Physical Maximum (315)
+    0x65, 0x14,  //   Unit (English Rotation)
+    0x75, 0x04,  //   Report Size (4)
+    0x95, 0x01,  //   Report Count (1)
+    0x81, 0x02,  //   Input (Data,Var,Abs)
+    0x05, 0x09,  //   Usage Page (Button)
+    0x19, 0x0F,  //   Usage Minimum (0x0F)
+    0x29, 0x12,  //   Usage Maximum (0x12)
+    0x15, 0x00,  //   Logical Minimum (0)
+    0x25, 0x01,  //   Logical Maximum (1)
+    0x75, 0x01,  //   Report Size (1)
+    0x95, 0x04,  //   Report Count (4)
+    0x81, 0x02,  //   Input (Data,Var,Abs)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x34,  //   Report Count (52)
+    0x81, 0x03,  //   Input (Const,Var,Abs)
+    0x06, 0x00, 0xFF,  // Usage Page (Vendor Defined 0xFF00)
+    0x85, 0x21,  //   Report ID (33)
+    0x09, 0x01,  //   Usage (0x01)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x3F,  //   Report Count (63)
+    0x81, 0x03,  //   Input (Const,Var,Abs)
+    0x85, 0x81,  //   Report ID (129)
+    0x09, 0x02,  //   Usage (0x02)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x3F,  //   Report Count (63)
+    0x81, 0x03,  //   Input (Const,Var,Abs)
+    0x85, 0x01,  //   Report ID (1)
+    0x09, 0x03,  //   Usage (0x03)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x3F,  //   Report Count (63)
+    0x91, 0x83,  //   Output (Const,Var,Abs,Volatile)
+    0x85, 0x10,  //   Report ID (16)
+    0x09, 0x04,  //   Usage (0x04)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x3F,  //   Report Count (63)
+    0x91, 0x83,  //   Output (Const,Var,Abs,Volatile)
+    0x85, 0x80,  //   Report ID (128)
+    0x09, 0x05,  //   Usage (0x05)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x3F,  //   Report Count (63)
+    0x91, 0x83,  //   Output (Const,Var,Abs,Volatile)
+    0x85, 0x82,  //   Report ID (130)
+    0x09, 0x06,  //   Usage (0x06)
+    0x75, 0x08,  //   Report Size (8)
+    0x95, 0x3F,  //   Report Count (63)
+    0x91, 0x83,  //   Output (Const,Var,Abs,Volatile)
+    0xC0,        // End Collection
+};
+
 uint8_t const our_report_descriptor_ps4[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
     0x09, 0x05,        // Usage (Game Pad)
@@ -567,6 +661,21 @@ void horipad_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
     memcpy(report, horipad_neutral, sizeof(horipad_neutral));
 }
 
+void switch_pro_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
+    memset(report, 0, len);
+    if (report_id == 0x30 && len >= 11) {
+        report[2] = 0x00;
+        report[3] = 0x80;
+        report[4] = 0x00;
+        report[5] = 0x80;
+        report[6] = 0x00;
+        report[7] = 0x80;
+        report[8] = 0x00;
+        report[9] = 0x80;
+        report[10] = 8;
+    }
+}
+
 void ps4_clear_report(uint8_t* report, uint8_t report_id, uint16_t len) {
     memset(report, 0, len);
     report[0] = report[1] = report[2] = report[3] = 0x80;
@@ -609,6 +718,20 @@ int32_t ps4_stadia_default_value(uint32_t usage) {
         case 0x00010032:
         case 0x00010035:
             return 0x80;
+        default:
+            return 0;
+    }
+}
+
+int32_t switch_pro_default_value(uint32_t usage) {
+    switch (usage) {
+        case 0x00010039:
+            return 8;
+        case 0x00010030:
+        case 0x00010031:
+        case 0x00010032:
+        case 0x00010035:
+            return 0x8000;
         default:
             return 0;
     }
@@ -695,6 +818,16 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = xac_compat_clear_report,
         .default_value = ps4_stadia_default_value,  // sic
+    },
+    {
+        .idx = 6,
+        .descriptor = our_report_descriptor_switch_pro,
+        .descriptor_length = sizeof(our_report_descriptor_switch_pro),
+        .vid = 0x057E,
+        .pid = 0x2009,
+        .handle_received_report = do_handle_received_report,
+        .clear_report = switch_pro_clear_report,
+        .default_value = switch_pro_default_value,
     },
 };
 

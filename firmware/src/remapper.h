@@ -38,6 +38,9 @@ void send_out_report();
 bool send_monitor_report(send_report_t do_send_report);
 void print_stats();
 void reset_state();
+uint8_t debug_outgoing_report_count();
+uint32_t debug_outgoing_report_overflows();
+int32_t get_input_state_value(uint32_t usage, uint8_t hub_port, bool raw, bool* found);
 
 void set_monitor_enabled(bool enabled);
 void monitor_usage(uint32_t usage, int32_t value, uint8_t hub_port);

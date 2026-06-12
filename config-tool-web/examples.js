@@ -10143,4 +10143,22 @@ const examples = [
     }
 ];
 
+const xbox_bluetooth_switch_idx = examples.findIndex((example) => example.description == 'Xbox controller (Bluetooth) adapter for Switch');
+if (xbox_bluetooth_switch_idx >= 0) {
+    const switch_pro_example = JSON.parse(JSON.stringify(examples[xbox_bluetooth_switch_idx]));
+    switch_pro_example.description = 'Xbox controller (Bluetooth) adapter for Switch Pro Controller';
+    switch_pro_example.config.our_descriptor_number = 6;
+    for (const mapping of switch_pro_example.config.mappings) {
+        if ([
+            '0x00010030',
+            '0x00010031',
+            '0x00010032',
+            '0x00010035',
+        ].includes(mapping.source_usage) && mapping.source_usage === mapping.target_usage) {
+            mapping.scaling = 257000;
+        }
+    }
+    examples.splice(xbox_bluetooth_switch_idx + 1, 0, switch_pro_example);
+}
+
 export default examples;
