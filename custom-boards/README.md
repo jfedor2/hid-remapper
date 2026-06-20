@@ -10,7 +10,7 @@ The main advantage of the v1 board is that it can be made with no soldering, you
 
 The v2 board doesn't have USB connectors and is meant to be built into existing devices like trackballs by soldering the appropriate wires directly to the board.
 
-The v3 board has the form factor of a USB dongle (you plug it directly into your computer).
+The v3 board has the form factor of a USB dongle (you plug it directly into your computer). It also has an LED connected to GPIO 19, which you can use as an indicator, such as whether a particular layer is active.
 
 The v4 board has eight 3.5mm connectors wired to GPIO2-9, meant to be used with external buttons or switches. The 3D printed case for it uses two M2x4 screws and four M3x10 flat head screws.
 
