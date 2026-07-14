@@ -69,6 +69,7 @@ BUILD_ASSERT(DT_SAME_NODE(DT_INST(1, zephyr_hid_device), DT_NODELABEL(hid_dev_1)
 
 struct report_type {
     uint16_t interface;
+    uint8_t report_id;
     uint8_t len;
     uint8_t data[65];
 };
@@ -681,10 +682,10 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
 
     static struct report_type buf;
     buf.interface = hogp_index(hogp) << 8;
-    buf.len = bt_hogp_rep_size(rep) + 1;
-    buf.data[0] = bt_hogp_rep_id(rep);
+    buf.report_id = bt_hogp_rep_id(rep);
+    buf.len = MIN(bt_hogp_rep_size(rep), sizeof(buf.data));
 
-    memcpy(buf.data + 1, data, buf.len);
+    memcpy(buf.data, data, buf.len);
     if (k_msgq_put(&report_q, &buf, K_NO_WAIT)) {
         //        printk("error in k_msg_put(report_q\n");
     }
@@ -858,6 +859,7 @@ static int get_report_cb(const struct device* dev, const uint8_t type, const uin
 static void output_report_cb0(const struct device* dev, const uint16_t len, const uint8_t* const data) {
     static struct report_type buf;
     buf.interface = OUR_OUT_INTERFACE;
+    buf.report_id = 0;
     buf.len = MIN(len, sizeof(buf.data));
     memcpy(buf.data, data, buf.len);
     CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
@@ -1188,7 +1190,7 @@ int main() {
 
     while (true) {
         if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
-            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
+            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface, incoming_report.report_id);
             process_pending = true;
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
