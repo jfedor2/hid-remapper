@@ -34,12 +34,17 @@ LOG_MODULE_REGISTER(remapper, LOG_LEVEL_DBG);
 static const int SCAN_DELAY_MS = 1000;
 static const int CLEAR_BONDS_BUTTON_PRESS_MS = 3000;
 
+// Some devices (e.g. RMK firmware keyboards) expose multiple instances of the
+// HID service (keyboard / vendor / mouse+consumer+system), each with its own
+// report map. We discover and subscribe to all of them, up to this many.
+static const int MAX_HIDS_INSTANCES = 4;
+
 // these macros don't work in C++ when used directly ("taking address of temporary array")
 static auto const BT_UUID_HIDS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_VAL);
 static auto BT_ADDR_LE_ANY_ = BT_ADDR_LE_ANY[0];
 static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
-static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
+static struct bt_hogp hogps[CONFIG_BT_MAX_CONN][MAX_HIDS_INSTANCES];
 
 static K_SEM_DEFINE(usb_sem0, 1, 1);
 static K_SEM_DEFINE(usb_sem1, 1, 1);
@@ -55,13 +60,14 @@ static const struct device* hid_dev1;  // config interface
 
 struct report_type {
     uint16_t interface;
+    uint8_t report_id;
     uint8_t len;
     uint8_t data[65];
 };
 
 struct descriptor_type {
     uint16_t size;
-    uint8_t conn_idx;
+    uint16_t interface;
     uint8_t data[512];
 };
 
@@ -347,10 +353,32 @@ static void patch_broken_uuids(struct bt_gatt_dm* dm) {
 
 static void discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
     LOG_INF("");
+    struct bt_conn* conn = (struct bt_conn*) context;
+    uint8_t conn_idx = bt_conn_index(conn);
+
     patch_broken_uuids(dm);
-    CHK(bt_hogp_handles_assign(dm, ((struct bt_hogp*) context)));  // XXX disconnect if this fails?
+
+    int inst = -1;
+    for (int i = 0; i < MAX_HIDS_INSTANCES; i++) {
+        if (!bt_hogp_assign_check(&hogps[conn_idx][i])) {
+            inst = i;
+            break;
+        }
+    }
+    if (inst >= 0) {
+        LOG_INF("assigning HID service instance %d", inst);
+        CHK(bt_hogp_handles_assign(dm, &hogps[conn_idx][inst]));  // XXX disconnect if this fails?
+    } else {
+        LOG_WRN("too many HID service instances, ignoring");
+    }
+
     CHK(bt_gatt_dm_data_release(dm));
-    k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+
+    // look for more instances of the HID service on the same device;
+    // discovery_service_not_found_cb fires when there are no more
+    if ((inst < 0) || !CHK(bt_gatt_dm_continue(dm, context))) {
+        k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+    }
 }
 
 static void discovery_service_not_found_cb(struct bt_conn* conn, void* context) {
@@ -370,8 +398,7 @@ static const struct bt_gatt_dm_cb discovery_cb = {
 };
 
 static void gatt_discover(struct bt_conn* conn) {
-    uint8_t conn_idx = bt_conn_index(conn);
-    if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, &hogps[conn_idx]))) {
+    if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, conn))) {
         k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
     }
 }
@@ -421,8 +448,10 @@ static void disconnected(struct bt_conn* conn, uint8_t reason) {
 
     uint8_t conn_idx = bt_conn_index(conn);
 
-    if (bt_hogp_assign_check(&hogps[conn_idx])) {
-        bt_hogp_release(&hogps[conn_idx]);
+    for (int i = 0; i < MAX_HIDS_INSTANCES; i++) {
+        if (bt_hogp_assign_check(&hogps[conn_idx][i])) {
+            bt_hogp_release(&hogps[conn_idx][i]);
+        }
     }
 
     struct disconnected_type disconnected_item = { .conn_idx = conn_idx };
@@ -476,15 +505,18 @@ static void scan_init() {
     bt_scan_cb_register(&scan_cb);
 }
 
-static int8_t hogp_index(struct bt_hogp* hogp) {
+// interface identifier: high byte = connection index, low byte = HID service instance
+static uint16_t hogp_interface(struct bt_hogp* hogp) {
     for (int i = 0; i < CONFIG_BT_MAX_CONN; i++) {
-        if (&hogps[i] == hogp) {
-            return i;
+        for (int j = 0; j < MAX_HIDS_INSTANCES; j++) {
+            if (&hogps[i][j] == hogp) {
+                return (i << 8) | j;
+            }
         }
     }
 
     LOG_ERR("unknown hogp!");
-    return -1;
+    return 0;
 }
 
 static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep, uint8_t err, const uint8_t* data) {
@@ -503,11 +535,11 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
     }
 
     static struct report_type buf;
-    buf.interface = hogp_index(hogp) << 8;
-    buf.len = bt_hogp_rep_size(rep) + 1;
-    buf.data[0] = bt_hogp_rep_id(rep);
+    buf.interface = hogp_interface(hogp);
+    buf.report_id = bt_hogp_rep_id(rep);
+    buf.len = bt_hogp_rep_size(rep);
 
-    memcpy(buf.data + 1, data, buf.len);
+    memcpy(buf.data, data, buf.len);
     if (k_msgq_put(&report_q, &buf, K_NO_WAIT)) {
         //        printk("error in k_msg_put(report_q\n");
     }
@@ -515,18 +547,28 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
     return BT_GATT_ITER_CONTINUE;
 }
 
-// XXX is this ready for simultaneous connection setup? is discovery ready? do we care?
-static struct descriptor_type their_descriptor;
+// one buffer per HID service instance so that concurrent map reads
+// (multiple services and/or multiple connections) don't clobber each other
+static struct descriptor_type their_descriptors[CONFIG_BT_MAX_CONN][MAX_HIDS_INSTANCES];
+
+static struct descriptor_type* hogp_descriptor(struct bt_hogp* hogp) {
+    uint16_t interface = hogp_interface(hogp);
+    return &their_descriptors[interface >> 8][interface & 0xFF];
+}
 
 static void hogp_map_read_cb(struct bt_hogp* hogp, uint8_t err, const uint8_t* data, size_t size, size_t offset) {
+    struct descriptor_type* their_descriptor = hogp_descriptor(hogp);
+
     if (data == NULL) {
-        their_descriptor.size = offset;
-        their_descriptor.conn_idx = hogp_index(hogp);
-        CHK(k_msgq_put(&descriptor_q, &their_descriptor, K_NO_WAIT));
+        their_descriptor->size = offset;
+        their_descriptor->interface = hogp_interface(hogp);
+        CHK(k_msgq_put(&descriptor_q, their_descriptor, K_NO_WAIT));
         return;
     }
 
-    memcpy(their_descriptor.data + offset, data, size);
+    if (offset + size <= sizeof(their_descriptor->data)) {
+        memcpy(their_descriptor->data + offset, data, size);
+    }
 
     bt_hogp_map_read(hogp, hogp_map_read_cb, offset + size, K_NO_WAIT);
 }
@@ -559,7 +601,7 @@ static void hogp_ready_work_fn(struct k_work* work) {
         bt_addr_le_copy(&find_bond.addr, bt_conn_get_dst(bt_hogp_conn(item.hogp)));
         bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
         LOG_DBG("found bond idx: %d", find_bond.found_idx);
-        device_connected_callback(bt_conn_index(bt_hogp_conn(item.hogp)) << 8, 1, 1, find_bond.found_idx);
+        device_connected_callback(hogp_interface(item.hogp), 1, 1, find_bond.found_idx);
 
         while (NULL != (rep = bt_hogp_rep_next(item.hogp, rep))) {
             if (bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_INPUT) {
@@ -685,6 +727,7 @@ static void int_out_ready_cb0(const struct device* dev) {
     uint32_t len;
     if (CHK(hid_int_ep_read(hid_dev0, buf.data, sizeof(buf.data), &len))) {
         buf.interface = OUR_OUT_INTERFACE;
+        buf.report_id = 0;
         buf.len = len;
         CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
     }
@@ -793,7 +836,9 @@ static void usb_init() {
 
 static void bt_init() {
     for (int i = 0; i < CONFIG_BT_MAX_CONN; i++) {
-        bt_hogp_init(&hogps[i], &hogp_init_params);
+        for (int j = 0; j < MAX_HIDS_INSTANCES; j++) {
+            bt_hogp_init(&hogps[i][j], &hogp_init_params);
+        }
     }
 
     if (!CHK(bt_conn_auth_cb_register(&conn_auth_callbacks))) {
@@ -927,7 +972,7 @@ int main() {
 
     while (true) {
         if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
-            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
+            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface, incoming_report.report_id);
             process_pending = true;
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
@@ -972,7 +1017,7 @@ int main() {
 
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
-            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
+            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.interface, incoming_descriptor.interface & 0xFF);
         }
 
         if (resume_pending) {
