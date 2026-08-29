@@ -18,6 +18,10 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib srecord
+      - name: Init pico-sdk Bluetooth / wireless submodules
+        run: |
+          git -C pico-sdk submodule update --init lib/cyw43-driver lib/lwip lib/btstack
+        working-directory: ./firmware
       - name: Build
         run: |
           mkdir build
@@ -85,6 +89,16 @@ jobs:
           PICO_BOARD=rp2040abb cmake ..
           make remapper
           cd ..
+          mkdir build-pico_w
+          cd build-pico_w
+          PICO_BOARD=pico_w cmake ..
+          make remapper_bt
+          cd ..
+          mkdir build-pico2_w
+          cd build-pico2_w
+          PICO_BOARD=pico2_w cmake ..
+          make remapper_bt
+          cd ..
           mkdir artifacts
           mv build/*.uf2 artifacts
           rm artifacts/flash_b_side.uf2
@@ -103,6 +117,8 @@ jobs:
           mv build-waveshare_rp2350_pizero/remapper.uf2 artifacts/remapper_waveshare_rp2350_pizero.uf2
           mv build-meisterconverter/remapper.uf2 artifacts/remapper_meisterconverter.uf2
           mv build-rp2040abb/remapper.uf2 artifacts/remapper_rp2040abb.uf2
+          mv build-pico_w/remapper_bt.uf2 artifacts/remapper_bt.uf2
+          mv build-pico2_w/remapper_bt.uf2 artifacts/remapper_bt_pico2_w.uf2
         working-directory: ./firmware
       - uses: actions/upload-artifact@v7
         with:

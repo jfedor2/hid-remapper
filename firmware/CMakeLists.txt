@@ -223,3 +223,54 @@ add_custom_command(
 add_custom_target(remapper_dual_combined ALL
     DEPENDS remapper_dual_combined.uf2
 )
+
+if(PICO_CYW43_SUPPORTED)
+
+add_executable(remapper_bt
+    src/main_bt.cc
+    src/main_bt_usb.cc
+    src/remapper.cc
+    src/crc.cc
+    src/descriptor_parser.cc
+    src/tinyusb_stuff.cc
+    src/our_descriptor.cc
+    src/globals.cc
+    src/config.cc
+    src/quirks.cc
+    src/interval_override.cc
+    src/tick.cc
+    src/ps_auth.cc
+)
+target_include_directories(remapper_bt PRIVATE
+    src
+    src/tusb_config_device
+)
+# Keep BTstack's link-key flash storage (2 sectors) clear of the remapper
+# config sector. On RP2350 the config is one sector further down (the last
+# sector gets wiped on every UF2 flash - see main_bt.cc / RP2350-E10), so the
+# BTstack storage moves down to match.
+if(PICO_PLATFORM STREQUAL "rp2040")
+    set(remapper_bt_flash_bank_offset "PICO_FLASH_SIZE_BYTES-4096-8192")
+else()
+    set(remapper_bt_flash_bank_offset "PICO_FLASH_SIZE_BYTES-8192-8192")
+endif()
+target_compile_definitions(remapper_bt PRIVATE
+    REMAPPER_BT
+    PICO_FLASH_BANK_STORAGE_OFFSET=${remapper_bt_flash_bank_offset}
+    # We use the CYW43 chip for Bluetooth only, no networking.
+    CYW43_LWIP=0
+)
+target_link_libraries(remapper_bt
+    pico_stdlib
+    pico_unique_id
+    hardware_flash
+    tinyusb_device
+    tinyusb_board
+    pico_btstack_classic
+    pico_btstack_cyw43
+    pico_btstack_flash_bank
+    pico_cyw43_arch_poll
+)
+pico_add_extra_outputs(remapper_bt)
+
+endif()

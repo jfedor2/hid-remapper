@@ -111,7 +111,11 @@ char const* string_desc_arr[] = {
 #else
     "RP2040",  // 1: Manufacturer
 #endif
+#ifdef REMAPPER_BT
+    "HID Remapper Bluetooth XXXX",  // 2: Product
+#else
     "HID Remapper XXXX",  // 2: Product
+#endif
     "123456789012",       // 3: Serial Number
 };
 
