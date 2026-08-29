@@ -136,6 +136,12 @@ void set_gpio_inout_masks(uint32_t in_mask, uint32_t out_mask) {
 
 static uint16_t device_cid[MAX_DEVICES];     // 0 == slot free
 static bd_addr_t device_addr[MAX_DEVICES];
+// hid_host delivers reports before the HID descriptor on incoming (reconnect)
+// connections. Feeding those into handle_received_report() poisons the shared
+// interface_index map (operator[] inserts interface->0), so different devices
+// end up sharing interface_idx 0 and their input states collide. Only process
+// a device's reports once parse_descriptor() has run for it.
+static bool device_ready[MAX_DEVICES];
 
 static int index_for_cid(uint16_t cid, bool allocate) {
     for (int i = 0; i < MAX_DEVICES; i++) {
@@ -158,6 +164,7 @@ static int index_for_cid(uint16_t cid, bool allocate) {
 static void free_index(int idx) {
     if (idx >= 0 && idx < MAX_DEVICES) {
         device_cid[idx] = 0;
+        device_ready[idx] = false;
         memset(device_addr[idx], 0, sizeof(bd_addr_t));
     }
 }
@@ -696,6 +703,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t* packe
                         break;
                     }
                     bd_addr_copy(device_addr[idx], addr);
+                    device_ready[idx] = false;  // until the descriptor is parsed
                     if (pairing_mode) {
                         stop_pairing();
                     }
@@ -724,14 +732,15 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t* packe
                     uint16_t desc_len = hid_descriptor_storage_get_descriptor_len(cid);
                     BT_LOG("device %d: HID descriptor available, %u bytes", idx, desc_len);
                     parse_descriptor(1, 1, desc, desc_len, idx << 8, 0);
+                    device_ready[idx] = true;
                     break;
                 }
 
                 case HID_SUBEVENT_REPORT: {
                     uint16_t cid = hid_subevent_report_get_hid_cid(packet);
                     int idx = index_for_cid(cid, false);
-                    if (idx < 0) {
-                        break;
+                    if (idx < 0 || !device_ready[idx]) {
+                        break;  // ignore reports until the descriptor is parsed
                     }
                     const uint8_t* report = hid_subevent_report_get_report(packet);
                     uint16_t report_len = hid_subevent_report_get_report_len(packet);
