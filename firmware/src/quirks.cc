@@ -1922,7 +1922,30 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .logical_maximum = 32767,
         };
     }
+    // Logitech G502 HERO (046D:C08B)
+    // HID++ Mouse Button Spy report 0x11:
+    //   report byte 0 = FF (device index)
+    //   report byte 1 = 0D (feature index)
+    //   report byte 2 = 00 (function)
+    //   report byte 3 = 00 (software ID)
+    //   report byte 4 = button bitmap low byte
+    //
+    // G-Shift / Sniper is bitmap bit 5 = 0x20.
+    // The report ID byte is stripped before parsing, so the bit position
+    // is 4 * 8 + 5 = 37.
+    if (vendor_id == 0x046D &&
+        product_id == 0xC08B &&
+        itf_num == 1) {
 
+        usage_map[0x11][0x0009001B] = (usage_def_t){
+            .report_id = 0x11,
+            .size = 1,
+            .bitpos = 37,
+            .is_relative = false,
+            .logical_minimum = 0,
+            .logical_maximum = 1,
+        };
+    }
     // apply user-defined quirks
     my_mutex_enter(MutexId::QUIRKS);
     for (uint16_t i = 0; i < quirks.size(); i++) {
