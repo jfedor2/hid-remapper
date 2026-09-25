@@ -225,7 +225,10 @@ static bool scan_setup_filters() {
             LOG_DBG("all bonded peers connected, not scanning");
             return false;
         }
-        filter_mode |= BT_SCAN_ADDR_FILTER;
+        // Match bonded peers by address alone. Some devices (e.g. R-Go
+        // keyboards) advertise only Flags when reconnecting, without the HID
+        // service UUID, so also requiring the UUID prevents reconnection.
+        filter_mode = BT_SCAN_ADDR_FILTER;
         LOG_DBG("scanning for bonded peers only");
     } else {
         LOG_DBG("scanning for new peers");
@@ -278,14 +281,15 @@ static K_WORK_DEFINE(clear_bonds_work, clear_bonds_work_fn);
 static void scan_filter_match(struct bt_scan_device_info* device_info, struct bt_scan_filter_match* filter_match, bool connectable) {
     char addr[BT_ADDR_LE_STR_LEN];
 
-    if (!filter_match->uuid.match || (filter_match->uuid.count != 1)) {
+    if (!filter_match->addr.match && (!filter_match->uuid.match || (filter_match->uuid.count != 1))) {
         LOG_WRN("%s invalid device connected", __func__);
         return;
     }
 
     bt_addr_le_to_str(device_info->recv_info->addr, addr, sizeof(addr));
 
-    LOG_INF("%s address: %s connectable: %s", __func__, addr, connectable ? "yes" : "no");
+    LOG_INF("%s address: %s connectable: %s matched: %s", __func__, addr, connectable ? "yes" : "no",
+        filter_match->addr.match ? "bonded address" : "HID UUID");
 }
 
 static void scan_connecting_error(struct bt_scan_device_info* device_info) {
