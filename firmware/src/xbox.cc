@@ -197,14 +197,19 @@ bool xboxh_init(void) {
     return true;
 }
 
-bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* desc_itf, uint16_t max_len) {
+uint16_t xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* desc_itf, uint16_t max_len) {
     if (max_len < sizeof(tusb_desc_interface_t) + desc_itf->bNumEndpoints * sizeof(tusb_desc_endpoint_t)) {
-        return false;
+        return 0;
+    }
+
+    // TinyUSB also offers us alternate settings as separate interfaces
+    if (desc_itf->bAlternateSetting != 0) {
+        return 0;
     }
 
     struct xdev_t* xdev = allocate_xdev();
     if (xdev == nullptr) {
-        return false;
+        return 0;
     }
 
     if ((desc_itf->bNumEndpoints == 2) &&
@@ -218,7 +223,7 @@ bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* d
                (desc_itf->bInterfaceProtocol == 1)) {  // XXX this is 129 for wireless
         xdev->type = XType::XBOX_360;
     } else {
-        return false;
+        return 0;
     }
 
     uint8_t in_ep = 0;
@@ -227,12 +232,14 @@ bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* d
     uint16_t out_ep_size = 0;
 
     uint8_t const* p_desc = (uint8_t const*) desc_itf;
+    uint8_t const* desc_end = p_desc + max_len;
 
-    while (true) {
-        p_desc = tu_desc_next(p_desc);
-        if (p_desc >= ((uint8_t*) desc_itf) + max_len) {
-            break;
-        }
+    // go through descriptors until the next interface
+    for (p_desc = tu_desc_next(p_desc);
+         tu_desc_in_bounds(p_desc, desc_end) &&
+         (tu_desc_type(p_desc) != TUSB_DESC_INTERFACE) &&
+         (tu_desc_type(p_desc) != TUSB_DESC_INTERFACE_ASSOCIATION);
+         p_desc = tu_desc_next(p_desc)) {
         tusb_desc_endpoint_t const* desc_ep = (tusb_desc_endpoint_t const*) p_desc;
         if (desc_ep->bDescriptorType != TUSB_DESC_ENDPOINT) {
             continue;
@@ -241,7 +248,7 @@ bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* d
             continue;
         }
         if (!tuh_edpt_open(dev_addr, desc_ep)) {
-            return false;
+            return 0;
         }
         uint8_t ep_addr = desc_ep->bEndpointAddress;
         if (tu_edpt_dir(ep_addr) == TUSB_DIR_IN) {
@@ -263,7 +270,7 @@ bool xboxh_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const* d
     xdev->out_ep = out_ep;
     xdev->out_ep_size = out_ep_size;
 
-    return true;
+    return (uint16_t) (p_desc - (uint8_t const*) desc_itf);
 }
 
 static bool xxfer_in(struct xdev_t* xdev) {
@@ -307,9 +314,8 @@ static void process_setup(struct xdev_t* xdev) {
             xdev->setup_stage = 0;
             xxfer_in(xdev);
 
-            uint8_t hub_addr;
-            uint8_t hub_port;
-            tuh_get_hub_addr_port(xdev->dev_addr, &hub_addr, &hub_port);
+            tuh_bus_info_t bus_info;
+            tuh_bus_info_get(xdev->dev_addr, &bus_info);
             // We use the same VID/PID for all Xbox controllers to be able to apply quirks.
             // We should probably find another way to signal that it's an Xbox controller and pass the real ones.
             descriptor_received_callback(
@@ -318,7 +324,7 @@ static void process_setup(struct xdev_t* xdev) {
                 xbox_one_descriptor,
                 sizeof(xbox_one_descriptor),
                 (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num,
-                hub_port, xdev->itf_num);
+                bus_info.hub_port, xdev->itf_num);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
     }
@@ -338,9 +344,8 @@ bool xboxh_set_config(uint8_t dev_addr, uint8_t itf_num) {
         case XType::XBOX_360:
             xxfer_in(xdev);
 
-            uint8_t hub_addr;
-            uint8_t hub_port;
-            tuh_get_hub_addr_port(xdev->dev_addr, &hub_addr, &hub_port);
+            tuh_bus_info_t bus_info;
+            tuh_bus_info_get(xdev->dev_addr, &bus_info);
             // We use the same VID/PID for all Xbox controllers to be able to apply quirks.
             // We should probably find another way to signal that it's an Xbox controller and pass the real ones.
             descriptor_received_callback(
@@ -349,7 +354,7 @@ bool xboxh_set_config(uint8_t dev_addr, uint8_t itf_num) {
                 xbox_360_descriptor,
                 sizeof(xbox_360_descriptor),
                 (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num,
-                hub_port, xdev->itf_num);
+                bus_info.hub_port, xdev->itf_num);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
         default:

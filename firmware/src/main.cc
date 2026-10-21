@@ -67,7 +67,7 @@ void print_stats_maybe() {
     }
 }
 
-void __no_inline_not_in_flash_func(sof_handler)(uint32_t frame_count) {
+void tud_sof_cb(uint32_t frame_count) {
     sof_callback();
 }
 
@@ -256,7 +256,7 @@ int main() {
     tusb_init();
     stdio_init_all();
 
-    tud_sof_isr_set(sof_handler);
+    tud_sof_cb_enable(true);
 
     next_print = time_us_64() + 1000000;
 

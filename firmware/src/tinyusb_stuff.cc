@@ -24,6 +24,8 @@
  *
  */
 
+#include <stdio.h>
+
 #include <tusb.h>
 
 #include "config.h"

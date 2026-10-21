@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 
-add_subdirectory(usb_midi_host)
-
 add_compile_definitions(PICO_DEFAULT_UART_BAUD_RATE=921600)
 add_compile_definitions(PERSISTED_CONFIG_SIZE=4096)
 add_compile_definitions(PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64)
@@ -71,7 +69,6 @@ target_link_libraries(remapper
     tinyusb_host
     tinyusb_board
     tinyusb_pico_pio_usb
-    usb_midi_host
 )
 
 pico_set_binary_type(remapper copy_to_ram)
@@ -143,7 +140,6 @@ target_link_libraries(remapper_dual_b
     pico_stdlib
     tinyusb_host
     tinyusb_board
-    usb_midi_host
 )
 pico_add_extra_outputs(remapper_dual_b)
 pico_add_hex_output(remapper_dual_b)

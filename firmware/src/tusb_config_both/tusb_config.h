@@ -26,11 +26,15 @@
 #define CFG_TUH_HID 16
 #define CFG_TUH_MSC 0
 #define CFG_TUH_VENDOR 0
+#define CFG_TUH_MIDI 16
 
 #define CFG_TUH_DEVICE_MAX 16
 
 #define CFG_TUH_HID_EPIN_BUFSIZE 64
 #define CFG_TUH_HID_EPOUT_BUFSIZE 64
+
+// leave HID devices in report protocol (the default per HID spec)
+#define CFG_TUH_HID_SET_PROTOCOL_ON_ENUM 0
 
 #define CFG_TUH_RPI_PIO_USB 1
 
