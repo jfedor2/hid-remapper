@@ -314,8 +314,6 @@ static void process_setup(struct xdev_t* xdev) {
             xdev->setup_stage = 0;
             xxfer_in(xdev);
 
-            tuh_bus_info_t bus_info;
-            tuh_bus_info_get(xdev->dev_addr, &bus_info);
             // We use the same VID/PID for all Xbox controllers to be able to apply quirks.
             // We should probably find another way to signal that it's an Xbox controller and pass the real ones.
             descriptor_received_callback(
@@ -324,7 +322,7 @@ static void process_setup(struct xdev_t* xdev) {
                 xbox_one_descriptor,
                 sizeof(xbox_one_descriptor),
                 (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num,
-                bus_info.hub_port, xdev->itf_num);
+                get_hub_port(xdev->dev_addr), xdev->itf_num);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
     }
@@ -344,8 +342,6 @@ bool xboxh_set_config(uint8_t dev_addr, uint8_t itf_num) {
         case XType::XBOX_360:
             xxfer_in(xdev);
 
-            tuh_bus_info_t bus_info;
-            tuh_bus_info_get(xdev->dev_addr, &bus_info);
             // We use the same VID/PID for all Xbox controllers to be able to apply quirks.
             // We should probably find another way to signal that it's an Xbox controller and pass the real ones.
             descriptor_received_callback(
@@ -354,7 +350,7 @@ bool xboxh_set_config(uint8_t dev_addr, uint8_t itf_num) {
                 xbox_360_descriptor,
                 sizeof(xbox_360_descriptor),
                 (uint16_t) (xdev->dev_addr << 8) | xdev->itf_num,
-                bus_info.hub_port, xdev->itf_num);
+                get_hub_port(xdev->dev_addr), xdev->itf_num);
             usbh_driver_set_config_complete(xdev->dev_addr, xdev->itf_num);
             break;
         default:
