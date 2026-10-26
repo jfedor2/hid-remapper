@@ -8,7 +8,7 @@
 
 #define CFG_TUD_ENDPOINT0_SIZE 64
 
-#define CFG_TUD_HID 2
+#define CFG_TUD_HID 3
 #define CFG_TUD_CDC 0
 #define CFG_TUD_MSC 0
 #define CFG_TUD_MIDI 0

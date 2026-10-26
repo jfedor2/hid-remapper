@@ -72,14 +72,31 @@ void __no_inline_not_in_flash_func(sof_handler)(uint32_t frame_count) {
 }
 
 bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
+    uint8_t report_id = report_with_id[0];
+    if ((interface == 0) && (our_descriptor->separate_mouse_descriptor != nullptr)) {
+        if (report_id == our_descriptor->separate_keyboard_report_id) {
+            // boot keyboard interface, no report ID
+            report_id = 0;
+        } else {
+            interface = 2;
+        }
+    }
     if (tud_suspended() &&
         (our_descriptor->should_cause_wakeup != nullptr) &&
         our_descriptor->should_cause_wakeup(report_with_id[0], report_with_id + 1, len - 1)) {
         tud_remote_wakeup();
     } else {
-        tud_hid_n_report(interface, report_with_id[0], report_with_id + 1, len - 1);
+        bool sent = tud_hid_n_report(interface, report_id, report_with_id + 1, len - 1);
+        if (sent && (interface == 0) && (report_id == 0) && (our_descriptor->separate_mouse_descriptor != nullptr)) {
+            memcpy(separate_keyboard_report, report_with_id + 1, (len - 1 < BOOT_KB_REPORT_SIZE) ? len - 1 : BOOT_KB_REPORT_SIZE);
+        }
     }
     return true;  // XXX?
+}
+
+bool our_interfaces_ready() {
+    return tud_hid_n_ready(0) &&
+           ((our_descriptor->separate_mouse_descriptor == nullptr) || tud_hid_n_ready(2));
 }
 
 void gpio_pins_init() {
@@ -303,7 +320,7 @@ int main() {
             set_gpio_dir();
             set_gpio_dir_pending = false;
         }
-        if (tud_hid_n_ready(0) || tud_suspended()) {
+        if (our_interfaces_ready() || tud_suspended()) {
             send_report(do_send_report);
         }
         if (monitor_enabled && tud_hid_n_ready(1)) {
