@@ -93,6 +93,13 @@ const uint8_t configuration_descriptor5[] = {
     TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
+const uint8_t configuration_descriptor6[] = {
+    TUD_CONFIG_DESCRIPTOR(1, 3, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN + TUD_HID_DESC_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_KEYBOARD, boot_kb_report_descriptor_length, 0x81, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(1, 0, HID_ITF_PROTOCOL_NONE, config_report_descriptor_length, 0x83, CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(2, 0, HID_ITF_PROTOCOL_NONE, our_descriptors[6].separate_mouse_descriptor_length, 0x84, CFG_TUD_HID_EP_BUFSIZE, 1),
+};
+
 const uint8_t* configuration_descriptors[] = {
     configuration_descriptor0,
     configuration_descriptor1,
@@ -100,6 +107,7 @@ const uint8_t* configuration_descriptors[] = {
     configuration_descriptor3,
     configuration_descriptor4,
     configuration_descriptor5,
+    configuration_descriptor6,
 };
 
 char const* string_desc_arr[] = {
@@ -135,9 +143,14 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
     if (itf == 0) {
+        if (our_descriptor->separate_mouse_descriptor != nullptr) {
+            return boot_kb_report_descriptor;
+        }
         return our_descriptor->descriptor;
     } else if (itf == 1) {
         return config_report_descriptor;
+    } else if (itf == 2) {
+        return our_descriptor->separate_mouse_descriptor;
     }
 
     return NULL;
@@ -196,15 +209,30 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 }
 
 uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
-    if (itf == 0) {
-        return handle_get_report0(report_id, buffer, reqlen);
-    } else {
+    if (itf == 1) {
         return handle_get_report1(report_id, buffer, reqlen);
     }
+    if ((itf == 0) && (our_descriptor->separate_mouse_descriptor != nullptr)) {
+        // Boot keyboard interface: the only input report is the keyboard report.
+        if ((report_type == HID_REPORT_TYPE_INPUT) && (report_id == 0)) {
+            uint16_t len = (reqlen < BOOT_KB_REPORT_SIZE) ? reqlen : BOOT_KB_REPORT_SIZE;
+            memcpy(buffer, separate_keyboard_report, len);
+            return len;
+        }
+        return 0;
+    }
+    return handle_get_report0(report_id, buffer, reqlen);
 }
 
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    if (itf == 0) {
+    if ((itf == 0) && (our_descriptor->separate_mouse_descriptor != nullptr)) {
+        // Boot keyboard interface has no report IDs, its only output report is the LEDs.
+        if ((report_type == HID_REPORT_TYPE_OUTPUT) && (report_id == 0)) {
+            handle_set_report0(REPORT_ID_LEDS, buffer, bufsize);
+        }
+    } else if (itf == 2) {
+        handle_set_report0(report_id, buffer, bufsize);
+    } else if (itf == 0) {
         if ((report_id == 0) && (report_type == 0) && (bufsize > 0)) {
             report_id = buffer[0];
             buffer++;
@@ -217,12 +245,18 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
 
 void tud_hid_set_protocol_cb(uint8_t instance, uint8_t protocol) {
     printf("tud_hid_set_protocol_cb %d %d\n", instance, protocol);
+    // With a separate boot keyboard interface the reports look the same
+    // in both protocols, so there's nothing to switch.
+    if (our_descriptor->separate_mouse_descriptor != nullptr) {
+        return;
+    }
     boot_protocol_keyboard = (protocol == HID_PROTOCOL_BOOT);
     boot_protocol_updated = true;
 }
 
 void tud_mount_cb() {
     reset_resolution_multiplier();
+    memset(separate_keyboard_report, 0, sizeof(separate_keyboard_report));
     if (boot_protocol_keyboard) {
         boot_protocol_keyboard = false;
         boot_protocol_updated = true;
