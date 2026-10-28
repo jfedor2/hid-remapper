@@ -11,6 +11,22 @@ set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/boards")
 
 include(pico_sdk_import.cmake)
 
+# RP2040 runs at 192 MHz: a multiple of 48 MHz for Pico-PIO-USB, within the
+# chip's 200 MHz rating with the core at 1.15 V. The flash clock divider goes
+# up to 4 (48 MHz) so that flash chips on all sorts of boards keep up. Set
+# before pico_sdk_init() so that the SDK's boot2 gets the divider too.
+if(PICO_PLATFORM STREQUAL "rp2040")
+    add_compile_definitions(
+        SYS_CLK_HZ=192000000
+        PLL_SYS_VCO_FREQ_HZ=1536000000
+        PLL_SYS_POSTDIV1=4
+        PLL_SYS_POSTDIV2=2
+        SYS_CLK_VREG_VOLTAGE_AUTO_ADJUST=1
+        SYS_CLK_VREG_VOLTAGE_MIN=VREG_VOLTAGE_1_15
+        PICO_FLASH_SPI_CLKDIV=4
+    )
+endif()
+
 project(remapper)
 
 pico_sdk_init()

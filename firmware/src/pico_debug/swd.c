@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "hardware/clocks.h"
 #include "hardware/gpio.h"
 
 #pragma GCC optimize ("O0")
@@ -87,10 +88,11 @@ int swd_init() {
 
     // Go slow for the minute...
     //pio_sm_set_clkdiv_int_frac(pio, swd_sm, 128, 0);
-    pio_sm_set_clkdiv_int_frac(pio, swd_sm, 3, 0);
-
-    // 125MHz / 2 / 3 = ~ 20Mhz --> divider of 3
-    // 150Mhz / 2 / 3 = 25Mhz --> divider of 3 (and it works!)
+    // SWCLK is clk_sys / 2 / divider. Keep it at about 20 MHz or less, whatever
+    // clk_sys is: 125 MHz / 2 / 3 = ~21 MHz, 192 MHz / 2 / 5 = 19.2 MHz.
+    // (150 MHz / 2 / 3 = 25 MHz worked too, but now gets 4: 18.75 MHz.)
+    uint32_t swd_clkdiv = (clock_get_hz(clk_sys) + 2 * 21000000 - 1) / (2 * 21000000);
+    pio_sm_set_clkdiv_int_frac(pio, swd_sm, swd_clkdiv, 0);
 
     pio_sm_set_enabled(swd_pio, swd_sm, true);
     return SWD_OK;
