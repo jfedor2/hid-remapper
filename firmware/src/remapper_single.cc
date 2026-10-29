@@ -40,6 +40,14 @@ uint32_t get_gpio_valid_pins_mask() {
                                       (1 << PICO_DEFAULT_PIO_USB_DP_PIN2) |
                                       (1 << (PICO_DEFAULT_PIO_USB_DP_PIN2 + 1)) |
 #endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN3
+                                      (1 << PICO_DEFAULT_PIO_USB_DP_PIN3) |
+                                      (1 << (PICO_DEFAULT_PIO_USB_DP_PIN3 + 1)) |
+#endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN4
+                                      (1 << PICO_DEFAULT_PIO_USB_DP_PIN4) |
+                                      (1 << (PICO_DEFAULT_PIO_USB_DP_PIN4 + 1)) |
+#endif
                                       (1 << PICO_DEFAULT_PIO_USB_DP_PIN) |
                                       (1 << (PICO_DEFAULT_PIO_USB_DP_PIN + 1)));
 }
@@ -64,8 +72,8 @@ uint8_t get_hub_port(uint8_t dev_addr) {
     tuh_bus_info_t bus_info;
     tuh_bus_info_get(dev_addr, &bus_info);
 #ifdef PICO_DEFAULT_PIO_USB_DP_PIN2
-    // Devices plugged directly into one of the two PIO-USB ports (rhport 1 and 2)
-    // get hub_port 1 and 2, as if they were plugged into a hub.
+    // Devices plugged directly into one of the PIO-USB ports (rhport 1, 2, ...)
+    // get hub_port 1, 2, ..., as if they were plugged into a hub.
     if (bus_info.hub_addr == 0) {
         return bus_info.rhport;
     }

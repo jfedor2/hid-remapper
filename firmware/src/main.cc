@@ -261,6 +261,12 @@ int main() {
 #ifdef PICO_DEFAULT_PIO_USB_DP_PIN2
     pio_usb_host_add_port(PICO_DEFAULT_PIO_USB_DP_PIN2, PIO_USB_PINOUT_DPDM);
 #endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN3
+    pio_usb_host_add_port(PICO_DEFAULT_PIO_USB_DP_PIN3, PIO_USB_PINOUT_DPDM);
+#endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN4
+    pio_usb_host_add_port(PICO_DEFAULT_PIO_USB_DP_PIN4, PIO_USB_PINOUT_DPDM);
+#endif
     stdio_init_all();
 
     tud_sof_cb_enable(true);
