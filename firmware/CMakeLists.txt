@@ -92,13 +92,7 @@ target_link_libraries(remapper
 )
 
 pico_set_binary_type(remapper copy_to_ram)
-if(PICO_PLATFORM STREQUAL "rp2040")
-    pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single.ld)
-elseif(PICO_PLATFORM STREQUAL "rp2350-arm-s")
-    pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single_rp2350.ld)
-else()
-    message(FATAL_ERROR "Unknown PICO_PLATFORM.")
-endif()
+pico_add_linker_script_override_path(remapper ${CMAKE_CURRENT_LIST_DIR}/linker_single FILES section_copy_to_ram_rodata.incl)
 pico_add_extra_outputs(remapper)
 
 
