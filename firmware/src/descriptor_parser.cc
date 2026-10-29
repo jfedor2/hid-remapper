@@ -161,7 +161,7 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
 
     while (idx < len) {
         if (report_descriptor[idx] == 0 && idx == len - 1) {
-            continue;
+            break;  // trailing padding byte
         }
 
         uint8_t item = report_descriptor[idx] & 0xFC;
