@@ -269,8 +269,6 @@ int main() {
 #endif
     stdio_init_all();
 
-    tud_sof_cb_enable(true);
-
     next_print = time_us_64() + 1000000;
 
     while (true) {

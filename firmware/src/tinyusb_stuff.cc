@@ -224,6 +224,9 @@ void tud_hid_set_protocol_cb(uint8_t instance, uint8_t protocol) {
 }
 
 void tud_mount_cb() {
+    // A USB bus reset clears TinyUSB's SOF callback enable, so it has to be set
+    // again each time we get configured.
+    tud_sof_cb_enable(true);
     reset_resolution_multiplier();
     if (boot_protocol_keyboard) {
         boot_protocol_keyboard = false;
