@@ -271,6 +271,10 @@ target_link_libraries(remapper_bt
     pico_btstack_flash_bank
     pico_cyw43_arch_poll
 )
+# Running the CYW43 driver and BTstack from flash is too slow to keep up with a
+# device that sends reports every millisecond or so.
+pico_set_binary_type(remapper_bt copy_to_ram)
+pico_add_linker_script_override_path(remapper_bt ${CMAKE_CURRENT_LIST_DIR}/linker_bt FILES section_copy_to_ram_rodata.incl)
 pico_add_extra_outputs(remapper_bt)
 
 endif()

@@ -1,0 +1,15 @@
+SECTIONS
+{
+    .rodata : {
+        /* segments not marked as .flashdata are instead pulled into .data (in RAM) to avoid accidental flash accesses */
+        *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.flashdata*)))
+        . = ALIGN(4);
+        /* The CYW43 firmware is too big for RAM and only read at startup */
+        *(.rodata.wb43439A0*)
+        *(.rodata.cyw43_btfw_*)
+        . = ALIGN(4);
+        /* HID Remapper's own code stays in flash, only library and SDK code is copied to RAM */
+        CMakeFiles/remapper_bt.dir/src/*.o(.text*)
+        . = ALIGN(4);
+    } > TEXT_STORE
+}

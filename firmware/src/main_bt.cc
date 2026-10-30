@@ -169,7 +169,7 @@ static void free_index(int idx) {
     }
 }
 
-static int num_connected() {
+[[maybe_unused]] static int num_connected() {
     int n = 0;
     for (int i = 0; i < MAX_DEVICES; i++) {
         if (device_cid[i] != 0) {
@@ -418,6 +418,11 @@ void clear_bonds() {
 // Status LED (the Pico W's LED hangs off the CYW43 chip)
 // ---------------------------------------------------------------------------
 
+// Disabled: a write to the CYW43 LED is a bus transaction that takes over a
+// millisecond, which is enough to miss a process_mapping() tick.
+// TODO: use a regular GPIO LED instead.
+#if 0
+
 // Talking to the CYW43 LED is a bus transaction, so only write it when the
 // desired state actually changes.
 static void led_set(bool on) {
@@ -465,6 +470,7 @@ static void update_status_led() {
         }
     }
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // BTstack packet handler (poll mode -> runs in the main loop context)
@@ -958,7 +964,7 @@ int main() {
             stop_pairing();
         }
 
-        update_status_led();
+        // update_status_led();
     }
 
     return 0;
