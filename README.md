@@ -59,6 +59,7 @@ custom board v7 | [remapper\_board\_v7.uf2](https://github.com/jfedor2/hid-remap
 custom board v8 | [remapper\_board\_v8.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v8.uf2) |
 Feather nRF52840 Express | [remapper_adafruit_feather_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_adafruit_feather_nrf52840.uf2) |
 Xiao nRF52840 | [remapper_seeed_xiao_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_seeed_xiao_nrf52840.uf2) |
+nice!nano | [remapper_nice_nano.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_nice_nano.uf2) |
 serial | [remapper_serial.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_serial.uf2) |
 
 For boards not listed above, use the same file name you used when flashing it for the first time.

@@ -12,6 +12,8 @@
 # chips get dropped from newer SDK releases can stay on an older one. Each SDK
 # version is checked out under sdk/ the first time it's needed.
 #
+# Boards that aren't in the SDK live under boards/<vendor>/.
+#
 # Pass build names as arguments to only run those builds.
 
 set -x -e -u -o pipefail
@@ -64,7 +66,7 @@ build() {
 
     local build_dir="${BUILD_PATH_PREFIX}/${name}"
     ZEPHYR_BASE=$(realpath "${SDK_PATH_PREFIX}/ncs-${version}/zephyr") \
-        west build -p -d "${build_dir}" -b "${board}" . -- "$@"
+        west build -p -d "${build_dir}" -b "${board}" . -- -DBOARD_ROOT="${PWD}" "$@"
 
     # With sysbuild, the application's own build lives in a subdirectory
     # named after the source directory.
@@ -80,4 +82,5 @@ SELECTED_BUILDS="$*"
 
 build adafruit_feather_nrf52840 v3.4.1 adafruit_feather_nrf52840/nrf52840/uf2
 build seeed_xiao_nrf52840 v3.4.1 xiao_ble
+build nice_nano v3.4.1 nice_nano
 build nrf54lm20dk v3.4.1 nrf54lm20dk/nrf54lm20a/cpuapp
