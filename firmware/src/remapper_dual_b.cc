@@ -142,6 +142,10 @@ void tuh_sof_cb() {
     serial_write_nonblocking((uint8_t*) &msg, sizeof(msg));
 }
 
+uint8_t tuh_interval_override_cb(uint8_t dev_addr, uint8_t ep_addr, uint8_t bInterval) {
+    return interval_override;
+}
+
 void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
     get_feature_response_t* msg = (get_feature_response_t*) buffer;
     msg->command = DualCommand::GET_FEATURE_RESPONSE;
