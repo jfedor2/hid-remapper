@@ -83,11 +83,13 @@ cmake ..
 make
 ```
 
-To compile the nRF52 firmware, you can either follow [Nordic's setup instructions](https://docs.nordicsemi.com/bundle/ncs-latest/page/nrf/installation.html) and then `west build -b seeed_xiao_nrf52840` to compile the firmware, or you can use Docker with a command like this (start from the top level of the repository or adjust the path accordingly):
+To compile the nRF52 firmware, run `firmware-bluetooth/build.sh`. It checks out the nRF Connect SDK under `firmware-bluetooth/sdk` and builds all the supported boards, putting the results in `firmware-bluetooth/artifacts`. It needs west and the Zephyr SDK, so the easiest way is to run it in Docker like this (start from the top level of the repository or adjust the path accordingly):
 
 ```
-docker run --rm -v $(pwd):/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch west build -b seeed_xiao_nrf52840
+docker run --rm -v $(pwd):/workdir/project -w /workdir/project/firmware-bluetooth ghcr.io/zephyrproject-rtos/ci:v0.29.2 ./build.sh
 ```
+
+You can pass build names (like `seeed_xiao_nrf52840`) to `build.sh` to only build some of the boards.
 
 ## License
 

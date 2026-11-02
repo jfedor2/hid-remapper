@@ -10,6 +10,8 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/retained_mem.h>
+#include <zephyr/drivers/usb/udc.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
@@ -17,8 +19,8 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/types.h>
-#include <zephyr/usb/class/usb_hid.h>
-#include <zephyr/usb/usb_device.h>
+#include <zephyr/usb/class/usbd_hid.h>
+#include <zephyr/usb/usbd.h>
 
 #include "config.h"
 #include "descriptor_parser.h"
@@ -50,8 +52,12 @@ static struct k_mutex get_report_mutex;
 static uint8_t get_report_buf[64];
 static bool get_report_response_ready = false;
 
-static const struct device* hid_dev0;
-static const struct device* hid_dev1;  // config interface
+static const struct device* hid_dev0 = DEVICE_DT_GET(DT_NODELABEL(hid_dev_0));
+static const struct device* hid_dev1 = DEVICE_DT_GET(DT_NODELABEL(hid_dev_1));  // config interface
+
+// usbd_hid names its classes after devicetree instance numbers.
+BUILD_ASSERT(DT_SAME_NODE(DT_INST(0, zephyr_hid_device), DT_NODELABEL(hid_dev_0)));
+BUILD_ASSERT(DT_SAME_NODE(DT_INST(1, zephyr_hid_device), DT_NODELABEL(hid_dev_1)));
 
 struct report_type {
     uint16_t interface;
@@ -615,19 +621,15 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
     .pairing_failed = pairing_failed
 };
 
-static int set_report_cb(const struct device* dev, struct usb_setup_packet* setup, int32_t* len, uint8_t** data) {
-    uint8_t request_value[2];
+static int set_report_cb(const struct device* dev, const uint8_t type, const uint8_t id, const uint16_t len, const uint8_t* const data) {
+    LOG_INF("report_id=%d, report_type=%d, len=%d", id, type, len);
+    LOG_HEXDUMP_DBG(data, len, "");
 
-    // report_id, report_type
-    sys_put_le16(setup->wValue, request_value);
-
-    LOG_INF("report_id=%d, report_type=%d, len=%d", request_value[0], request_value[1], *len);
-    LOG_HEXDUMP_DBG((*data), (uint32_t) *len, "");
-
+    // If the report has an ID, it's also the first byte of the data.
     struct set_report_type buf;
-    if ((request_value[0] > 0) && (*len > 0)) {
-        if ((dev == hid_dev0) && set_report0_synchronous(request_value[0])) {
-            handle_set_report0(request_value[0], (*data) + 1, (*len) - 1);
+    if ((id > 0) && (len > 0)) {
+        if ((dev == hid_dev0) && set_report0_synchronous(id)) {
+            handle_set_report0(id, data + 1, len - 1);
         } else {
             if (dev == hid_dev0) {
                 buf.interface = 0;
@@ -637,9 +639,9 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
                 get_report_response_ready = false;
                 k_mutex_unlock(&get_report_mutex);
             }
-            buf.report_id = request_value[0];
-            buf.len = *len - 1;
-            memcpy(buf.data, (*data) + 1, (*len) - 1);
+            buf.report_id = id;
+            buf.len = MIN(len - 1, sizeof(buf.data));
+            memcpy(buf.data, data + 1, buf.len);
             CHK(k_msgq_put(&set_report_q, &buf, K_NO_WAIT));
         }
     } else {
@@ -647,65 +649,75 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
     }
 
     return 0;
-};
+}
 
-static int get_report_cb(const struct device* dev, struct usb_setup_packet* setup, int32_t* len, uint8_t** data) {
-    uint8_t request_value[2];
+static int get_report_cb(const struct device* dev, const uint8_t type, const uint8_t id, const uint16_t len, uint8_t* const data) {
+    LOG_INF("report_id=%d, report_type=%d, len=%d", id, type, len);
 
-    sys_put_le16(setup->wValue, request_value);
+    // data is only as big as the host asked for
+    uint8_t buf[CONFIG_SIZE + 1];
+    uint16_t buf_len = 0;
 
-    LOG_INF("report_id=%d, %d, len=%d", request_value[0], request_value[1], *len);
-
-    *data[0] = request_value[0];
+    buf[0] = id;
     if (dev == hid_dev0) {
-        *len = handle_get_report0(request_value[0], (*data) + 1, CONFIG_SIZE);
+        buf_len = handle_get_report0(id, buf + 1, CONFIG_SIZE);
     } else if (dev == hid_dev1) {
         k_mutex_lock(&get_report_mutex, K_FOREVER);
         if (get_report_response_ready) {
-            memcpy((*data) + 1, get_report_buf, CONFIG_SIZE);
-            *len = CONFIG_SIZE;
+            memcpy(buf + 1, get_report_buf, CONFIG_SIZE);
+            buf_len = CONFIG_SIZE;
         } else {
             LOG_INF("response not ready");
-            *len = 0;
+            buf_len = 0;
         }
         get_report_response_ready = false;
         k_mutex_unlock(&get_report_mutex);
     }
-    (*len)++;
+    buf_len++;
 
-    return 0;
-};
+    buf_len = MIN(buf_len, len);
+    memcpy(data, buf, buf_len);
 
-static void int_in_ready_cb0(const struct device* dev) {
+    return buf_len;
+}
+
+static void output_report_cb0(const struct device* dev, const uint16_t len, const uint8_t* const data) {
+    static struct report_type buf;
+    buf.interface = OUR_OUT_INTERFACE;
+    buf.len = MIN(len, sizeof(buf.data));
+    memcpy(buf.data, data, buf.len);
+    CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
+}
+
+static void input_report_done_cb0(const struct device* dev, const uint8_t* const report) {
     k_sem_give(&usb_sem0);
 }
 
-static void int_out_ready_cb0(const struct device* dev) {
-    static struct report_type buf;
-    uint32_t len;
-    if (CHK(hid_int_ep_read(hid_dev0, buf.data, sizeof(buf.data), &len))) {
-        buf.interface = OUR_OUT_INTERFACE;
-        buf.len = len;
-        CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
-    }
-}
-
-static void int_in_ready_cb1(const struct device* dev) {
+static void input_report_done_cb1(const struct device* dev, const uint8_t* const report) {
     k_sem_give(&usb_sem1);
 }
 
-static const struct hid_ops ops0 = {
+static void sof_cb0(const struct device* dev);
+
+static const struct hid_device_ops ops0 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
-    .int_in_ready = int_in_ready_cb0,
-    .int_out_ready = int_out_ready_cb0,
+    .input_report_done = input_report_done_cb0,
+    .output_report = output_report_cb0,
+    .sof = sof_cb0,
 };
 
-static const struct hid_ops ops1 = {
+static const struct hid_device_ops ops1 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
-    .int_in_ready = int_in_ready_cb1,
+    .input_report_done = input_report_done_cb1,
 };
+
+// Reports are sent straight from these buffers, they have to stay untouched until
+// input_report_done is called. The semaphores make sure there's only one report
+// in flight per interface.
+UDC_STATIC_BUF_DEFINE(report_buf0, 64);
+UDC_STATIC_BUF_DEFINE(report_buf1, 64);
 
 static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
     if (report_with_id[0] == 0) {
@@ -713,11 +725,14 @@ static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uin
         len--;
     }
     if (interface == 0) {
-        return CHK(hid_int_ep_write(hid_dev0, report_with_id, len, NULL));
+        memcpy(report_buf0, report_with_id, MIN(len, sizeof(report_buf0)));
+        return CHK(hid_device_submit_report(hid_dev0, MIN(len, sizeof(report_buf0)), report_buf0));
     }
     if (interface == 1) {
-        return CHK(hid_int_ep_write(hid_dev1, report_with_id, len, NULL));
+        memcpy(report_buf1, report_with_id, MIN(len, sizeof(report_buf1)));
+        return CHK(hid_device_submit_report(hid_dev1, MIN(len, sizeof(report_buf1)), report_buf1));
     }
+    return false;
 }
 
 static void button_init() {
@@ -754,41 +769,104 @@ static void leds_init() {
     }
 }
 
-static void status_cb(enum usb_dc_status_code status, const uint8_t* param) {
-    if (status == USB_DC_SOF) {
-        atomic_set_bit(tick_pending, 0);
+#if defined(CONFIG_SOC_NRF52840)
+#define USB_MANUFACTURER "nRF52840"
+#elif defined(CONFIG_SOC_NRF54LM20A)
+#define USB_MANUFACTURER "nRF54LM20A"
+#else
+#define USB_MANUFACTURER CONFIG_SOC
+#endif
+
+USBD_DEVICE_DEFINE(usbd, DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)), 0xCAFE, 0xBAF2);
+
+USBD_DESC_LANG_DEFINE(desc_lang);
+USBD_DESC_MANUFACTURER_DEFINE(desc_manufacturer, USB_MANUFACTURER);
+USBD_DESC_PRODUCT_DEFINE(desc_product, "HID Remapper Bluetooth");
+USBD_DESC_SERIAL_NUMBER_DEFINE(desc_serial_number);
+
+USBD_CONFIGURATION_DEFINE(fs_config, 0, 50, NULL);  // 50*2 mA = 100 mA
+USBD_CONFIGURATION_DEFINE(hs_config, 0, 50, NULL);
+
+static void sof_cb0(const struct device* dev) {
+    // On high speed there's a SOF every 125 us microframe, we want a 1 ms tick.
+    static uint8_t microframe = 0;
+    if (USBD_SUPPORTS_HIGH_SPEED && (usbd_bus_speed(&usbd) == USBD_SPEED_HS) && (++microframe % 8 != 0)) {
+        return;
     }
+    atomic_set_bit(tick_pending, 0);
 }
 
-extern struct usb_device_descriptor __usb_descriptor_start[];
+static void usbd_msg_cb(struct usbd_context* const ctx, const struct usbd_msg* msg) {
+    switch (msg->type) {
+        case USBD_MSG_VBUS_READY:
+            LOG_INF("VBUS ready");
+            CHK(usbd_enable(ctx));
+            break;
+        case USBD_MSG_VBUS_REMOVED:
+            LOG_INF("VBUS removed");
+            CHK(usbd_disable(ctx));
+            break;
+        default:
+            break;
+    }
+}
 
 static void descriptor_init() {
     our_descriptor = &our_descriptors[our_descriptor_number];
     if ((our_descriptor->vid != 0) && (our_descriptor->pid != 0)) {
-        struct usb_device_descriptor* device_descriptor = __usb_descriptor_start;
-        device_descriptor->idVendor = our_descriptor->vid;
-        device_descriptor->idProduct = our_descriptor->pid;
+        CHK(usbd_device_set_vid(&usbd, our_descriptor->vid));
+        CHK(usbd_device_set_pid(&usbd, our_descriptor->pid));
     }
 }
 
+static bool add_configuration(enum usbd_speed speed, struct usbd_config_node* config) {
+    return CHK(usbd_add_configuration(&usbd, speed, config)) &&
+           CHK(usbd_register_class(&usbd, "hid_0", speed, 1)) &&
+           CHK(usbd_register_class(&usbd, "hid_1", speed, 1)) &&
+           CHK(usbd_device_set_code_triple(&usbd, speed, 0, 0, 0));
+}
+
 static void usb_init() {
-    hid_dev0 = device_get_binding("HID_0");
-    if (hid_dev0 == NULL) {
-        LOG_ERR("Cannot get USB HID Device 0.");
+    if (!device_is_ready(hid_dev0) || !device_is_ready(hid_dev1)) {
+        LOG_ERR("HID devices not ready");
         return;
     }
 
-    hid_dev1 = device_get_binding("HID_1");
-    if (hid_dev1 == NULL) {
-        LOG_ERR("Cannot get USB HID Device 1.");
+    if (!CHK(hid_device_register(hid_dev0, our_descriptor->descriptor, our_descriptor->descriptor_length, &ops0)) ||
+        !CHK(hid_device_register(hid_dev1, config_report_descriptor, config_report_descriptor_length, &ops1))) {
         return;
     }
 
-    usb_hid_register_device(hid_dev0, our_descriptor->descriptor, our_descriptor->descriptor_length, &ops0);
-    usb_hid_register_device(hid_dev1, config_report_descriptor, config_report_descriptor_length, &ops1);
-    CHK(usb_hid_init(hid_dev0));
-    CHK(usb_hid_init(hid_dev1));
-    CHK(usb_enable(status_cb));
+    if (!CHK(usbd_add_descriptor(&usbd, &desc_lang)) ||
+        !CHK(usbd_add_descriptor(&usbd, &desc_manufacturer)) ||
+        !CHK(usbd_add_descriptor(&usbd, &desc_product)) ||
+        !CHK(usbd_add_descriptor(&usbd, &desc_serial_number))) {
+        return;
+    }
+
+    if (USBD_SUPPORTS_HIGH_SPEED && (usbd_caps_speed(&usbd) == USBD_SPEED_HS)) {
+        if (!add_configuration(USBD_SPEED_HS, &hs_config)) {
+            return;
+        }
+    }
+
+    if (!add_configuration(USBD_SPEED_FS, &fs_config)) {
+        return;
+    }
+
+    usbd_self_powered(&usbd, false);
+
+    if (!CHK(usbd_msg_register_cb(&usbd, usbd_msg_cb))) {
+        return;
+    }
+
+    if (!CHK(usbd_init(&usbd))) {
+        return;
+    }
+
+    if (!usbd_can_detect_vbus(&usbd)) {
+        CHK(usbd_enable(&usbd));
+    }
 }
 
 static void bt_init() {
@@ -843,11 +921,20 @@ void do_persist_config(uint8_t* buffer) {
     CHK(settings_save_one("remapper/config", buffer, PERSISTED_CONFIG_SIZE));
 }
 
-// https://github.com/adafruit/Adafruit_nRF52_Bootloader/blob/master/src/main.c#L116
-const int DFU_MAGIC_UF2_RESET = 0x57;
-
 void reset_to_bootloader() {
-    sys_reboot(DFU_MAGIC_UF2_RESET);
+#if defined(CONFIG_BUILD_OUTPUT_UF2) && defined(CONFIG_RETAINED_MEM_NRF_GPREGRET)
+    const struct device* gpregret_dev = DEVICE_DT_GET(DT_NODELABEL(gpregret1));
+
+    // https://github.com/adafruit/Adafruit_nRF52_Bootloader/blob/master/src/main.c#L116
+    const uint8_t DFU_MAGIC_UF2_RESET = 0x57;
+
+    // The bootloader sees the magic value after the reboot and enters UF2 mode.
+    if (CHK(retained_mem_write(gpregret_dev, 0, &DFU_MAGIC_UF2_RESET, 1))) {
+        sys_reboot(SYS_REBOOT_WARM);
+    }
+#else
+    LOG_WRN("no UF2 bootloader on this board");
+#endif
 }
 
 void flash_b_side() {

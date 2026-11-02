@@ -3,12 +3,12 @@ on:
   push:
     tags: 'r*'
 jobs:
-  build-nrf52:
-    uses: ./.github/workflows/build-nrf52.yml
+  build-nrf:
+    uses: ./.github/workflows/build-nrf.yml
   build-rp2040:
     uses: ./.github/workflows/build-rp2040.yml
   create-release:
-    needs: [ build-nrf52, build-rp2040 ]
+    needs: [ build-nrf, build-rp2040 ]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v8
