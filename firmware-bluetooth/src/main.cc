@@ -44,6 +44,7 @@ static auto BT_ADDR_LE_ANY_ = BT_ADDR_LE_ANY[0];
 static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
 static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
+static bool discovery_started[CONFIG_BT_MAX_CONN];
 
 static K_SEM_DEFINE(usb_sem0, 1, 1);
 static K_SEM_DEFINE(usb_sem1, 1, 1);
@@ -449,6 +450,7 @@ static const struct bt_gatt_dm_cb discovery_cb = {
 static void gatt_discover(struct bt_conn* conn) {
     uint8_t conn_idx = bt_conn_index(conn);
     if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, &hogps[conn_idx]))) {
+        discovery_started[conn_idx] = false;
         k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
     }
 }
@@ -498,6 +500,8 @@ static void disconnected(struct bt_conn* conn, uint8_t reason) {
 
     uint8_t conn_idx = bt_conn_index(conn);
 
+    discovery_started[conn_idx] = false;
+
     if (bt_hogp_assign_check(&hogps[conn_idx])) {
         bt_hogp_release(&hogps[conn_idx]);
     }
@@ -518,7 +522,15 @@ static void security_changed(struct bt_conn* conn, bt_security_t level, enum bt_
     if (!err) {
         LOG_INF("%s, level=%u.", addr, level);
         peers_only = true;
-        gatt_discover(conn);
+        // Some devices (e.g. the Stadia controller) refresh the encryption
+        // right after reconnecting, so we get here twice. Discovering again
+        // would reassign the HOGP handles, which frees the reports without
+        // unsubscribing them, and then subscribing fails.
+        uint8_t conn_idx = bt_conn_index(conn);
+        if (!discovery_started[conn_idx]) {
+            discovery_started[conn_idx] = true;
+            gatt_discover(conn);
+        }
     } else {
         LOG_ERR("security failed: %s, level=%u, err=%d", addr, level, err);
     }
