@@ -40,11 +40,16 @@ static const int CLEAR_BONDS_BUTTON_PRESS_MS = 3000;
 static auto const BT_UUID_HIDS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_VAL);
 static auto const BT_UUID_HIDS_REPORT_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_VAL);
 static auto const BT_UUID_HIDS_REPORT_REF_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_REF_VAL);
+static auto const BT_UUID_DIS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_DIS_VAL);
+static auto const BT_UUID_DIS_PNP_ID_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_DIS_PNP_ID_VAL);
 static auto BT_ADDR_LE_ANY_ = BT_ADDR_LE_ANY[0];
 static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
 static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
 static bool discovery_started[CONFIG_BT_MAX_CONN];
+// From the Device Information Service's PnP ID, for quirks.
+static uint16_t device_vid[CONFIG_BT_MAX_CONN];
+static uint16_t device_pid[CONFIG_BT_MAX_CONN];
 
 static K_SEM_DEFINE(usb_sem0, 1, 1);
 static K_SEM_DEFINE(usb_sem1, 1, 1);
@@ -71,6 +76,8 @@ struct report_type {
 struct descriptor_type {
     uint16_t size;
     uint8_t conn_idx;
+    uint16_t vid;
+    uint16_t pid;
     uint8_t data[512];
 };
 
@@ -447,9 +454,90 @@ static const struct bt_gatt_dm_cb discovery_cb = {
     .error_found = discovery_error_found_cb,
 };
 
-static void gatt_discover(struct bt_conn* conn) {
+static void gatt_discover_hids(struct bt_conn* conn) {
     uint8_t conn_idx = bt_conn_index(conn);
     if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, &hogps[conn_idx]))) {
+        discovery_started[conn_idx] = false;
+        k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+    }
+}
+
+// Before the HID service, we read the vendor and product ID from the Device
+// Information Service. It's mandatory for HID devices, but if it's missing or
+// anything goes wrong, we carry on without the IDs (no quirks will apply).
+//
+// We keep the discovery data until the read completes and then start the HID
+// service discovery from the read callback, so no other connection can take
+// the discovery manager in between.
+static struct bt_gatt_dm* dis_dm;
+static struct bt_gatt_read_params pnp_id_read_params;
+
+static uint8_t on_pnp_id_read(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length) {
+    uint8_t conn_idx = bt_conn_index(conn);
+
+    if (err) {
+        LOG_ERR("err=%d", err);
+    } else if (data && (length >= 7)) {
+        const uint8_t* pnp_id = (const uint8_t*) data;
+        // pnp_id[0] is the vendor ID source (1 = Bluetooth SIG, 2 = USB-IF).
+        device_vid[conn_idx] = sys_get_le16(&pnp_id[1]);
+        device_pid[conn_idx] = sys_get_le16(&pnp_id[3]);
+        LOG_INF("vid=0x%04x, pid=0x%04x (source %u)", device_vid[conn_idx], device_pid[conn_idx], pnp_id[0]);
+    } else {
+        LOG_WRN("unexpected PnP ID length: %u", length);
+    }
+
+    CHK(bt_gatt_dm_data_release(dis_dm));
+    dis_dm = NULL;
+    gatt_discover_hids(conn);
+
+    return BT_GATT_ITER_STOP;
+}
+
+static void dis_discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
+    const struct bt_gatt_dm_attr* gatt_chrc = bt_gatt_dm_char_by_uuid(dm, (struct bt_uuid*) &BT_UUID_DIS_PNP_ID_);
+    const struct bt_gatt_dm_attr* gatt_desc = gatt_chrc ? bt_gatt_dm_desc_by_uuid(dm, gatt_chrc, (struct bt_uuid*) &BT_UUID_DIS_PNP_ID_) : NULL;
+    struct bt_conn* conn = bt_gatt_dm_conn_get(dm);
+
+    if (gatt_desc) {
+        dis_dm = dm;
+        pnp_id_read_params.func = on_pnp_id_read;
+        pnp_id_read_params.handle_count = 1;
+        pnp_id_read_params.single.handle = gatt_desc->handle;
+        pnp_id_read_params.single.offset = 0;
+        if (CHK(bt_gatt_read(conn, &pnp_id_read_params))) {
+            return;
+        }
+        dis_dm = NULL;
+    } else {
+        LOG_WRN("PnP ID not found");
+    }
+
+    CHK(bt_gatt_dm_data_release(dm));
+    gatt_discover_hids(conn);
+}
+
+static void dis_discovery_service_not_found_cb(struct bt_conn* conn, void* context) {
+    LOG_WRN("");
+    gatt_discover_hids(conn);
+}
+
+static void dis_discovery_error_found_cb(struct bt_conn* conn, int err, void* context) {
+    LOG_ERR("err=%d", err);
+    gatt_discover_hids(conn);
+}
+
+static const struct bt_gatt_dm_cb dis_discovery_cb = {
+    .completed = dis_discovery_completed_cb,
+    .service_not_found = dis_discovery_service_not_found_cb,
+    .error_found = dis_discovery_error_found_cb,
+};
+
+static void gatt_discover(struct bt_conn* conn) {
+    uint8_t conn_idx = bt_conn_index(conn);
+    device_vid[conn_idx] = 0;
+    device_pid[conn_idx] = 0;
+    if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_DIS_, &dis_discovery_cb, NULL))) {
         discovery_started[conn_idx] = false;
         k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
     }
@@ -611,6 +699,8 @@ static void hogp_map_read_cb(struct bt_hogp* hogp, uint8_t err, const uint8_t* d
     if (data == NULL) {
         their_descriptor.size = offset;
         their_descriptor.conn_idx = hogp_index(hogp);
+        their_descriptor.vid = device_vid[their_descriptor.conn_idx];
+        their_descriptor.pid = device_pid[their_descriptor.conn_idx];
         CHK(k_msgq_put(&descriptor_q, &their_descriptor, K_NO_WAIT));
         return;
     }
@@ -648,7 +738,8 @@ static void hogp_ready_work_fn(struct k_work* work) {
         bt_addr_le_copy(&find_bond.addr, bt_conn_get_dst(bt_hogp_conn(item.hogp)));
         bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
         LOG_DBG("found bond idx: %d", find_bond.found_idx);
-        device_connected_callback(bt_conn_index(bt_hogp_conn(item.hogp)) << 8, 1, 1, find_bond.found_idx);
+        uint8_t conn_idx = bt_conn_index(bt_hogp_conn(item.hogp));
+        device_connected_callback(conn_idx << 8, device_vid[conn_idx], device_pid[conn_idx], find_bond.found_idx);
 
         while (NULL != (rep = bt_hogp_rep_next(item.hogp, rep))) {
             if (bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_INPUT) {
@@ -1142,7 +1233,7 @@ int main() {
 
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
-            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
+            parse_descriptor(incoming_descriptor.vid, incoming_descriptor.pid, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
         }
 
         if (resume_pending) {
