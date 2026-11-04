@@ -38,6 +38,8 @@ static const int CLEAR_BONDS_BUTTON_PRESS_MS = 3000;
 
 // these macros don't work in C++ when used directly ("taking address of temporary array")
 static auto const BT_UUID_HIDS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_VAL);
+static auto const BT_UUID_HIDS_REPORT_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_VAL);
+static auto const BT_UUID_HIDS_REPORT_REF_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_REF_VAL);
 static auto BT_ADDR_LE_ANY_ = BT_ADDR_LE_ANY[0];
 static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
@@ -179,7 +181,10 @@ static void set_led_mode(LedMode led_mode_) {
 }
 
 static void scan_start() {
-    if (CHK(bt_scan_start(BT_SCAN_TYPE_SCAN_PASSIVE))) {
+    // Some devices (e.g. the Stadia controller) only have the HID service UUID
+    // in the scan response, so we need active scanning to see it. Bonded peers
+    // are matched by address, so passive scanning is enough for them.
+    if (CHK(bt_scan_start(peers_only ? BT_SCAN_TYPE_SCAN_PASSIVE : BT_SCAN_TYPE_SCAN_ACTIVE))) {
         LOG_DBG("Scanning started.");
         scanning = true;
     }
@@ -224,21 +229,25 @@ static bool scan_setup_filters() {
 
     int conn_count = count_connections();
 
-    uint8_t filter_mode = BT_SCAN_UUID_FILTER;
+    uint8_t filter_mode;
 
+    // When reconnecting, some devices (e.g. the Stadia controller) advertise
+    // with no data at all for a while, so we don't require the HID service
+    // UUID from bonded peers, the address is enough.
     if (peers_only && (bonded_count > 0)) {
         if (conn_count == bonded_count) {
             LOG_DBG("all bonded peers connected, not scanning");
             return false;
         }
-        filter_mode |= BT_SCAN_ADDR_FILTER;
+        filter_mode = BT_SCAN_ADDR_FILTER;
         LOG_DBG("scanning for bonded peers only");
     } else {
+        filter_mode = BT_SCAN_UUID_FILTER;
         LOG_DBG("scanning for new peers");
         peers_only = false;
     }
 
-    if (!CHK(bt_scan_filter_enable(filter_mode, true))) {
+    if (!CHK(bt_scan_filter_enable(filter_mode, false))) {
         return false;
     }
 
@@ -283,11 +292,6 @@ static K_WORK_DEFINE(clear_bonds_work, clear_bonds_work_fn);
 
 static void scan_filter_match(struct bt_scan_device_info* device_info, struct bt_scan_filter_match* filter_match, bool connectable) {
     char addr[BT_ADDR_LE_STR_LEN];
-
-    if (!filter_match->uuid.match || (filter_match->uuid.count != 1)) {
-        LOG_WRN("%s invalid device connected", __func__);
-        return;
-    }
 
     bt_addr_le_to_str(device_info->recv_info->addr, addr, sizeof(addr));
 
@@ -351,12 +355,79 @@ static void patch_broken_uuids(struct bt_gatt_dm* dm) {
     }
 }
 
+// The HOGP library guesses the type of each report from its characteristic
+// properties (write without response -> output, notify -> input, otherwise
+// feature) and then fails if the Report Reference descriptor disagrees.
+// Some devices (e.g. the Stadia controller) have output reports that don't
+// support write without response, so before handing the discovery data over
+// to the library, we read the Report Reference of every report that would be
+// classified as a feature report and adjust the properties if it's actually
+// an output report.
+//
+// There's only one discovery in progress at a time, so this state is global.
+static struct bt_gatt_dm* patch_dm;
+static struct bt_hogp* patch_hogp;
+static const struct bt_gatt_dm_attr* patch_chrc;
+static struct bt_gatt_read_params report_ref_read_params;
+
+static void patch_report_types_next();
+
+static uint8_t on_report_ref_read(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length) {
+    if (err) {
+        LOG_ERR("err=%d", err);
+    } else if (data && (length == 2) && (((const uint8_t*) data)[1] == BT_HIDS_REPORT_TYPE_OUTPUT)) {
+        LOG_INF("report ID %u is an output report without write without response", ((const uint8_t*) data)[0]);
+        bt_gatt_dm_attr_chrc_val(patch_chrc)->properties |= BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+    }
+
+    patch_report_types_next();
+
+    return BT_GATT_ITER_STOP;
+}
+
+static void patch_report_types_next() {
+    struct bt_conn* conn = bt_gatt_dm_conn_get(patch_dm);
+
+    while (NULL != (patch_chrc = bt_gatt_dm_char_next(patch_dm, patch_chrc))) {
+        const struct bt_gatt_chrc* chrc = bt_gatt_dm_attr_chrc_val(patch_chrc);
+        if (bt_uuid_cmp(chrc->uuid, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_) ||
+            (chrc->properties & (BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_NOTIFY))) {
+            continue;
+        }
+
+        const struct bt_gatt_dm_attr* gatt_desc = bt_gatt_dm_desc_by_uuid(patch_dm, patch_chrc, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_REF_);
+        if (!gatt_desc) {
+            continue;
+        }
+
+        report_ref_read_params.func = on_report_ref_read;
+        report_ref_read_params.handle_count = 1;
+        report_ref_read_params.single.handle = gatt_desc->handle;
+        report_ref_read_params.single.offset = 0;
+
+        if (CHK(bt_gatt_read(conn, &report_ref_read_params))) {
+            return;
+        }
+    }
+
+    // If the device disconnected while we were reading, don't assign the
+    // handles to a dead connection.
+    struct bt_conn_info info;
+    if (CHK(bt_conn_get_info(conn, &info)) && (info.state == BT_CONN_STATE_CONNECTED)) {
+        CHK(bt_hogp_handles_assign(patch_dm, patch_hogp));  // XXX disconnect if this fails?
+    }
+    CHK(bt_gatt_dm_data_release(patch_dm));
+    patch_dm = NULL;
+    k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+}
+
 static void discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
     LOG_INF("");
     patch_broken_uuids(dm);
-    CHK(bt_hogp_handles_assign(dm, ((struct bt_hogp*) context)));  // XXX disconnect if this fails?
-    CHK(bt_gatt_dm_data_release(dm));
-    k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+    patch_dm = dm;
+    patch_hogp = (struct bt_hogp*) context;
+    patch_chrc = NULL;
+    patch_report_types_next();
 }
 
 static void discovery_service_not_found_cb(struct bt_conn* conn, void* context) {
