@@ -80,7 +80,7 @@ build() {
 
 SELECTED_BUILDS="$*"
 
-build adafruit_feather_nrf52840 v3.4.1 adafruit_feather_nrf52840/nrf52840/uf2
-build seeed_xiao_nrf52840 v3.4.1 xiao_ble
-build nice_nano v3.4.1 nice_nano
-build nrf54lm20dk v3.4.1 nrf54lm20dk/nrf54lm20a/cpuapp
+build adafruit_feather_nrf52840 v3.4.2 adafruit_feather_nrf52840/nrf52840/uf2
+build seeed_xiao_nrf52840 v3.4.2 xiao_ble
+build nice_nano v3.4.2 nice_nano
+build nrf54lm20dk v3.4.2 nrf54lm20dk/nrf54lm20a/cpuapp
