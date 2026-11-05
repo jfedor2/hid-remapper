@@ -4,6 +4,11 @@ set(BOARD_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 add_compile_definitions(PERSISTED_CONFIG_SIZE=2048)
 
+# Show connection setup progress on the status LED: -DREMAPPER_DEBUG_STAGES=1
+if(REMAPPER_DEBUG_STAGES)
+    add_compile_definitions(REMAPPER_DEBUG_STAGES)
+endif()
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(NONE)
 

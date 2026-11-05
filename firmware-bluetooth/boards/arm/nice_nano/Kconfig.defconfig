@@ -1,0 +1,14 @@
+# nice!nano board configuration
+
+# Copyright (c) 2020 Tobias Svehagen
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_NICE_NANO
+
+config BOARD
+	default "nice_nano"
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_NICE_NANO

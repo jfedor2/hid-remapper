@@ -36,6 +36,8 @@ static const int CLEAR_BONDS_BUTTON_PRESS_MS = 3000;
 
 // these macros don't work in C++ when used directly ("taking address of temporary array")
 static auto const BT_UUID_HIDS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_VAL);
+static auto const BT_UUID_HIDS_REPORT_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_VAL);
+static auto const BT_UUID_HIDS_REPORT_REF_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_REF_VAL);
 static auto BT_ADDR_LE_ANY_ = BT_ADDR_LE_ANY[0];
 static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
@@ -119,6 +121,55 @@ static void activity_led_off_work_fn(struct k_work* work) {
 }
 static K_WORK_DELAYABLE_DEFINE(activity_led_off_work, activity_led_off_work_fn);
 
+// When connection setup fails, the status LED shows a blink code in place of the
+// normal status: slow blinks count the last step that passed, then fast blinks
+// count the error code of the step that failed. With REMAPPER_DEBUG_STAGES the
+// LED always shows the current step, even if nothing has gone wrong.
+enum DebugStage {
+    DEBUG_SCANNING = 1,
+    DEBUG_CONNECTED = 2,
+    DEBUG_ENCRYPTED = 3,
+    DEBUG_SERVICES_FOUND = 4,
+    DEBUG_HID_READY = 5,
+    DEBUG_DESCRIPTOR_READ = 6,
+    DEBUG_REPORT_RECEIVED = 7,
+};
+
+static const int DEBUG_MAX_ERROR_BLINKS = 30;
+
+static atomic_t debug_stage = ATOMIC_INIT(DEBUG_SCANNING);
+static atomic_t debug_error = ATOMIC_INIT(0);
+
+static void led_work_fn(struct k_work* work);
+static K_WORK_DELAYABLE_DEFINE(led_work, led_work_fn);
+
+static bool debug_code_active() {
+#ifdef REMAPPER_DEBUG_STAGES
+    return true;
+#else
+    return atomic_get(&debug_error) != 0;
+#endif
+}
+
+static void debug_stage_set(int stage) {
+    atomic_set(&debug_stage, stage);
+    atomic_set(&debug_error, 0);
+}
+
+static void debug_stage_fail(int stage, int err) {
+    err = (err < 0) ? -err : err;
+    atomic_set(&debug_stage, stage);
+    atomic_set(&debug_error, MAX(1, MIN(err, DEBUG_MAX_ERROR_BLINKS)));
+    k_work_reschedule(&led_work, K_NO_WAIT);
+}
+
+// a report from one device shouldn't hide an error from another one
+static void debug_stage_set_if_no_error(int stage) {
+    if (atomic_get(&debug_error) == 0) {
+        atomic_set(&debug_stage, stage);
+    }
+}
+
 enum class LedMode {
     OFF = 0,
     ON = 1,
@@ -130,10 +181,53 @@ static atomic_t led_mode = (atomic_t) ATOMIC_INIT(LedMode::OFF);
 static int led_blinks_left = 0;
 static bool next_blink_state = true;
 
-static void led_work_fn(struct k_work* work);
-static K_WORK_DELAYABLE_DEFINE(led_work, led_work_fn);
+// Blinks out the current code. Returns false if there's no code to show.
+static bool debug_code_work() {
+    static int slow_left = 0;
+    static int fast_left = 0;
+    static bool lit = false;
+    static bool last_blink_slow = false;
+    int next_ms;
+
+    if (lit) {
+        gpio_pin_set_dt(&led1, false);
+        lit = false;
+        if (slow_left > 0) {
+            next_ms = 300;
+        } else if (fast_left > 0) {
+            next_ms = last_blink_slow ? 1000 : 120;
+        } else {
+            next_ms = 2500;
+        }
+    } else {
+        if ((slow_left == 0) && (fast_left == 0)) {
+            if (!debug_code_active()) {
+                return false;
+            }
+            slow_left = atomic_get(&debug_stage);
+            fast_left = atomic_get(&debug_error);
+        }
+        last_blink_slow = slow_left > 0;
+        if (last_blink_slow) {
+            slow_left--;
+            next_ms = 400;
+        } else {
+            fast_left--;
+            next_ms = 100;
+        }
+        gpio_pin_set_dt(&led1, true);
+        lit = true;
+    }
+
+    k_work_reschedule(&led_work, K_MSEC(next_ms));
+    return true;
+}
 
 static void led_work_fn(struct k_work* work) {
+    if (debug_code_work()) {
+        return;
+    }
+
     LedMode my_led_mode = (LedMode) atomic_get(&led_mode);
     switch (my_led_mode) {
         case LedMode::OFF:
@@ -265,6 +359,7 @@ static void disconnect_conn(struct bt_conn* conn, void* data) {
 static void clear_bonds_work_fn(struct k_work* work) {
     if (CHK(bt_unpair(BT_ID_DEFAULT, &BT_ADDR_LE_ANY_))) {
         LOG_INF("Bonds cleared.");
+        debug_stage_set(DEBUG_SCANNING);
     } else {
         return;
     }
@@ -345,21 +440,106 @@ static void patch_broken_uuids(struct bt_gatt_dm* dm) {
     }
 }
 
-static void discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
-    LOG_INF("");
-    patch_broken_uuids(dm);
-    CHK(bt_hogp_handles_assign(dm, ((struct bt_hogp*) context)));  // XXX disconnect if this fails?
+static void discovery_finish(struct bt_gatt_dm* dm, struct bt_hogp* hogp) {
+    int assign_err = bt_hogp_handles_assign(dm, hogp);
+    if (CHK(assign_err)) {  // XXX disconnect if this fails?
+        debug_stage_set(DEBUG_SERVICES_FOUND);
+    } else {
+        debug_stage_fail(DEBUG_ENCRYPTED, assign_err);
+    }
     CHK(bt_gatt_dm_data_release(dm));
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 }
 
+// The HOGP library guesses each report's type from its characteristic
+// properties, then rejects the whole device if the Report Reference descriptor
+// says otherwise. Some devices have reports with unusual properties (for example
+// an output report that lacks Write Without Response), so we read the Report
+// References first and make the discovered properties match them.
+static struct {
+    struct bt_gatt_dm* dm;
+    struct bt_hogp* hogp;
+    const struct bt_gatt_dm_attr* chrc;
+    struct bt_gatt_read_params read_params;
+} report_type_fix;
+
+static uint8_t report_ref_read_cb(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length);
+
+static void report_type_fix_next() {
+    while (NULL != (report_type_fix.chrc = bt_gatt_dm_char_next(report_type_fix.dm, report_type_fix.chrc))) {
+        if (bt_uuid_cmp(bt_gatt_dm_attr_chrc_val(report_type_fix.chrc)->uuid, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_)) {
+            continue;
+        }
+
+        const struct bt_gatt_dm_attr* ref = bt_gatt_dm_desc_by_uuid(report_type_fix.dm, report_type_fix.chrc, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_REF_);
+        if (ref == NULL) {
+            continue;
+        }
+
+        report_type_fix.read_params.func = report_ref_read_cb;
+        report_type_fix.read_params.handle_count = 1;
+        report_type_fix.read_params.single.handle = ref->handle;
+        report_type_fix.read_params.single.offset = 0;
+        if (CHK(bt_gatt_read(bt_gatt_dm_conn_get(report_type_fix.dm), &report_type_fix.read_params))) {
+            return;
+        }
+        break;
+    }
+
+    discovery_finish(report_type_fix.dm, report_type_fix.hogp);
+}
+
+static uint8_t report_ref_read_cb(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length) {
+    if (err || (data == NULL) || (length != 2)) {
+        LOG_WRN("can't read report reference (err=%u, length=%u)", err, length);
+    } else {
+        struct bt_gatt_chrc* chrc_val = bt_gatt_dm_attr_chrc_val(report_type_fix.chrc);
+        uint8_t original_properties = chrc_val->properties;
+
+        switch (((const uint8_t*) data)[1]) {
+            case BT_HIDS_REPORT_TYPE_INPUT:
+                chrc_val->properties |= BT_GATT_CHRC_NOTIFY;
+                chrc_val->properties &= ~BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+                break;
+            case BT_HIDS_REPORT_TYPE_OUTPUT:
+                chrc_val->properties |= BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+                chrc_val->properties &= ~BT_GATT_CHRC_NOTIFY;
+                break;
+            case BT_HIDS_REPORT_TYPE_FEATURE:
+                chrc_val->properties &= ~(BT_GATT_CHRC_NOTIFY | BT_GATT_CHRC_WRITE_WITHOUT_RESP);
+                break;
+            default:
+                break;
+        }
+
+        if (chrc_val->properties != original_properties) {
+            LOG_INF("report 0x%04x properties 0x%02x -> 0x%02x", report_type_fix.chrc->handle, original_properties, chrc_val->properties);
+        }
+    }
+
+    report_type_fix_next();
+
+    return BT_GATT_ITER_STOP;
+}
+
+static void discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
+    LOG_INF("");
+    patch_broken_uuids(dm);
+    report_type_fix.dm = dm;
+    report_type_fix.hogp = (struct bt_hogp*) context;
+    report_type_fix.chrc = NULL;
+    report_type_fix_next();
+}
+
 static void discovery_service_not_found_cb(struct bt_conn* conn, void* context) {
     LOG_WRN("");
+    debug_stage_fail(DEBUG_ENCRYPTED, ENOENT);
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 }
 
 static void discovery_error_found_cb(struct bt_conn* conn, int err, void* context) {
     LOG_ERR("err=%d", err);
+    debug_stage_fail(DEBUG_ENCRYPTED, err);
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 }
 
@@ -371,7 +551,9 @@ static const struct bt_gatt_dm_cb discovery_cb = {
 
 static void gatt_discover(struct bt_conn* conn) {
     uint8_t conn_idx = bt_conn_index(conn);
-    if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, &hogps[conn_idx]))) {
+    int dm_err = bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, &hogps[conn_idx]);
+    if (!CHK(dm_err)) {
+        debug_stage_fail(DEBUG_ENCRYPTED, dm_err);
         k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
     }
 }
@@ -402,14 +584,19 @@ static void connected(struct bt_conn* conn, uint8_t conn_err) {
 
     if (conn_err) {
         LOG_ERR("Failed to connect to %s (conn_err=%u).", addr, conn_err);
+        debug_stage_fail(DEBUG_SCANNING, conn_err);
         k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 
         return;
     }
 
     LOG_INF("%s", addr);
+    debug_stage_set(DEBUG_CONNECTED);
 
-    CHK(bt_conn_set_security(conn, BT_SECURITY_L2));
+    int security_err = bt_conn_set_security(conn, BT_SECURITY_L2);
+    if (!CHK(security_err)) {
+        debug_stage_fail(DEBUG_CONNECTED, security_err);
+    }
 }
 
 static void disconnected(struct bt_conn* conn, uint8_t reason) {
@@ -441,9 +628,11 @@ static void security_changed(struct bt_conn* conn, bt_security_t level, enum bt_
     if (!err) {
         LOG_INF("%s, level=%u.", addr, level);
         peers_only = true;
+        debug_stage_set(DEBUG_ENCRYPTED);
         gatt_discover(conn);
     } else {
         LOG_ERR("security failed: %s, level=%u, err=%d", addr, level, err);
+        debug_stage_fail(DEBUG_CONNECTED, err);
     }
 }
 
@@ -495,6 +684,8 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
         return BT_GATT_ITER_STOP;
     }
 
+    debug_stage_set_if_no_error(DEBUG_REPORT_RECEIVED);
+
     if (scanning) {
         scanning = false;  // more reports can come in before we actually stop scanning; there's probably a scenario where this causes trouble though
         k_work_submit(&scan_stop_work);
@@ -520,9 +711,18 @@ static struct descriptor_type their_descriptor;
 
 static void hogp_map_read_cb(struct bt_hogp* hogp, uint8_t err, const uint8_t* data, size_t size, size_t offset) {
     if (data == NULL) {
+        if (err) {
+            debug_stage_fail(DEBUG_HID_READY, err);
+        }
         their_descriptor.size = offset;
         their_descriptor.conn_idx = hogp_index(hogp);
         CHK(k_msgq_put(&descriptor_q, &their_descriptor, K_NO_WAIT));
+        return;
+    }
+
+    if (offset + size > sizeof(their_descriptor.data)) {
+        LOG_ERR("report descriptor too long");
+        debug_stage_fail(DEBUG_HID_READY, DEBUG_MAX_ERROR_BLINKS);
         return;
     }
 
@@ -560,11 +760,15 @@ static void hogp_ready_work_fn(struct k_work* work) {
         bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
         LOG_DBG("found bond idx: %d", find_bond.found_idx);
         device_connected_callback(bt_conn_index(bt_hogp_conn(item.hogp)) << 8, 1, 1, find_bond.found_idx);
+        debug_stage_set(DEBUG_HID_READY);
 
         while (NULL != (rep = bt_hogp_rep_next(item.hogp, rep))) {
             if (bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_INPUT) {
                 LOG_DBG("subscribing to report ID: %u", bt_hogp_rep_id(rep));
-                CHK(bt_hogp_rep_subscribe(item.hogp, rep, hogp_notify_cb));
+                int subscribe_err = bt_hogp_rep_subscribe(item.hogp, rep, hogp_notify_cb);
+                if (!CHK(subscribe_err)) {
+                    debug_stage_fail(DEBUG_HID_READY, subscribe_err);
+                }
             }
         }
 
@@ -581,6 +785,7 @@ static void hogp_ready_cb(struct bt_hogp* hogp) {
 
 static void hogp_prep_error_cb(struct bt_hogp* hogp, int err) {
     LOG_ERR("err=%d", err);
+    debug_stage_fail(DEBUG_SERVICES_FOUND, err);
 }
 
 static const struct bt_hogp_init_params hogp_init_params = {
@@ -916,6 +1121,9 @@ int main() {
     set_mapping_from_config();
 
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+#ifdef REMAPPER_DEBUG_STAGES
+    k_work_reschedule(&led_work, K_NO_WAIT);
+#endif
 
     struct report_type incoming_report;
     struct descriptor_type incoming_descriptor;
@@ -973,6 +1181,9 @@ int main() {
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
             parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
+            if (atomic_get(&debug_stage) == DEBUG_HID_READY) {
+                debug_stage_set_if_no_error(DEBUG_DESCRIPTOR_READ);
+            }
         }
 
         if (resume_pending) {
