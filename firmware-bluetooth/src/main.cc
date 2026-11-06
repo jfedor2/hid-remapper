@@ -116,15 +116,16 @@ static bool peers_only = true;
 
 static struct bt_le_conn_param* conn_param = BT_LE_CONN_PARAM(6, 6, 44, 400);
 
+#ifdef REMAPPER_DEBUG_STAGES
 static void activity_led_off_work_fn(struct k_work* work) {
     gpio_pin_set_dt(&led0, false);
 }
 static K_WORK_DELAYABLE_DEFINE(activity_led_off_work, activity_led_off_work_fn);
+#endif
 
-// When connection setup fails, the status LED shows a blink code in place of the
-// normal status: slow blinks count the last step that passed, then fast blinks
-// count the error code of the step that failed. With REMAPPER_DEBUG_STAGES the
-// LED always shows the current step, even if nothing has gone wrong.
+// With REMAPPER_DEBUG_STAGES the status LED shows connection setup progress in
+// place of the normal status: slow blinks count the last step that passed, then
+// if the next step failed, fast blinks count its error code.
 enum DebugStage {
     DEBUG_SCANNING = 1,
     DEBUG_CONNECTED = 2,
@@ -137,19 +138,12 @@ enum DebugStage {
 
 static const int DEBUG_MAX_ERROR_BLINKS = 30;
 
-static atomic_t debug_stage = ATOMIC_INIT(DEBUG_SCANNING);
-static atomic_t debug_error = ATOMIC_INIT(0);
-
 static void led_work_fn(struct k_work* work);
 static K_WORK_DELAYABLE_DEFINE(led_work, led_work_fn);
 
-static bool debug_code_active() {
 #ifdef REMAPPER_DEBUG_STAGES
-    return true;
-#else
-    return atomic_get(&debug_error) != 0;
-#endif
-}
+static atomic_t debug_stage = ATOMIC_INIT(DEBUG_SCANNING);
+static atomic_t debug_error = ATOMIC_INIT(0);
 
 static void debug_stage_set(int stage) {
     atomic_set(&debug_stage, stage);
@@ -169,20 +163,26 @@ static void debug_stage_set_if_no_error(int stage) {
         atomic_set(&debug_stage, stage);
     }
 }
+#else
+static inline void debug_stage_set(int stage) {
+}
+
+static inline void debug_stage_fail(int stage, int err) {
+}
+
+static inline void debug_stage_set_if_no_error(int stage) {
+}
+#endif
 
 enum class LedMode {
     OFF = 0,
     ON = 1,
-    BLINK = 2,
 };
 
-static atomic_t led_blink_count = ATOMIC_INIT(0);
 static atomic_t led_mode = (atomic_t) ATOMIC_INIT(LedMode::OFF);
-static int led_blinks_left = 0;
-static bool next_blink_state = true;
 
-// Blinks out the current code. Returns false if there's no code to show.
-static bool debug_code_work() {
+#ifdef REMAPPER_DEBUG_STAGES
+static void led_work_fn(struct k_work* work) {
     static int slow_left = 0;
     static int fast_left = 0;
     static bool lit = false;
@@ -201,9 +201,6 @@ static bool debug_code_work() {
         }
     } else {
         if ((slow_left == 0) && (fast_left == 0)) {
-            if (!debug_code_active()) {
-                return false;
-            }
             slow_left = atomic_get(&debug_stage);
             fast_left = atomic_get(&debug_error);
         }
@@ -220,14 +217,9 @@ static bool debug_code_work() {
     }
 
     k_work_reschedule(&led_work, K_MSEC(next_ms));
-    return true;
 }
-
+#else
 static void led_work_fn(struct k_work* work) {
-    if (debug_code_work()) {
-        return;
-    }
-
     LedMode my_led_mode = (LedMode) atomic_get(&led_mode);
     switch (my_led_mode) {
         case LedMode::OFF:
@@ -236,29 +228,9 @@ static void led_work_fn(struct k_work* work) {
         case LedMode::ON:
             gpio_pin_set_dt(&led1, true);
             break;
-        case LedMode::BLINK: {
-            int next_work = 0;
-            if (next_blink_state) {
-                if (led_blinks_left > 0) {
-                    led_blinks_left--;
-                    gpio_pin_set_dt(&led1, true);
-                    next_blink_state = false;
-                    next_work = 100;
-                } else {
-                    led_blinks_left = atomic_get(&led_blink_count);
-                    gpio_pin_set_dt(&led1, false);
-                    next_work = 1000;
-                }
-            } else {
-                gpio_pin_set_dt(&led1, false);
-                next_blink_state = true;
-                next_work = 100;
-            }
-            k_work_reschedule(&led_work, K_MSEC(next_work));
-            break;
-        }
     }
 }
+#endif
 
 static void set_led_mode(LedMode led_mode_) {
     if (atomic_set(&led_mode, (atomic_val_t) led_mode_) != (atomic_val_t) led_mode_) {
@@ -277,7 +249,7 @@ static void scan_stop() {
     if (CHK(bt_scan_stop())) {
         LOG_DBG("Scanning stopped.");
         scanning = false;
-        set_led_mode(LedMode::BLINK);
+        set_led_mode(LedMode::OFF);
     }
 }
 
@@ -296,7 +268,6 @@ static void count_conn_cb(struct bt_conn* conn, void* data) {
 static int count_connections() {
     int conn_count = 0;
     bt_conn_foreach(BT_CONN_TYPE_LE, count_conn_cb, &conn_count);
-    atomic_set(&led_blink_count, conn_count);
     return conn_count;
 }
 
@@ -339,9 +310,9 @@ static void scan_start_work_fn(struct k_work* work) {
     }
     if (scan_setup_filters()) {
         scan_start();
-        set_led_mode(peers_only ? LedMode::BLINK : LedMode::ON);
+        set_led_mode(peers_only ? LedMode::OFF : LedMode::ON);
     } else {
-        set_led_mode(LedMode::BLINK);
+        set_led_mode(LedMode::OFF);
     }
 }
 static K_WORK_DELAYABLE_DEFINE(scan_start_work, scan_start_work_fn);
@@ -577,8 +548,7 @@ static void connected(struct bt_conn* conn, uint8_t conn_err) {
     char addr[BT_ADDR_LE_STR_LEN];
 
     scanning = false;
-    count_connections();
-    set_led_mode(LedMode::BLINK);
+    set_led_mode(LedMode::OFF);
 
     bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
@@ -614,8 +584,6 @@ static void disconnected(struct bt_conn* conn, uint8_t reason) {
 
     struct disconnected_type disconnected_item = { .conn_idx = conn_idx };
     CHK(k_msgq_put(&disconnected_q, &disconnected_item, K_NO_WAIT));
-
-    count_connections();
 
     k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
 }
@@ -677,8 +645,10 @@ static int8_t hogp_index(struct bt_hogp* hogp) {
 }
 
 static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep, uint8_t err, const uint8_t* data) {
+#ifdef REMAPPER_DEBUG_STAGES
     k_work_reschedule(&activity_led_off_work, K_MSEC(50));  // XXX what if work_fn is currently running? it might turn the led off after we turn it on
     gpio_pin_set_dt(&led0, true);
+#endif
 
     if (!data) {
         return BT_GATT_ITER_STOP;
@@ -1181,9 +1151,11 @@ int main() {
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
             parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
+#ifdef REMAPPER_DEBUG_STAGES
             if (atomic_get(&debug_stage) == DEBUG_HID_READY) {
                 debug_stage_set_if_no_error(DEBUG_DESCRIPTOR_READ);
             }
+#endif
         }
 
         if (resume_pending) {

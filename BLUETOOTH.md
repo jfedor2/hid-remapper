@@ -13,7 +13,7 @@ The Bluetooth version of the remapper runs on Nordic's nRF52840 chip. Currently 
 * [Adafruit Feather nRF52840 Express](https://www.adafruit.com/product/4062)
 * [Seeed Studio Xiao nRF52840](https://www.seeedstudio.com/Seeed-XIAO-BLE-nRF52840-p-5201.html)
 
-You can also [compile the firmware](README.md#how-to-compile-the-firmware) for the nice!nano with `west build -b nice_nano`. Don't use the Xiao binary on a nice!nano, because it's built for a different flash layout. The nice!nano doesn't have a user button, so use the web interface or short pin P1.02 to GND.
+You can also [compile the firmware](README.md#how-to-compile-the-firmware) for the nice!nano with `west build -b nice_nano`. Don't use the Xiao binary on a nice!nano, because it's built for a different flash layout. The nice!nano doesn't have a user button, so use the web interface or short pin P1.02 to GND. On some nice!nano clones the LED the firmware controls is red, not blue, and a separate blue LED blinks by itself. If clicking "Pair new device" turns the red LED on and the blue LED keeps blinking, the blue one isn't controlled by the firmware. It may be a charging indicator with no battery connected.
 
 If a device connects but doesn't work, see [debugging the Bluetooth version](README.md#debugging-the-bluetooth-version).
 
@@ -21,7 +21,7 @@ To flash the [firmware](firmware-bluetooth), first put the board in flashing mod
 
 To connect Bluetooth devices to the remapper, you need to put the device in pairing mode. This is device-specific, but usually involves holding a button for a few seconds. Then you also need to put HID Remapper in pairing mode. You do this by either pressing the "user switch" button on the board or by clicking the "Pair new device" button on the web configuration tool (the Xiao board doesn't have a user button so you have to either do it through the web interface or by shorting pin 0 to GND). The remapper will also automatically enter pairing mode if no devices are currently paired.
 
-You can tell the remapper is in pairing mode if the blue LED is lit constantly. When it's not in pairing mode, the blue LED will be blinking, with the number of blinks per cycle corresponding to the number of currently connected devices.
+You can tell the remapper is in pairing mode if the blue LED is lit constantly. When it's not in pairing mode, the LEDs stay off.
 
 To make the remapper forget all currently paired devices, hold the "user switch" button for over 3 seconds, or click the "Forget all devices" button on the web configuration tool (or short pin 0 to GND for over 3 seconds on the Seeed Xiao board).
 

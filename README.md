@@ -98,11 +98,23 @@ If a Bluetooth device connects but its inputs don't come through, start with the
 1. Open the Monitor tab in the [web configuration tool](https://www.remapper.org/config/) and use the device. If its inputs appear there, the Bluetooth connection is fine and the problem is in your mappings or on the USB side.
 2. Make sure the device isn't also connected to something else. If it's a ZMK keyboard, unplug it from USB (or select Bluetooth output with `&out OUT_BLE`), select the profile that's paired with the remapper, and on a split keyboard pair with the central half.
 3. Click "Forget all devices", remove the remapper from the device's own list of paired devices, then click "Pair new device" and pair again. A pairing that only one side remembers will fail at the encryption step.
-4. Check the status LED for a blink code, as described below.
+4. If it still doesn't work, compile the debug build described below and check its LED codes.
 
-### LED error codes
+### Debug build
 
-If connection setup fails, the blue status LED stops showing the normal status and repeats a blink code instead: a group of slow blinks, a one second pause, then a group of fast blinks. The code stays until the next device connects, or until you click "Forget all devices".
+In the normal firmware the LEDs stay off, except that the status LED is lit constantly in pairing mode. A debug build uses the status LED to show how far connection setup has got, and also pulses the activity LED, on boards that have one, when an input report arrives. The status LED is blue on most boards, but it's red on some nice!nano clones.
+
+To compile it, add `-- -DREMAPPER_DEBUG_STAGES=1` to the build command:
+
+```
+docker run --rm -v $(pwd):/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch west build -b nice_nano -- -DREMAPPER_DEBUG_STAGES=1
+```
+
+All builds also write logs to the board's serial TX pin at 921600 baud, if you have a USB serial adapter.
+
+### Debug build LED codes
+
+The status LED repeats a group of slow blinks. If a step failed, a one second pause and a group of fast blinks follow. The code for a failed step stays until the next successful step or the next connection, and a single failure can clear itself if the device connects successfully afterwards.
 
 The number of slow blinks is the last step that passed, and any fast blinks mean that the next step failed:
 
@@ -115,6 +127,8 @@ Slow blinks | Last step that passed | Fast blinks mean this step failed
 5 | subscribed to input reports | reading the report descriptor
 6 | report descriptor read | no fast blinks at this step
 7 | input report received | no fast blinks at this step
+
+If it stays at 6 while you use the device, setup worked but the device isn't sending anything. If it reaches 7 and the Monitor tab stays empty, reports are arriving but aren't being parsed.
 
 The number of fast blinks is the error code, capped at 30:
 
@@ -129,18 +143,6 @@ Code | Meaning
 Fast blink counts from 2 slow blinks are Zephyr's `bt_security_err` values. Other counts from 4 slow blinks are usually Bluetooth ATT error codes returned by the device.
 
 The fast blinks are hard to count by eye, so it helps to film them. Each one takes about 0.22 seconds.
-
-### Debug build
-
-A debug build shows the current step all the time, so you can also see how far a working connection gets. For example, it will show 6 slow blinks once setup is complete, then 7 after the first input report arrives. If it stays at 6 while you use the device, setup worked but the device isn't sending anything. If it reaches 7 and the Monitor tab stays empty, reports are arriving but aren't being parsed.
-
-To compile it, add `-- -DREMAPPER_DEBUG_STAGES=1` to the build command:
-
-```
-docker run --rm -v $(pwd):/workdir/project -w /workdir/project/firmware-bluetooth nordicplayground/nrfconnect-sdk:v2.2-branch west build -b nice_nano -- -DREMAPPER_DEBUG_STAGES=1
-```
-
-The firmware also writes logs to the board's serial TX pin at 921600 baud, if you have a USB serial adapter.
 
 ## License
 
