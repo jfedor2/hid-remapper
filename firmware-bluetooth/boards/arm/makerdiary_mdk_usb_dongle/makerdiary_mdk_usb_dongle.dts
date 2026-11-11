@@ -1,0 +1,108 @@
+/*
+ * Makerdiary nRF52840 MDK USB Dongle running the Adafruit nRF52 UF2
+ * bootloader with S140 6.1.1 (same flash layout as the Feather nRF52840).
+ * Based on Zephyr's nrf52840_mdk_usb_dongle board (Apache-2.0).
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include "makerdiary_mdk_usb_dongle-pinctrl.dtsi"
+
+/ {
+	model = "Makerdiary nRF52840 MDK USB Dongle";
+	compatible = "makerdiary,nrf52840-mdk-usb-dongle";
+
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &code_partition;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led_red: led_0 {
+			gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+			label = "Red LED";
+		};
+		led_green: led_1 {
+			gpios = <&gpio0 22 GPIO_ACTIVE_LOW>;
+			label = "Green LED";
+		};
+		led_blue: led_2 {
+			gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+			label = "Blue LED";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 18 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "User button";
+		};
+	};
+
+	aliases {
+		led0 = &led_green;	/* activity flash */
+		led1 = &led_blue;	/* pairing / connection status */
+		led2 = &led_red;
+		sw0 = &button0;
+	};
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&uart0 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/* Same layout as the Adafruit Feather nRF52840 with S140 6.1.1. */
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		sd_partition: partition@0 {
+			label = "softdevice";
+			reg = <0x00000000 0x00026000>;
+		};
+
+		code_partition: partition@26000 {
+			label = "code_partition";
+			reg = <0x00026000 0x000c6000>;
+		};
+
+		storage_partition: partition@ec000 {
+			label = "storage";
+			reg = <0x000ec000 0x00008000>;
+		};
+
+		boot_partition: partition@f4000 {
+			label = "adafruit_boot";
+			reg = <0x000f4000 0x0000c000>;
+		};
+	};
+};
+
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+};

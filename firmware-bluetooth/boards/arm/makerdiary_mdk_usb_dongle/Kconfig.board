@@ -1,0 +1,3 @@
+config BOARD_MAKERDIARY_MDK_USB_DONGLE
+	bool "Makerdiary nRF52840 MDK USB Dongle (Adafruit UF2 bootloader, S140 6.1.1)"
+	depends on SOC_NRF52840_QIAA
