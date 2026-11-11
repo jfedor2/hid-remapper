@@ -1,0 +1,11 @@
+identifier: makerdiary_mdk_usb_dongle
+name: Makerdiary nRF52840 MDK USB Dongle
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+supported:
+  - usb_device
+  - ble

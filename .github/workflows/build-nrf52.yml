@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840"]
+        board: ["adafruit_feather_nrf52840", "seeed_xiao_nrf52840", "makerdiary_mdk_usb_dongle"]
     steps:
       - uses: actions/checkout@v6
       - name: Build

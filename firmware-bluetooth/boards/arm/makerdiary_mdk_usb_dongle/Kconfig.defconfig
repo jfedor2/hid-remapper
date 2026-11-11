@@ -1,0 +1,9 @@
+if BOARD_MAKERDIARY_MDK_USB_DONGLE
+
+config BOARD
+	default "makerdiary_mdk_usb_dongle"
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_MAKERDIARY_MDK_USB_DONGLE
