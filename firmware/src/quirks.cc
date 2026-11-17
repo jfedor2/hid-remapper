@@ -36,6 +36,7 @@ const uint16_t PRODUCT_ID_GOOGLE_STADIA_CONTROLLER = 0x9400;
 const uint16_t VENDOR_ID_VALVE = 0x28de;
 const uint16_t PRODUCT_ID_VALVE_STEAM_CONTROLLER_PUCK = 0x1304;
 const uint16_t PRODUCT_ID_VALVE_STEAM_CONTROLLER = 0x1302;
+const uint16_t PRODUCT_ID_VALVE_STEAM_CONTROLLER_BLUETOOTH = 0x1303;
 
 const uint8_t elecom_huge_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
@@ -1179,7 +1180,8 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
 
     if ((vendor_id == VENDOR_ID_VALVE) &&
         ((product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER) ||
-            (product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER_PUCK))) {
+            (product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER_PUCK) ||
+            (product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER_BLUETOOTH))) {
         usage_map.clear();
         usage_map[66][0x00090002] = (usage_def_t){
             .report_id = 66,
