@@ -79,14 +79,26 @@ static void add_synthetic_dpad_usages(std::unordered_map<uint8_t, std::unordered
             dpad_usage_def.is_array = true;
             dpad_usage_def.count = 1;
 
-            dpad_usage_def.index_mask = 0b11100000;
-            usage_map[DPAD_USAGE_LEFT] = dpad_usage_def;
-            dpad_usage_def.index_mask = 0b00001110;
-            usage_map[DPAD_USAGE_RIGHT] = dpad_usage_def;
-            dpad_usage_def.index_mask = 0b10000011;
-            usage_map[DPAD_USAGE_UP] = dpad_usage_def;
-            dpad_usage_def.index_mask = 0b00111000;
-            usage_map[DPAD_USAGE_DOWN] = dpad_usage_def;
+            // Most gamepads use 0-7 for dpad, Xbox controllers over Bluetooth use 1-8
+            if (search->second.logical_minimum == 0) {
+                dpad_usage_def.index_mask = 0b11100000;
+                usage_map[DPAD_USAGE_LEFT] = dpad_usage_def;
+                dpad_usage_def.index_mask = 0b00001110;
+                usage_map[DPAD_USAGE_RIGHT] = dpad_usage_def;
+                dpad_usage_def.index_mask = 0b10000011;
+                usage_map[DPAD_USAGE_UP] = dpad_usage_def;
+                dpad_usage_def.index_mask = 0b00111000;
+                usage_map[DPAD_USAGE_DOWN] = dpad_usage_def;
+            } else if (search->second.logical_minimum == 1) {
+                dpad_usage_def.index_mask = 0b111000000;
+                usage_map[DPAD_USAGE_LEFT] = dpad_usage_def;
+                dpad_usage_def.index_mask = 0b000011100;
+                usage_map[DPAD_USAGE_RIGHT] = dpad_usage_def;
+                dpad_usage_def.index_mask = 0b100000110;
+                usage_map[DPAD_USAGE_UP] = dpad_usage_def;
+                dpad_usage_def.index_mask = 0b001110000;
+                usage_map[DPAD_USAGE_DOWN] = dpad_usage_def;
+            }
         }
     }
 }
