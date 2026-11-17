@@ -10,12 +10,15 @@ jobs:
   create-release:
     needs: [ build-nrf, build-rp2040 ]
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
           path: download
           merge-multiple: true
-      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
-        with:
-          draft: true
-          files: download/*
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" download/*
