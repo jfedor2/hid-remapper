@@ -972,11 +972,20 @@ static void sof_cb0(const struct device* dev) {
     atomic_set_bit(tick_pending, 0);
 }
 
+// We enable USB both on startup and on USBD_MSG_VBUS_READY, in either order,
+// so the second attempt failing with -EALREADY is fine.
+static void enable_usb(struct usbd_context* const ctx) {
+    int err = usbd_enable(ctx);
+    if (err && (err != -EALREADY)) {
+        LOG_ERR("usbd_enable() returned %d", err);
+    }
+}
+
 static void usbd_msg_cb(struct usbd_context* const ctx, const struct usbd_msg* msg) {
     switch (msg->type) {
         case USBD_MSG_VBUS_READY:
             LOG_INF("VBUS ready");
-            CHK(usbd_enable(ctx));
+            enable_usb(ctx);
             break;
         case USBD_MSG_VBUS_REMOVED:
             LOG_INF("VBUS removed");
@@ -1040,9 +1049,10 @@ static void usb_init() {
         return;
     }
 
-    if (!usbd_can_detect_vbus(&usbd)) {
-        CHK(usbd_enable(&usbd));
-    }
+    // udc_nrf only reports VBUS when it changes, so if it's already present
+    // when we start (e.g. when the UF2 bootloader starts us after flashing),
+    // we never get USBD_MSG_VBUS_READY. We're always USB powered anyway.
+    enable_usb(&usbd);
 }
 
 static void bt_init() {
