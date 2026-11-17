@@ -749,7 +749,7 @@ static void hogp_ready_work_fn(struct k_work* work) {
             }
         }
 
-        bt_hogp_map_read(item.hogp, hogp_map_read_cb, 0, K_NO_WAIT);
+        CHK(bt_hogp_map_read(item.hogp, hogp_map_read_cb, 0, K_NO_WAIT));
     }
 }
 static K_WORK_DEFINE(hogp_ready_work, hogp_ready_work_fn);
