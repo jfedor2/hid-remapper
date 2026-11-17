@@ -333,7 +333,8 @@ static void scan_filter_no_match(struct bt_scan_device_info* device_info, bool c
 
 BT_SCAN_CB_INIT(scan_cb, scan_filter_match, scan_filter_no_match, scan_connecting_error, scan_connecting);
 
-// This is a workaround for the Xbox Adaptive Controller that sends UUIDs like this:
+// This is a workaround for Xbox controllers (the Adaptive Controller and the
+// Wireless Controller at least) that send UUIDs like this:
 // 00002a4a-0000-0000-0000-000000000000 in Find Information responses.
 // This is not the correct UUID128 representation for UUID16(2a4a), which would be:
 // 00002a4a-0000-1000-8000-00805f9b34fb
@@ -496,6 +497,7 @@ static uint8_t on_pnp_id_read(struct bt_conn* conn, uint8_t err, struct bt_gatt_
 }
 
 static void dis_discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
+    patch_broken_uuids(dm);
     const struct bt_gatt_dm_attr* gatt_chrc = bt_gatt_dm_char_by_uuid(dm, (struct bt_uuid*) &BT_UUID_DIS_PNP_ID_);
     const struct bt_gatt_dm_attr* gatt_desc = gatt_chrc ? bt_gatt_dm_desc_by_uuid(dm, gatt_chrc, (struct bt_uuid*) &BT_UUID_DIS_PNP_ID_) : NULL;
     struct bt_conn* conn = bt_gatt_dm_conn_get(dm);
