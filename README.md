@@ -14,7 +14,7 @@ In addition to the remapping functionality, it can do polling rate overclocking 
 
 A separate [serial](SERIAL.md) version of the remapper takes inputs from a serial (RS-232) mouse and translates them to USB.
 
-There's also a [Bluetooth](BLUETOOTH.md) version that runs on nRF52840-based boards, which translates Bluetooth inputs to USB.
+There are also [Bluetooth](BLUETOOTH.md) versions that run on either the Pico W / Pico 2W or nRF52840-based boards, which translate Bluetooth inputs to USB.
 
 ![HID Remapper](images/remapper1.jpg)
 
@@ -57,6 +57,8 @@ custom board v5 | [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/
 custom board v6 | [remapper\_board.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board.uf2) | disconnect and reconnect after flashing
 custom board v7 | [remapper\_board\_v7.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v7.uf2) | disconnect and reconnect after flashing
 custom board v8 | [remapper\_board\_v8.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_board_v8.uf2) |
+Pico W | [remapper_bt.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_bt.uf2) |
+Pico 2W | [remapper_bt_pico2_w.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_bt_pico2_w.uf2) |
 Feather nRF52840 Express | [remapper_adafruit_feather_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_adafruit_feather_nrf52840.uf2) |
 Xiao nRF52840 | [remapper_seeed_xiao_nrf52840.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_seeed_xiao_nrf52840.uf2) |
 nice!nano | [remapper_nice_nano.uf2](https://github.com/jfedor2/hid-remapper/releases/latest/download/remapper_nice_nano.uf2) |
