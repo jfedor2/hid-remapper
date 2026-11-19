@@ -40,8 +40,11 @@
 #define MAX_NR_CONTROLLER_ACL_BUFFERS 3
 #define MAX_NR_CONTROLLER_SCO_PACKETS 3
 
-// Enable and configure HCI Controller to Host Flow Control to avoid cyw43 shared bus overrun
-#define ENABLE_HCI_CONTROLLER_TO_HOST_FLOW_CONTROL
+// HCI Controller to Host Flow Control stays off: with it on (as in the pico-sdk
+// examples, "to avoid cyw43 shared bus overrun"), pairing a DualSense while
+// another DualSense is connected reliably hung the CYW43's Bluetooth controller.
+// Without it pairing works and two DualSenses stream at the same rate as with it.
+// #define ENABLE_HCI_CONTROLLER_TO_HOST_FLOW_CONTROL
 #define HCI_HOST_ACL_PACKET_LEN 128
 #define HCI_HOST_ACL_PACKET_NUM 8
 #define HCI_HOST_SCO_PACKET_LEN 0
