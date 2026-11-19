@@ -38,6 +38,7 @@ extern "C" {
 #include "descriptor_parser.h"
 #include "globals.h"
 #include "our_descriptor.h"
+#include "our_gpio.h"
 #include "platform.h"
 #include "remapper.h"
 #include "tick.h"
@@ -124,12 +125,28 @@ void flash_b_side() {
 void interval_override_updated() {
 }
 
-// GPIO-as-input support is not implemented for this variant yet.
-uint32_t get_gpio_valid_pins_mask() {
-    return 0;
-}
+// GP0-22 and GP26-28. On the Pico W, GP23-25 and GP29 are used for the CYW43
+// chip and VSYS sensing and aren't on the header (as GPIOs).
+#define PICO_W_GPIO_PINS 0b00011100011111111111111111111111
 
-void set_gpio_inout_masks(uint32_t in_mask, uint32_t out_mask) {
+uint32_t get_gpio_valid_pins_mask() {
+    return PICO_W_GPIO_PINS & ~(
+#ifdef PICO_DEFAULT_UART_TX_PIN
+                                  (1 << PICO_DEFAULT_UART_TX_PIN) |
+#endif
+#ifdef PICO_DEFAULT_UART_RX_PIN
+                                  (1 << PICO_DEFAULT_UART_RX_PIN) |
+#endif
+#ifdef PICO_DEFAULT_LED_PIN
+                                  (1 << PICO_DEFAULT_LED_PIN) |
+#endif
+#ifdef STATUS_LED_PIN
+                                  (1 << STATUS_LED_PIN) |
+#endif
+#ifdef PAIRING_BUTTON_PIN
+                                  (1 << PAIRING_BUTTON_PIN) |
+#endif
+                                  0);
 }
 
 // ---------------------------------------------------------------------------
@@ -462,6 +479,49 @@ static void check_controller_hang() {
         while (true) {
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Pairing button
+// ---------------------------------------------------------------------------
+
+// Same as the nRF version: on release, a short press starts pairing a new
+// device and a press longer than 3 seconds forgets all paired devices.
+
+#define CLEAR_BONDS_BUTTON_PRESS_MS 3000
+#define BUTTON_DEBOUNCE_MS 20
+
+static void pairing_button_init() {
+#ifdef PAIRING_BUTTON_PIN
+    gpio_init(PAIRING_BUTTON_PIN);
+    gpio_set_dir(PAIRING_BUTTON_PIN, GPIO_IN);
+    gpio_pull_up(PAIRING_BUTTON_PIN);
+#endif
+}
+
+static void check_pairing_button() {
+#ifdef PAIRING_BUTTON_PIN
+    static bool pressed = false;
+    static uint32_t changed_at_ms = 0;
+    static uint32_t pressed_at_ms = 0;
+
+    bool now_pressed = !gpio_get(PAIRING_BUTTON_PIN);  // active low
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+    if ((now_pressed == pressed) || (now - changed_at_ms < BUTTON_DEBOUNCE_MS)) {
+        return;
+    }
+    pressed = now_pressed;
+    changed_at_ms = now;
+    if (pressed) {
+        pressed_at_ms = now;
+    } else if (now - pressed_at_ms > CLEAR_BONDS_BUTTON_PRESS_MS) {
+        BT_LOG("button held, clearing bonds");
+        clear_bonds();
+    } else {
+        BT_LOG("button pressed, pairing");
+        pair_new_device();
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -908,6 +968,8 @@ void __no_inline_not_in_flash_func(sof_callback)() {
 
 int main() {
     my_mutexes_init();
+    gpio_pins_init();
+    pairing_button_init();
     tick_init();
 
     load_config(FLASH_CONFIG_IN_MEMORY);
@@ -992,7 +1054,11 @@ int main() {
         }
 
         if (tick) {
+            if (read_gpio(time_us_64())) {
+                activity_led_on();
+            }
             process_mapping(true);
+            write_gpio();
             report_processing_pending = false;
         }
 
@@ -1010,6 +1076,10 @@ int main() {
         if (config_updated) {
             set_mapping_from_config();
             config_updated = false;
+        }
+        if (set_gpio_dir_pending && !suspended) {
+            set_gpio_dir();
+            set_gpio_dir_pending = false;
         }
         if (bt_usb_hid_ready(0) || bt_usb_suspended()) {
             send_report(bt_usb_do_send_report);
@@ -1037,6 +1107,7 @@ int main() {
             stop_pairing();
         }
 
+        check_pairing_button();
         check_controller_hang();
         update_status_led();
     }

@@ -243,6 +243,7 @@ if(PICO_CYW43_SUPPORTED)
 add_executable(remapper_bt
     src/main_bt.cc
     src/activity_led.cc
+    src/our_gpio.cc
     src/main_bt_usb.cc
     src/remapper.cc
     src/crc.cc
@@ -280,6 +281,9 @@ target_compile_definitions(remapper_bt PRIVATE
     # the fault patterns (fault_led.cc).
     PICO_DEFAULT_LED_PIN=4
     STATUS_LED_PIN=3
+    # Short press: pair a new device. Hold for more than 3 seconds: forget all
+    # paired devices (and start pairing).
+    PAIRING_BUTTON_PIN=2
 )
 target_link_libraries(remapper_bt
     pico_stdlib
