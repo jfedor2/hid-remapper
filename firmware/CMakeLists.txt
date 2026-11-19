@@ -31,6 +31,13 @@ project(remapper)
 
 pico_sdk_init()
 
+# Panic and HardFault handlers that blink a pattern on PICO_DEFAULT_LED_PIN
+# (see src/fault_led.cc).
+function(add_fault_led TARGET)
+    target_sources(${TARGET} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/fault_led.cc)
+    target_compile_definitions(${TARGET} PRIVATE PICO_PANIC_FUNCTION=fault_led_panic)
+endfunction()
+
 check_and_add_pico_pio_usb_support()
 
 add_compile_options(-Wall)
@@ -93,6 +100,7 @@ target_link_libraries(remapper
 
 pico_set_binary_type(remapper copy_to_ram)
 pico_add_linker_script_override_path(remapper ${CMAKE_CURRENT_LIST_DIR}/linker_single FILES section_copy_to_ram_rodata.incl)
+add_fault_led(remapper)
 pico_add_extra_outputs(remapper)
 
 
@@ -134,6 +142,7 @@ target_link_libraries(remapper_dual_a
     pico_unique_id
 )
 pico_generate_pio_header(remapper_dual_a ${CMAKE_CURRENT_LIST_DIR}/src/pico_debug/swd.pio)
+add_fault_led(remapper_dual_a)
 pico_add_extra_outputs(remapper_dual_a)
 
 add_executable(remapper_dual_b
@@ -155,6 +164,7 @@ target_link_libraries(remapper_dual_b
     tinyusb_host
     tinyusb_board
 )
+add_fault_led(remapper_dual_b)
 pico_add_extra_outputs(remapper_dual_b)
 pico_add_hex_output(remapper_dual_b)
 
@@ -192,6 +202,7 @@ target_link_libraries(remapper_serial
     tinyusb_device
     tinyusb_board
 )
+add_fault_led(remapper_serial)
 pico_add_extra_outputs(remapper_serial)
 
 add_executable(flash_b_side
@@ -228,6 +239,7 @@ if(PICO_CYW43_SUPPORTED)
 
 add_executable(remapper_bt
     src/main_bt.cc
+    src/activity_led.cc
     src/main_bt_usb.cc
     src/remapper.cc
     src/crc.cc
@@ -259,6 +271,12 @@ target_compile_definitions(remapper_bt PRIVATE
     PICO_FLASH_BANK_STORAGE_OFFSET=${remapper_bt_flash_bank_offset}
     # We use the CYW43 chip for Bluetooth only, no networking.
     CYW43_LWIP=0
+    # The Pico W's own LED is on the CYW43 chip and too slow to drive (and
+    # unusable in a fault handler), so the LEDs go on regular GPIOs. The
+    # default LED is the activity LED, like in the USB versions, and also shows
+    # the fault patterns (fault_led.cc).
+    PICO_DEFAULT_LED_PIN=4
+    STATUS_LED_PIN=3
 )
 target_link_libraries(remapper_bt
     pico_stdlib
@@ -275,6 +293,7 @@ target_link_libraries(remapper_bt
 # device that sends reports every millisecond or so.
 pico_set_binary_type(remapper_bt copy_to_ram)
 pico_add_linker_script_override_path(remapper_bt ${CMAKE_CURRENT_LIST_DIR}/linker_bt FILES section_copy_to_ram_rodata.incl)
+add_fault_led(remapper_bt)
 pico_add_extra_outputs(remapper_bt)
 
 endif()

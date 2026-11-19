@@ -32,6 +32,7 @@ extern "C" {
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 
+#include "activity_led.h"
 #include "config.h"
 #include "descriptor_parser.h"
 #include "globals.h"
@@ -169,7 +170,7 @@ static void free_index(int idx) {
     }
 }
 
-[[maybe_unused]] static int num_connected() {
+static int num_connected() {
     int n = 0;
     for (int i = 0; i < MAX_DEVICES; i++) {
         if (device_cid[i] != 0) {
@@ -415,22 +416,26 @@ void clear_bonds() {
 }
 
 // ---------------------------------------------------------------------------
-// Status LED (the Pico W's LED hangs off the CYW43 chip)
+// Status LED
 // ---------------------------------------------------------------------------
 
-// Disabled: a write to the CYW43 LED is a bus transaction that takes over a
-// millisecond, which is enough to miss a process_mapping() tick.
-// TODO: use a regular GPIO LED instead.
-#if 0
+// This is a regular GPIO LED on STATUS_LED_PIN (set in CMakeLists.txt), not the
+// Pico W's own LED: that one is on the CYW43 chip and each write is a bus
+// transaction that takes over a millisecond. PICO_DEFAULT_LED_PIN is the
+// activity LED (activity_led.cc), which the fault handlers in fault_led.cc
+// also use.
 
-// Talking to the CYW43 LED is a bus transaction, so only write it when the
-// desired state actually changes.
+static void status_led_init() {
+#ifdef STATUS_LED_PIN
+    gpio_init(STATUS_LED_PIN);
+    gpio_set_dir(STATUS_LED_PIN, GPIO_OUT);
+#endif
+}
+
 static void led_set(bool on) {
-    static int last = -1;
-    if ((int) on != last) {
-        last = on;
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, on);
-    }
+#ifdef STATUS_LED_PIN
+    gpio_put(STATUS_LED_PIN, on);
+#endif
 }
 
 static void update_status_led() {
@@ -470,7 +475,6 @@ static void update_status_led() {
         }
     }
 }
-#endif
 
 // ---------------------------------------------------------------------------
 // BTstack packet handler (poll mode -> runs in the main loop context)
@@ -863,6 +867,7 @@ int main() {
     set_mapping_from_config();
 
     bt_usb_init();
+    status_led_init();
     stdio_init_all();
 
     BT_LOG("HID Remapper Bluetooth starting");
@@ -927,6 +932,10 @@ int main() {
         bool tick;
         bool new_report;
         read_report(&new_report, &tick);
+        if (new_report) {
+            activity_led_on();
+        }
+        activity_led_off_maybe();
 
         if (their_descriptor_updated) {
             update_their_descriptor_derivates();
@@ -979,7 +988,7 @@ int main() {
             stop_pairing();
         }
 
-        // update_status_led();
+        update_status_led();
     }
 
     return 0;
