@@ -505,10 +505,17 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t* packe
             break;
 
         case HCI_EVENT_PIN_CODE_REQUEST:
-            // Legacy pairing (old keyboards): try the usual default PIN.
+            // Legacy pairing (old keyboards): try the usual default PIN, but
+            // only when the user asked to pair. Otherwise any device that
+            // pages us could pair (or re-pair after its bond was cleared).
             hci_event_pin_code_request_get_bd_addr(packet, addr);
-            BT_LOG("PIN code request from %s, responding '0000'", bd_addr_to_str(addr));
-            gap_pin_code_response(addr, "0000");
+            if (pairing_mode) {
+                BT_LOG("PIN code request from %s, responding '0000'", bd_addr_to_str(addr));
+                gap_pin_code_response(addr, "0000");
+            } else {
+                BT_LOG("PIN code request from %s, not in pairing mode, refusing", bd_addr_to_str(addr));
+                gap_pin_code_negative(addr);
+            }
             break;
 
         case HCI_EVENT_CONNECTION_REQUEST:
@@ -588,9 +595,16 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t* packe
             break;
 
         case HCI_EVENT_USER_CONFIRMATION_REQUEST:
+            // Just Works pairing: accept it only when the user asked to pair.
             hci_event_user_confirmation_request_get_bd_addr(packet, addr);
-            BT_LOG("SSP confirmation from %s, value %lu (auto-accept)",
-                bd_addr_to_str(addr), (unsigned long) hci_event_user_confirmation_request_get_numeric_value(packet));
+            if (pairing_mode) {
+                BT_LOG("SSP confirmation from %s, value %lu, accepting",
+                    bd_addr_to_str(addr), (unsigned long) hci_event_user_confirmation_request_get_numeric_value(packet));
+                gap_ssp_confirmation_response(addr);
+            } else {
+                BT_LOG("SSP confirmation from %s, not in pairing mode, refusing", bd_addr_to_str(addr));
+                gap_ssp_confirmation_negative(addr);
+            }
             break;
 
         case HCI_EVENT_SIMPLE_PAIRING_COMPLETE:
@@ -875,7 +889,8 @@ int main() {
     gap_set_security_level(LEVEL_2);
     gap_ssp_set_enable(1);
     gap_ssp_set_io_capability(SSP_IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
-    gap_ssp_set_auto_accept(1);
+    // Pairing is confirmed in the packet handler, only while in pairing mode.
+    gap_ssp_set_auto_accept(0);
     hci_set_inquiry_mode(INQUIRY_MODE_RSSI_AND_EIR);
     gap_set_default_link_policy_settings(LM_LINK_POLICY_ENABLE_SNIFF_MODE | LM_LINK_POLICY_ENABLE_ROLE_SWITCH);
     hci_set_master_slave_policy(HCI_ROLE_MASTER);
