@@ -51,6 +51,7 @@ endif()
 
 add_executable(remapper
     src/main.cc
+    src/our_gpio.cc
     src/remapper.cc
     src/remapper_single.cc
     src/crc.cc
@@ -106,6 +107,7 @@ pico_add_extra_outputs(remapper)
 
 add_executable(remapper_dual_a
     src/main.cc
+    src/our_gpio.cc
     src/remapper.cc
     src/remapper_dual_a.cc
     src/crc.cc
@@ -177,6 +179,7 @@ add_custom_command(
 
 add_executable(remapper_serial
     src/main.cc
+    src/our_gpio.cc
     src/remapper.cc
     src/remapper_serial.cc
     src/crc.cc
