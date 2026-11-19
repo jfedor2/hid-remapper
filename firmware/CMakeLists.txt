@@ -282,6 +282,7 @@ target_link_libraries(remapper_bt
     pico_stdlib
     pico_unique_id
     hardware_flash
+    hardware_watchdog
     tinyusb_device
     tinyusb_board
     pico_btstack_classic

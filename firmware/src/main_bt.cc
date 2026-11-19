@@ -31,6 +31,7 @@ extern "C" {
 
 #include "hardware/flash.h"
 #include "hardware/sync.h"
+#include "hardware/watchdog.h"
 
 #include "activity_led.h"
 #include "config.h"
@@ -413,6 +414,54 @@ void clear_bonds() {
     gap_delete_all_link_keys();
     bond_slots_reset();
     start_pairing();
+}
+
+// ---------------------------------------------------------------------------
+// Bluetooth controller hang detection
+// ---------------------------------------------------------------------------
+
+// The CYW43's Bluetooth controller sometimes stops taking anything from the
+// host, for example when pairing a second device while another one is
+// streaming. Nothing gets reported after that (not even disconnects), so we'd
+// keep thinking devices are connected. Only resetting the chip gets it back, so
+// when we see it we reboot (bonded devices reconnect afterwards).
+//
+// A hung controller never completes the command it was given, so BTstack runs
+// out of command credits. To make sure there is a command in flight to notice
+// that with, send a harmless one every so often.
+
+#define HANG_PROBE_INTERVAL_MS 2000
+#define HANG_TIMEOUT_MS 5000
+
+static void check_controller_hang() {
+    static uint32_t blocked_since_ms = 0;
+    static uint32_t last_probe_ms = 0;
+
+    if (!hci_ready) {
+        blocked_since_ms = 0;
+        return;
+    }
+
+    uint32_t now = to_ms_since_boot(get_absolute_time());
+
+    if (hci_can_send_command_packet_now()) {
+        blocked_since_ms = 0;
+        if (now - last_probe_ms >= HANG_PROBE_INTERVAL_MS) {
+            last_probe_ms = now;
+            hci_send_cmd(&hci_read_page_timeout);
+        }
+        return;
+    }
+
+    if (blocked_since_ms == 0) {
+        blocked_since_ms = now;
+    } else if (now - blocked_since_ms >= HANG_TIMEOUT_MS) {
+        BT_LOG("Bluetooth controller not responding for %u ms, rebooting", (unsigned int) (now - blocked_since_ms));
+        stdio_flush();
+        watchdog_reboot(0, 0, 0);
+        while (true) {
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -988,6 +1037,7 @@ int main() {
             stop_pairing();
         }
 
+        check_controller_hang();
         update_status_led();
     }
 
