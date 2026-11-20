@@ -36,6 +36,10 @@ void queue_set_feature_report(uint16_t interface, uint8_t report_id, const uint8
 void queue_get_feature_report(uint16_t interface, uint8_t report_id, uint8_t len);
 void send_out_report();
 bool send_monitor_report(send_report_t do_send_report);
+
+// in tinyusb_stuff.cc
+bool our_hid_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len);
+bool our_hid_interfaces_ready();
 void print_stats();
 void reset_state();
 
@@ -55,5 +59,6 @@ void handle_set_report_complete(uint16_t interface, uint8_t report_id);
 void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port, uint8_t itf_num);
 void report_received_callback(uint8_t dev_addr, uint8_t instance, uint8_t const* report, uint16_t len);
 void umount_callback(uint8_t dev_addr, uint8_t instance);
+uint8_t get_hub_port(uint8_t dev_addr);
 
 #endif

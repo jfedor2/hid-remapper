@@ -3,19 +3,22 @@ on:
   push:
     tags: 'r*'
 jobs:
-  build-nrf52:
-    uses: ./.github/workflows/build-nrf52.yml
+  build-nrf:
+    uses: ./.github/workflows/build-nrf.yml
   build-rp2040:
     uses: ./.github/workflows/build-rp2040.yml
   create-release:
-    needs: [ build-nrf52, build-rp2040 ]
+    needs: [ build-nrf, build-rp2040 ]
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v8
         with:
           path: download
           merge-multiple: true
-      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
-        with:
-          draft: true
-          files: download/*
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" download/*

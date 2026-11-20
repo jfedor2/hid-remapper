@@ -10,6 +10,8 @@
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/retained_mem.h>
+#include <zephyr/drivers/usb/udc.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
@@ -17,8 +19,8 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/types.h>
-#include <zephyr/usb/class/usb_hid.h>
-#include <zephyr/usb/usb_device.h>
+#include <zephyr/usb/class/usbd_hid.h>
+#include <zephyr/usb/usbd.h>
 
 #include "config.h"
 #include "descriptor_parser.h"
@@ -36,10 +38,18 @@ static const int CLEAR_BONDS_BUTTON_PRESS_MS = 3000;
 
 // these macros don't work in C++ when used directly ("taking address of temporary array")
 static auto const BT_UUID_HIDS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_VAL);
+static auto const BT_UUID_HIDS_REPORT_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_VAL);
+static auto const BT_UUID_HIDS_REPORT_REF_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_HIDS_REPORT_REF_VAL);
+static auto const BT_UUID_DIS_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_DIS_VAL);
+static auto const BT_UUID_DIS_PNP_ID_ = (struct bt_uuid_16) BT_UUID_INIT_16(BT_UUID_DIS_PNP_ID_VAL);
 static auto BT_ADDR_LE_ANY_ = BT_ADDR_LE_ANY[0];
 static auto BT_CONN_LE_CREATE_CONN_ = BT_CONN_LE_CREATE_CONN[0];
 
 static struct bt_hogp hogps[CONFIG_BT_MAX_CONN];
+static bool discovery_started[CONFIG_BT_MAX_CONN];
+// From the Device Information Service's PnP ID, for quirks.
+static uint16_t device_vid[CONFIG_BT_MAX_CONN];
+static uint16_t device_pid[CONFIG_BT_MAX_CONN];
 
 static K_SEM_DEFINE(usb_sem0, 1, 1);
 static K_SEM_DEFINE(usb_sem1, 1, 1);
@@ -50,11 +60,16 @@ static struct k_mutex get_report_mutex;
 static uint8_t get_report_buf[64];
 static bool get_report_response_ready = false;
 
-static const struct device* hid_dev0;
-static const struct device* hid_dev1;  // config interface
+static const struct device* hid_dev0 = DEVICE_DT_GET(DT_NODELABEL(hid_dev_0));
+static const struct device* hid_dev1 = DEVICE_DT_GET(DT_NODELABEL(hid_dev_1));  // config interface
+
+// usbd_hid names its classes after devicetree instance numbers.
+BUILD_ASSERT(DT_SAME_NODE(DT_INST(0, zephyr_hid_device), DT_NODELABEL(hid_dev_0)));
+BUILD_ASSERT(DT_SAME_NODE(DT_INST(1, zephyr_hid_device), DT_NODELABEL(hid_dev_1)));
 
 struct report_type {
     uint16_t interface;
+    uint8_t report_id;
     uint8_t len;
     uint8_t data[65];
 };
@@ -62,6 +77,8 @@ struct report_type {
 struct descriptor_type {
     uint16_t size;
     uint8_t conn_idx;
+    uint16_t vid;
+    uint16_t pid;
     uint8_t data[512];
 };
 
@@ -173,7 +190,10 @@ static void set_led_mode(LedMode led_mode_) {
 }
 
 static void scan_start() {
-    if (CHK(bt_scan_start(BT_SCAN_TYPE_SCAN_PASSIVE))) {
+    // Some devices (e.g. the Stadia controller) only have the HID service UUID
+    // in the scan response, so we need active scanning to see it. Bonded peers
+    // are matched by address, so passive scanning is enough for them.
+    if (CHK(bt_scan_start(peers_only ? BT_SCAN_TYPE_SCAN_PASSIVE : BT_SCAN_TYPE_SCAN_ACTIVE))) {
         LOG_DBG("Scanning started.");
         scanning = true;
     }
@@ -218,21 +238,25 @@ static bool scan_setup_filters() {
 
     int conn_count = count_connections();
 
-    uint8_t filter_mode = BT_SCAN_UUID_FILTER;
+    uint8_t filter_mode;
 
+    // When reconnecting, some devices (e.g. the Stadia controller) advertise
+    // with no data at all for a while, so we don't require the HID service
+    // UUID from bonded peers, the address is enough.
     if (peers_only && (bonded_count > 0)) {
         if (conn_count == bonded_count) {
             LOG_DBG("all bonded peers connected, not scanning");
             return false;
         }
-        filter_mode |= BT_SCAN_ADDR_FILTER;
+        filter_mode = BT_SCAN_ADDR_FILTER;
         LOG_DBG("scanning for bonded peers only");
     } else {
+        filter_mode = BT_SCAN_UUID_FILTER;
         LOG_DBG("scanning for new peers");
         peers_only = false;
     }
 
-    if (!CHK(bt_scan_filter_enable(filter_mode, true))) {
+    if (!CHK(bt_scan_filter_enable(filter_mode, false))) {
         return false;
     }
 
@@ -278,11 +302,6 @@ static K_WORK_DEFINE(clear_bonds_work, clear_bonds_work_fn);
 static void scan_filter_match(struct bt_scan_device_info* device_info, struct bt_scan_filter_match* filter_match, bool connectable) {
     char addr[BT_ADDR_LE_STR_LEN];
 
-    if (!filter_match->uuid.match || (filter_match->uuid.count != 1)) {
-        LOG_WRN("%s invalid device connected", __func__);
-        return;
-    }
-
     bt_addr_le_to_str(device_info->recv_info->addr, addr, sizeof(addr));
 
     LOG_INF("%s address: %s connectable: %s", __func__, addr, connectable ? "yes" : "no");
@@ -314,7 +333,8 @@ static void scan_filter_no_match(struct bt_scan_device_info* device_info, bool c
 
 BT_SCAN_CB_INIT(scan_cb, scan_filter_match, scan_filter_no_match, scan_connecting_error, scan_connecting);
 
-// This is a workaround for the Xbox Adaptive Controller that sends UUIDs like this:
+// This is a workaround for Xbox controllers (the Adaptive Controller and the
+// Wireless Controller at least) that send UUIDs like this:
 // 00002a4a-0000-0000-0000-000000000000 in Find Information responses.
 // This is not the correct UUID128 representation for UUID16(2a4a), which would be:
 // 00002a4a-0000-1000-8000-00805f9b34fb
@@ -345,12 +365,79 @@ static void patch_broken_uuids(struct bt_gatt_dm* dm) {
     }
 }
 
+// The HOGP library guesses the type of each report from its characteristic
+// properties (write without response -> output, notify -> input, otherwise
+// feature) and then fails if the Report Reference descriptor disagrees.
+// Some devices (e.g. the Stadia controller) have output reports that don't
+// support write without response, so before handing the discovery data over
+// to the library, we read the Report Reference of every report that would be
+// classified as a feature report and adjust the properties if it's actually
+// an output report.
+//
+// There's only one discovery in progress at a time, so this state is global.
+static struct bt_gatt_dm* patch_dm;
+static struct bt_hogp* patch_hogp;
+static const struct bt_gatt_dm_attr* patch_chrc;
+static struct bt_gatt_read_params report_ref_read_params;
+
+static void patch_report_types_next();
+
+static uint8_t on_report_ref_read(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length) {
+    if (err) {
+        LOG_ERR("err=%d", err);
+    } else if (data && (length == 2) && (((const uint8_t*) data)[1] == BT_HIDS_REPORT_TYPE_OUTPUT)) {
+        LOG_INF("report ID %u is an output report without write without response", ((const uint8_t*) data)[0]);
+        bt_gatt_dm_attr_chrc_val(patch_chrc)->properties |= BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+    }
+
+    patch_report_types_next();
+
+    return BT_GATT_ITER_STOP;
+}
+
+static void patch_report_types_next() {
+    struct bt_conn* conn = bt_gatt_dm_conn_get(patch_dm);
+
+    while (NULL != (patch_chrc = bt_gatt_dm_char_next(patch_dm, patch_chrc))) {
+        const struct bt_gatt_chrc* chrc = bt_gatt_dm_attr_chrc_val(patch_chrc);
+        if (bt_uuid_cmp(chrc->uuid, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_) ||
+            (chrc->properties & (BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_NOTIFY))) {
+            continue;
+        }
+
+        const struct bt_gatt_dm_attr* gatt_desc = bt_gatt_dm_desc_by_uuid(patch_dm, patch_chrc, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_REF_);
+        if (!gatt_desc) {
+            continue;
+        }
+
+        report_ref_read_params.func = on_report_ref_read;
+        report_ref_read_params.handle_count = 1;
+        report_ref_read_params.single.handle = gatt_desc->handle;
+        report_ref_read_params.single.offset = 0;
+
+        if (CHK(bt_gatt_read(conn, &report_ref_read_params))) {
+            return;
+        }
+    }
+
+    // If the device disconnected while we were reading, don't assign the
+    // handles to a dead connection.
+    struct bt_conn_info info;
+    if (CHK(bt_conn_get_info(conn, &info)) && (info.state == BT_CONN_STATE_CONNECTED)) {
+        CHK(bt_hogp_handles_assign(patch_dm, patch_hogp));  // XXX disconnect if this fails?
+    }
+    CHK(bt_gatt_dm_data_release(patch_dm));
+    patch_dm = NULL;
+    k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+}
+
 static void discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
     LOG_INF("");
     patch_broken_uuids(dm);
-    CHK(bt_hogp_handles_assign(dm, ((struct bt_hogp*) context)));  // XXX disconnect if this fails?
-    CHK(bt_gatt_dm_data_release(dm));
-    k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+    patch_dm = dm;
+    patch_hogp = (struct bt_hogp*) context;
+    patch_chrc = NULL;
+    patch_report_types_next();
 }
 
 static void discovery_service_not_found_cb(struct bt_conn* conn, void* context) {
@@ -369,9 +456,92 @@ static const struct bt_gatt_dm_cb discovery_cb = {
     .error_found = discovery_error_found_cb,
 };
 
-static void gatt_discover(struct bt_conn* conn) {
+static void gatt_discover_hids(struct bt_conn* conn) {
     uint8_t conn_idx = bt_conn_index(conn);
     if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_HIDS_, &discovery_cb, &hogps[conn_idx]))) {
+        discovery_started[conn_idx] = false;
+        k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
+    }
+}
+
+// Before the HID service, we read the vendor and product ID from the Device
+// Information Service. It's mandatory for HID devices, but if it's missing or
+// anything goes wrong, we carry on without the IDs (no quirks will apply).
+//
+// We keep the discovery data until the read completes and then start the HID
+// service discovery from the read callback, so no other connection can take
+// the discovery manager in between.
+static struct bt_gatt_dm* dis_dm;
+static struct bt_gatt_read_params pnp_id_read_params;
+
+static uint8_t on_pnp_id_read(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length) {
+    uint8_t conn_idx = bt_conn_index(conn);
+
+    if (err) {
+        LOG_ERR("err=%d", err);
+    } else if (data && (length >= 7)) {
+        const uint8_t* pnp_id = (const uint8_t*) data;
+        // pnp_id[0] is the vendor ID source (1 = Bluetooth SIG, 2 = USB-IF).
+        device_vid[conn_idx] = sys_get_le16(&pnp_id[1]);
+        device_pid[conn_idx] = sys_get_le16(&pnp_id[3]);
+        LOG_INF("vid=0x%04x, pid=0x%04x (source %u)", device_vid[conn_idx], device_pid[conn_idx], pnp_id[0]);
+    } else {
+        LOG_WRN("unexpected PnP ID length: %u", length);
+    }
+
+    CHK(bt_gatt_dm_data_release(dis_dm));
+    dis_dm = NULL;
+    gatt_discover_hids(conn);
+
+    return BT_GATT_ITER_STOP;
+}
+
+static void dis_discovery_completed_cb(struct bt_gatt_dm* dm, void* context) {
+    patch_broken_uuids(dm);
+    const struct bt_gatt_dm_attr* gatt_chrc = bt_gatt_dm_char_by_uuid(dm, (struct bt_uuid*) &BT_UUID_DIS_PNP_ID_);
+    const struct bt_gatt_dm_attr* gatt_desc = gatt_chrc ? bt_gatt_dm_desc_by_uuid(dm, gatt_chrc, (struct bt_uuid*) &BT_UUID_DIS_PNP_ID_) : NULL;
+    struct bt_conn* conn = bt_gatt_dm_conn_get(dm);
+
+    if (gatt_desc) {
+        dis_dm = dm;
+        pnp_id_read_params.func = on_pnp_id_read;
+        pnp_id_read_params.handle_count = 1;
+        pnp_id_read_params.single.handle = gatt_desc->handle;
+        pnp_id_read_params.single.offset = 0;
+        if (CHK(bt_gatt_read(conn, &pnp_id_read_params))) {
+            return;
+        }
+        dis_dm = NULL;
+    } else {
+        LOG_WRN("PnP ID not found");
+    }
+
+    CHK(bt_gatt_dm_data_release(dm));
+    gatt_discover_hids(conn);
+}
+
+static void dis_discovery_service_not_found_cb(struct bt_conn* conn, void* context) {
+    LOG_WRN("");
+    gatt_discover_hids(conn);
+}
+
+static void dis_discovery_error_found_cb(struct bt_conn* conn, int err, void* context) {
+    LOG_ERR("err=%d", err);
+    gatt_discover_hids(conn);
+}
+
+static const struct bt_gatt_dm_cb dis_discovery_cb = {
+    .completed = dis_discovery_completed_cb,
+    .service_not_found = dis_discovery_service_not_found_cb,
+    .error_found = dis_discovery_error_found_cb,
+};
+
+static void gatt_discover(struct bt_conn* conn) {
+    uint8_t conn_idx = bt_conn_index(conn);
+    device_vid[conn_idx] = 0;
+    device_pid[conn_idx] = 0;
+    if (!CHK(bt_gatt_dm_start(conn, (struct bt_uuid*) &BT_UUID_DIS_, &dis_discovery_cb, NULL))) {
+        discovery_started[conn_idx] = false;
         k_work_reschedule(&scan_start_work, K_MSEC(SCAN_DELAY_MS));
     }
 }
@@ -421,6 +591,8 @@ static void disconnected(struct bt_conn* conn, uint8_t reason) {
 
     uint8_t conn_idx = bt_conn_index(conn);
 
+    discovery_started[conn_idx] = false;
+
     if (bt_hogp_assign_check(&hogps[conn_idx])) {
         bt_hogp_release(&hogps[conn_idx]);
     }
@@ -441,7 +613,15 @@ static void security_changed(struct bt_conn* conn, bt_security_t level, enum bt_
     if (!err) {
         LOG_INF("%s, level=%u.", addr, level);
         peers_only = true;
-        gatt_discover(conn);
+        // Some devices (e.g. the Stadia controller) refresh the encryption
+        // right after reconnecting, so we get here twice. Discovering again
+        // would reassign the HOGP handles, which frees the reports without
+        // unsubscribing them, and then subscribing fails.
+        uint8_t conn_idx = bt_conn_index(conn);
+        if (!discovery_started[conn_idx]) {
+            discovery_started[conn_idx] = true;
+            gatt_discover(conn);
+        }
     } else {
         LOG_ERR("security failed: %s, level=%u, err=%d", addr, level, err);
     }
@@ -504,10 +684,10 @@ static uint8_t hogp_notify_cb(struct bt_hogp* hogp, struct bt_hogp_rep_info* rep
 
     static struct report_type buf;
     buf.interface = hogp_index(hogp) << 8;
-    buf.len = bt_hogp_rep_size(rep) + 1;
-    buf.data[0] = bt_hogp_rep_id(rep);
+    buf.report_id = bt_hogp_rep_id(rep);
+    buf.len = MIN(bt_hogp_rep_size(rep), sizeof(buf.data));
 
-    memcpy(buf.data + 1, data, buf.len);
+    memcpy(buf.data, data, buf.len);
     if (k_msgq_put(&report_q, &buf, K_NO_WAIT)) {
         //        printk("error in k_msg_put(report_q\n");
     }
@@ -522,6 +702,8 @@ static void hogp_map_read_cb(struct bt_hogp* hogp, uint8_t err, const uint8_t* d
     if (data == NULL) {
         their_descriptor.size = offset;
         their_descriptor.conn_idx = hogp_index(hogp);
+        their_descriptor.vid = device_vid[their_descriptor.conn_idx];
+        their_descriptor.pid = device_pid[their_descriptor.conn_idx];
         CHK(k_msgq_put(&descriptor_q, &their_descriptor, K_NO_WAIT));
         return;
     }
@@ -559,7 +741,8 @@ static void hogp_ready_work_fn(struct k_work* work) {
         bt_addr_le_copy(&find_bond.addr, bt_conn_get_dst(bt_hogp_conn(item.hogp)));
         bt_foreach_bond(BT_ID_DEFAULT, find_bond_cb, &find_bond);
         LOG_DBG("found bond idx: %d", find_bond.found_idx);
-        device_connected_callback(bt_conn_index(bt_hogp_conn(item.hogp)) << 8, 1, 1, find_bond.found_idx);
+        uint8_t conn_idx = bt_conn_index(bt_hogp_conn(item.hogp));
+        device_connected_callback(conn_idx << 8, device_vid[conn_idx], device_pid[conn_idx], find_bond.found_idx);
 
         while (NULL != (rep = bt_hogp_rep_next(item.hogp, rep))) {
             if (bt_hogp_rep_type(rep) == BT_HIDS_REPORT_TYPE_INPUT) {
@@ -568,7 +751,7 @@ static void hogp_ready_work_fn(struct k_work* work) {
             }
         }
 
-        bt_hogp_map_read(item.hogp, hogp_map_read_cb, 0, K_NO_WAIT);
+        CHK(bt_hogp_map_read(item.hogp, hogp_map_read_cb, 0, K_NO_WAIT));
     }
 }
 static K_WORK_DEFINE(hogp_ready_work, hogp_ready_work_fn);
@@ -615,19 +798,15 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
     .pairing_failed = pairing_failed
 };
 
-static int set_report_cb(const struct device* dev, struct usb_setup_packet* setup, int32_t* len, uint8_t** data) {
-    uint8_t request_value[2];
+static int set_report_cb(const struct device* dev, const uint8_t type, const uint8_t id, const uint16_t len, const uint8_t* const data) {
+    LOG_INF("report_id=%d, report_type=%d, len=%d", id, type, len);
+    LOG_HEXDUMP_DBG(data, len, "");
 
-    // report_id, report_type
-    sys_put_le16(setup->wValue, request_value);
-
-    LOG_INF("report_id=%d, report_type=%d, len=%d", request_value[0], request_value[1], *len);
-    LOG_HEXDUMP_DBG((*data), (uint32_t) *len, "");
-
+    // If the report has an ID, it's also the first byte of the data.
     struct set_report_type buf;
-    if ((request_value[0] > 0) && (*len > 0)) {
-        if ((dev == hid_dev0) && set_report0_synchronous(request_value[0])) {
-            handle_set_report0(request_value[0], (*data) + 1, (*len) - 1);
+    if ((id > 0) && (len > 0)) {
+        if ((dev == hid_dev0) && set_report0_synchronous(id)) {
+            handle_set_report0(id, data + 1, len - 1);
         } else {
             if (dev == hid_dev0) {
                 buf.interface = 0;
@@ -637,9 +816,9 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
                 get_report_response_ready = false;
                 k_mutex_unlock(&get_report_mutex);
             }
-            buf.report_id = request_value[0];
-            buf.len = *len - 1;
-            memcpy(buf.data, (*data) + 1, (*len) - 1);
+            buf.report_id = id;
+            buf.len = MIN(len - 1, sizeof(buf.data));
+            memcpy(buf.data, data + 1, buf.len);
             CHK(k_msgq_put(&set_report_q, &buf, K_NO_WAIT));
         }
     } else {
@@ -647,65 +826,76 @@ static int set_report_cb(const struct device* dev, struct usb_setup_packet* setu
     }
 
     return 0;
-};
+}
 
-static int get_report_cb(const struct device* dev, struct usb_setup_packet* setup, int32_t* len, uint8_t** data) {
-    uint8_t request_value[2];
+static int get_report_cb(const struct device* dev, const uint8_t type, const uint8_t id, const uint16_t len, uint8_t* const data) {
+    LOG_INF("report_id=%d, report_type=%d, len=%d", id, type, len);
 
-    sys_put_le16(setup->wValue, request_value);
+    // data is only as big as the host asked for
+    uint8_t buf[CONFIG_SIZE + 1];
+    uint16_t buf_len = 0;
 
-    LOG_INF("report_id=%d, %d, len=%d", request_value[0], request_value[1], *len);
-
-    *data[0] = request_value[0];
+    buf[0] = id;
     if (dev == hid_dev0) {
-        *len = handle_get_report0(request_value[0], (*data) + 1, CONFIG_SIZE);
+        buf_len = handle_get_report0(id, buf + 1, CONFIG_SIZE);
     } else if (dev == hid_dev1) {
         k_mutex_lock(&get_report_mutex, K_FOREVER);
         if (get_report_response_ready) {
-            memcpy((*data) + 1, get_report_buf, CONFIG_SIZE);
-            *len = CONFIG_SIZE;
+            memcpy(buf + 1, get_report_buf, CONFIG_SIZE);
+            buf_len = CONFIG_SIZE;
         } else {
             LOG_INF("response not ready");
-            *len = 0;
+            buf_len = 0;
         }
         get_report_response_ready = false;
         k_mutex_unlock(&get_report_mutex);
     }
-    (*len)++;
+    buf_len++;
 
-    return 0;
-};
+    buf_len = MIN(buf_len, len);
+    memcpy(data, buf, buf_len);
 
-static void int_in_ready_cb0(const struct device* dev) {
+    return buf_len;
+}
+
+static void output_report_cb0(const struct device* dev, const uint16_t len, const uint8_t* const data) {
+    static struct report_type buf;
+    buf.interface = OUR_OUT_INTERFACE;
+    buf.report_id = 0;
+    buf.len = MIN(len, sizeof(buf.data));
+    memcpy(buf.data, data, buf.len);
+    CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
+}
+
+static void input_report_done_cb0(const struct device* dev, const uint8_t* const report) {
     k_sem_give(&usb_sem0);
 }
 
-static void int_out_ready_cb0(const struct device* dev) {
-    static struct report_type buf;
-    uint32_t len;
-    if (CHK(hid_int_ep_read(hid_dev0, buf.data, sizeof(buf.data), &len))) {
-        buf.interface = OUR_OUT_INTERFACE;
-        buf.len = len;
-        CHK(k_msgq_put(&report_q, &buf, K_NO_WAIT));
-    }
-}
-
-static void int_in_ready_cb1(const struct device* dev) {
+static void input_report_done_cb1(const struct device* dev, const uint8_t* const report) {
     k_sem_give(&usb_sem1);
 }
 
-static const struct hid_ops ops0 = {
+static void sof_cb0(const struct device* dev);
+
+static const struct hid_device_ops ops0 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
-    .int_in_ready = int_in_ready_cb0,
-    .int_out_ready = int_out_ready_cb0,
+    .input_report_done = input_report_done_cb0,
+    .output_report = output_report_cb0,
+    .sof = sof_cb0,
 };
 
-static const struct hid_ops ops1 = {
+static const struct hid_device_ops ops1 = {
     .get_report = get_report_cb,
     .set_report = set_report_cb,
-    .int_in_ready = int_in_ready_cb1,
+    .input_report_done = input_report_done_cb1,
 };
+
+// Reports are sent straight from these buffers, they have to stay untouched until
+// input_report_done is called. The semaphores make sure there's only one report
+// in flight per interface.
+UDC_STATIC_BUF_DEFINE(report_buf0, 64);
+UDC_STATIC_BUF_DEFINE(report_buf1, 64);
 
 static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
     if (report_with_id[0] == 0) {
@@ -713,11 +903,14 @@ static bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uin
         len--;
     }
     if (interface == 0) {
-        return CHK(hid_int_ep_write(hid_dev0, report_with_id, len, NULL));
+        memcpy(report_buf0, report_with_id, MIN(len, sizeof(report_buf0)));
+        return CHK(hid_device_submit_report(hid_dev0, MIN(len, sizeof(report_buf0)), report_buf0));
     }
     if (interface == 1) {
-        return CHK(hid_int_ep_write(hid_dev1, report_with_id, len, NULL));
+        memcpy(report_buf1, report_with_id, MIN(len, sizeof(report_buf1)));
+        return CHK(hid_device_submit_report(hid_dev1, MIN(len, sizeof(report_buf1)), report_buf1));
     }
+    return false;
 }
 
 static void button_init() {
@@ -754,41 +947,114 @@ static void leds_init() {
     }
 }
 
-static void status_cb(enum usb_dc_status_code status, const uint8_t* param) {
-    if (status == USB_DC_SOF) {
-        atomic_set_bit(tick_pending, 0);
+#if defined(CONFIG_SOC_NRF52840)
+#define USB_MANUFACTURER "nRF52840"
+#elif defined(CONFIG_SOC_NRF54LM20A)
+#define USB_MANUFACTURER "nRF54LM20A"
+#else
+#define USB_MANUFACTURER CONFIG_SOC
+#endif
+
+USBD_DEVICE_DEFINE(usbd, DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)), 0xCAFE, 0xBAF2);
+
+USBD_DESC_LANG_DEFINE(desc_lang);
+USBD_DESC_MANUFACTURER_DEFINE(desc_manufacturer, USB_MANUFACTURER);
+USBD_DESC_PRODUCT_DEFINE(desc_product, "HID Remapper Bluetooth");
+USBD_DESC_SERIAL_NUMBER_DEFINE(desc_serial_number);
+
+USBD_CONFIGURATION_DEFINE(fs_config, 0, 50, NULL);  // 50*2 mA = 100 mA
+USBD_CONFIGURATION_DEFINE(hs_config, 0, 50, NULL);
+
+static void sof_cb0(const struct device* dev) {
+    // On high speed there's a SOF every 125 us microframe, we want a 1 ms tick.
+    static uint8_t microframe = 0;
+    if (USBD_SUPPORTS_HIGH_SPEED && (usbd_bus_speed(&usbd) == USBD_SPEED_HS) && (++microframe % 8 != 0)) {
+        return;
+    }
+    atomic_set_bit(tick_pending, 0);
+}
+
+// We enable USB both on startup and on USBD_MSG_VBUS_READY, in either order,
+// so the second attempt failing with -EALREADY is fine.
+static void enable_usb(struct usbd_context* const ctx) {
+    int err = usbd_enable(ctx);
+    if (err && (err != -EALREADY)) {
+        LOG_ERR("usbd_enable() returned %d", err);
     }
 }
 
-extern struct usb_device_descriptor __usb_descriptor_start[];
+static void usbd_msg_cb(struct usbd_context* const ctx, const struct usbd_msg* msg) {
+    switch (msg->type) {
+        case USBD_MSG_VBUS_READY:
+            LOG_INF("VBUS ready");
+            enable_usb(ctx);
+            break;
+        case USBD_MSG_VBUS_REMOVED:
+            LOG_INF("VBUS removed");
+            CHK(usbd_disable(ctx));
+            break;
+        default:
+            break;
+    }
+}
 
 static void descriptor_init() {
     our_descriptor = &our_descriptors[our_descriptor_number];
     if ((our_descriptor->vid != 0) && (our_descriptor->pid != 0)) {
-        struct usb_device_descriptor* device_descriptor = __usb_descriptor_start;
-        device_descriptor->idVendor = our_descriptor->vid;
-        device_descriptor->idProduct = our_descriptor->pid;
+        CHK(usbd_device_set_vid(&usbd, our_descriptor->vid));
+        CHK(usbd_device_set_pid(&usbd, our_descriptor->pid));
     }
 }
 
+static bool add_configuration(enum usbd_speed speed, struct usbd_config_node* config) {
+    return CHK(usbd_add_configuration(&usbd, speed, config)) &&
+           CHK(usbd_register_class(&usbd, "hid_0", speed, 1)) &&
+           CHK(usbd_register_class(&usbd, "hid_1", speed, 1)) &&
+           CHK(usbd_device_set_code_triple(&usbd, speed, 0, 0, 0));
+}
+
 static void usb_init() {
-    hid_dev0 = device_get_binding("HID_0");
-    if (hid_dev0 == NULL) {
-        LOG_ERR("Cannot get USB HID Device 0.");
+    if (!device_is_ready(hid_dev0) || !device_is_ready(hid_dev1)) {
+        LOG_ERR("HID devices not ready");
         return;
     }
 
-    hid_dev1 = device_get_binding("HID_1");
-    if (hid_dev1 == NULL) {
-        LOG_ERR("Cannot get USB HID Device 1.");
+    if (!CHK(hid_device_register(hid_dev0, our_descriptor->descriptor, our_descriptor->descriptor_length, &ops0)) ||
+        !CHK(hid_device_register(hid_dev1, config_report_descriptor, config_report_descriptor_length, &ops1))) {
         return;
     }
 
-    usb_hid_register_device(hid_dev0, our_descriptor->descriptor, our_descriptor->descriptor_length, &ops0);
-    usb_hid_register_device(hid_dev1, config_report_descriptor, config_report_descriptor_length, &ops1);
-    CHK(usb_hid_init(hid_dev0));
-    CHK(usb_hid_init(hid_dev1));
-    CHK(usb_enable(status_cb));
+    if (!CHK(usbd_add_descriptor(&usbd, &desc_lang)) ||
+        !CHK(usbd_add_descriptor(&usbd, &desc_manufacturer)) ||
+        !CHK(usbd_add_descriptor(&usbd, &desc_product)) ||
+        !CHK(usbd_add_descriptor(&usbd, &desc_serial_number))) {
+        return;
+    }
+
+    if (USBD_SUPPORTS_HIGH_SPEED && (usbd_caps_speed(&usbd) == USBD_SPEED_HS)) {
+        if (!add_configuration(USBD_SPEED_HS, &hs_config)) {
+            return;
+        }
+    }
+
+    if (!add_configuration(USBD_SPEED_FS, &fs_config)) {
+        return;
+    }
+
+    usbd_self_powered(&usbd, false);
+
+    if (!CHK(usbd_msg_register_cb(&usbd, usbd_msg_cb))) {
+        return;
+    }
+
+    if (!CHK(usbd_init(&usbd))) {
+        return;
+    }
+
+    // udc_nrf only reports VBUS when it changes, so if it's already present
+    // when we start (e.g. when the UF2 bootloader starts us after flashing),
+    // we never get USBD_MSG_VBUS_READY. We're always USB powered anyway.
+    enable_usb(&usbd);
 }
 
 static void bt_init() {
@@ -843,11 +1109,20 @@ void do_persist_config(uint8_t* buffer) {
     CHK(settings_save_one("remapper/config", buffer, PERSISTED_CONFIG_SIZE));
 }
 
-// https://github.com/adafruit/Adafruit_nRF52_Bootloader/blob/master/src/main.c#L116
-const int DFU_MAGIC_UF2_RESET = 0x57;
-
 void reset_to_bootloader() {
-    sys_reboot(DFU_MAGIC_UF2_RESET);
+#if defined(CONFIG_BUILD_OUTPUT_UF2) && defined(CONFIG_RETAINED_MEM_NRF_GPREGRET)
+    const struct device* gpregret_dev = DEVICE_DT_GET(DT_NODELABEL(gpregret1));
+
+    // https://github.com/adafruit/Adafruit_nRF52_Bootloader/blob/master/src/main.c#L116
+    const uint8_t DFU_MAGIC_UF2_RESET = 0x57;
+
+    // The bootloader sees the magic value after the reboot and enters UF2 mode.
+    if (CHK(retained_mem_write(gpregret_dev, 0, &DFU_MAGIC_UF2_RESET, 1))) {
+        sys_reboot(SYS_REBOOT_WARM);
+    }
+#else
+    LOG_WRN("no UF2 bootloader on this board");
+#endif
 }
 
 void flash_b_side() {
@@ -927,7 +1202,7 @@ int main() {
 
     while (true) {
         if (!process_pending && !k_msgq_get(&report_q, &incoming_report, K_NO_WAIT)) {
-            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface);
+            handle_received_report(incoming_report.data, incoming_report.len, (uint16_t) incoming_report.interface, incoming_report.report_id);
             process_pending = true;
         }
         if (atomic_test_and_clear_bit(tick_pending, 0)) {
@@ -972,7 +1247,7 @@ int main() {
 
         while (!k_msgq_get(&descriptor_q, &incoming_descriptor, K_NO_WAIT)) {
             LOG_HEXDUMP_DBG(incoming_descriptor.data, incoming_descriptor.size, "incoming_descriptor");
-            parse_descriptor(1, 1, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
+            parse_descriptor(incoming_descriptor.vid, incoming_descriptor.pid, incoming_descriptor.data, incoming_descriptor.size, incoming_descriptor.conn_idx << 8, 0);
         }
 
         if (resume_pending) {

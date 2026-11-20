@@ -1,0 +1,21 @@
+name: build-nrf
+on:
+  push:
+    paths:
+      - 'firmware-bluetooth/**'
+  workflow_call:
+defaults:
+  run:
+    shell: bash --noprofile --norc -x -e -o pipefail {0}
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build
+        run: |
+          docker run -v $PWD:/workdir/project -w /workdir/project/firmware-bluetooth ghcr.io/zephyrproject-rtos/ci:v0.29.2 ./build.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: artifact-nrf
+          path: firmware-bluetooth/artifacts/*

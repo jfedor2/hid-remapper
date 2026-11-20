@@ -1,0 +1,30 @@
+/ {
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,bt-mon-uart = &uart0;
+		zephyr,bt-c2h-uart = &uart0;
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 2 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Pair button (D0)";
+		};
+	};
+
+	aliases {
+		led1 = &led2; /* blue */
+		sw0 = &button0;
+	};
+};
+
+&uart0 {
+	current-speed = <921600>;
+};
+
+&zephyr_udc0 {
+	/delete-node/ board_cdc_acm_uart;
+};

@@ -24,6 +24,8 @@
  *
  */
 
+#include <stdio.h>
+
 #include <tusb.h>
 
 #include "config.h"
@@ -117,7 +119,11 @@ char const* string_desc_arr[] = {
 #else
     "RP2040",  // 1: Manufacturer
 #endif
+#ifdef REMAPPER_BT
+    "HID Remapper Bluetooth XXXX",  // 2: Product
+#else
     "HID Remapper XXXX",  // 2: Product
+#endif
     "123456789012",       // 3: Serial Number
 };
 
@@ -255,6 +261,9 @@ void tud_hid_set_protocol_cb(uint8_t instance, uint8_t protocol) {
 }
 
 void tud_mount_cb() {
+    // A USB bus reset clears TinyUSB's SOF callback enable, so it has to be set
+    // again each time we get configured.
+    tud_sof_cb_enable(true);
     reset_resolution_multiplier();
     memset(separate_keyboard_report, 0, sizeof(separate_keyboard_report));
     if (boot_protocol_keyboard) {
@@ -269,4 +278,32 @@ void tud_suspend_cb(bool remote_wakeup_en) {
 
 void tud_resume_cb() {
     printf("tud_resume_cb\n");
+}
+
+bool our_hid_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
+    uint8_t report_id = report_with_id[0];
+    if ((interface == 0) && (our_descriptor->separate_mouse_descriptor != nullptr)) {
+        if (report_id == our_descriptor->separate_keyboard_report_id) {
+            // boot keyboard interface, no report ID
+            report_id = 0;
+        } else {
+            interface = 2;
+        }
+    }
+    if (tud_suspended() &&
+        (our_descriptor->should_cause_wakeup != nullptr) &&
+        our_descriptor->should_cause_wakeup(report_with_id[0], report_with_id + 1, len - 1)) {
+        tud_remote_wakeup();
+    } else {
+        bool sent = tud_hid_n_report(interface, report_id, report_with_id + 1, len - 1);
+        if (sent && (interface == 0) && (report_id == 0) && (our_descriptor->separate_mouse_descriptor != nullptr)) {
+            memcpy(separate_keyboard_report, report_with_id + 1, (len - 1 < BOOT_KB_REPORT_SIZE) ? len - 1 : BOOT_KB_REPORT_SIZE);
+        }
+    }
+    return true;  // XXX?
+}
+
+bool our_hid_interfaces_ready() {
+    return tud_hid_n_ready(0) &&
+           ((our_descriptor->separate_mouse_descriptor == nullptr) || tud_hid_n_ready(2));
 }

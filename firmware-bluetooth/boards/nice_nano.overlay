@@ -1,0 +1,38 @@
+/ {
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,uart-mcumgr = &uart0;
+		zephyr,bt-mon-uart = &uart0;
+		zephyr,bt-c2h-uart = &uart0;
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&pro_micro 2 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "Pair button (D2)";
+		};
+	};
+
+	leds {
+		/* There's only one LED on the board, so for activity we
+		 * use the next pin on the header, where the user can wire
+		 * an LED if they want. */
+		activity_led: led_1 {
+			gpios = <&pro_micro 3 GPIO_ACTIVE_HIGH>;
+			label = "Activity LED (D3)";
+		};
+	};
+
+	aliases {
+		led0 = &activity_led;
+		led1 = &blue_led;
+		sw0 = &button0;
+	};
+};
+
+&uart0 {
+	status = "okay";
+	current-speed = <921600>;
+};

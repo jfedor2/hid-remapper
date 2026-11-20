@@ -36,6 +36,7 @@ const uint16_t PRODUCT_ID_GOOGLE_STADIA_CONTROLLER = 0x9400;
 const uint16_t VENDOR_ID_VALVE = 0x28de;
 const uint16_t PRODUCT_ID_VALVE_STEAM_CONTROLLER_PUCK = 0x1304;
 const uint16_t PRODUCT_ID_VALVE_STEAM_CONTROLLER = 0x1302;
+const uint16_t PRODUCT_ID_VALVE_STEAM_CONTROLLER_BLUETOOTH = 0x1303;
 
 const uint8_t elecom_huge_descriptor[] = {
     0x05, 0x01,        // Usage Page (Generic Desktop Ctrls)
@@ -1009,6 +1010,22 @@ uint32_t xbox_mapping7[][2] = {
     { 0x0009000d, 0x00090011 },
 };
 
+uint32_t xbox_bluetooth_mapping[][2] = {
+    { 0x00090001, 0x00090004 },
+    { 0x00090002, 0x00090001 },
+    { 0x00090003, 0x00090002 },
+    { 0x00090004, 0x00090005 },
+    { 0x00090005, 0x00090007 },
+    { 0x00090006, 0x00090008 },
+    { 0x00090009, 0x0009000b },
+    { 0x0009000a, 0x0009000c },
+    { 0x0009000b, 0x0009000e },
+    { 0x0009000c, 0x0009000f },
+    { 0x0009000e, 0x000c00b2 },
+    { 0x00010033, 0x000200c5 },
+    { 0x00010034, 0x000200c4 },
+};
+
 void gamepad_normalize(std::unordered_map<uint32_t, usage_def_t>& current_map, uint32_t mapping[][2], uint16_t nentries) {
     auto new_map = current_map;
 
@@ -1179,7 +1196,8 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
 
     if ((vendor_id == VENDOR_ID_VALVE) &&
         ((product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER) ||
-            (product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER_PUCK))) {
+            (product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER_PUCK) ||
+            (product_id == PRODUCT_ID_VALVE_STEAM_CONTROLLER_BLUETOOTH))) {
         usage_map.clear();
         usage_map[66][0x00090002] = (usage_def_t){
             .report_id = 66,
@@ -1954,6 +1972,11 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             product_id == PRODUCT_ID_MICROSOFT_XBOX_WIRELESS_CONTROLLER) {
             gamepad_normalize(usage_map[32], xbox_mapping32, sizeof(xbox_mapping32) / sizeof(xbox_mapping32[0]));
             gamepad_normalize(usage_map[7], xbox_mapping7, sizeof(xbox_mapping7) / sizeof(xbox_mapping7[0]));
+        }
+        if ((vendor_id == VENDOR_ID_MICROSOFT) &&
+            ((product_id == PRODUCT_ID_MICROSOFT_XBOX_WIRELESS_CONTROLLER_BLUETOOTH) ||
+                (product_id == PRODUCT_ID_MICROSOFT_XBOX_ADAPTIVE_CONTROLLER_BLUETOOTH))) {
+            gamepad_normalize(usage_map[1], xbox_bluetooth_mapping, sizeof(xbox_bluetooth_mapping) / sizeof(xbox_bluetooth_mapping[0]));
         }
     }
 }
