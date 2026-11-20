@@ -13,7 +13,9 @@
 
 #define MAX_INPUT_REPORT_ID 3
 
-#define NOUR_DESCRIPTORS 6
+#define BOOT_KB_REPORT_SIZE 8
+
+#define NOUR_DESCRIPTORS 7
 
 typedef void (*device_connected_t)(uint16_t interface, uint16_t vid, uint16_t pid);
 typedef void (*device_disconnected_t)(uint8_t dev_addr);
@@ -48,6 +50,13 @@ struct our_descriptor_def_t {
     default_value_t default_value = nullptr;
     sanitize_report_t sanitize_report = nullptr;
     should_cause_wakeup_t should_cause_wakeup = nullptr;
+    // If set, the keyboard report goes on interface 0, a boot keyboard
+    // interface without report IDs (boot_kb_report_descriptor), and all
+    // other reports go on interface 2, which uses this descriptor.
+    // Some KVM/KM switches only understand keyboards that look like that.
+    const uint8_t* separate_mouse_descriptor = nullptr;
+    uint32_t separate_mouse_descriptor_length = 0;
+    uint8_t separate_keyboard_report_id = 0;
 };
 
 extern const our_descriptor_def_t our_descriptors[];

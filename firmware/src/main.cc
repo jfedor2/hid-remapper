@@ -70,14 +70,7 @@ void tud_sof_cb(uint32_t frame_count) {
 }
 
 bool do_send_report(uint8_t interface, const uint8_t* report_with_id, uint8_t len) {
-    if (tud_suspended() &&
-        (our_descriptor->should_cause_wakeup != nullptr) &&
-        our_descriptor->should_cause_wakeup(report_with_id[0], report_with_id + 1, len - 1)) {
-        tud_remote_wakeup();
-    } else {
-        tud_hid_n_report(interface, report_with_id[0], report_with_id + 1, len - 1);
-    }
-    return true;  // XXX?
+    return our_hid_send_report(interface, report_with_id, len);
 }
 
 #ifdef ADC_ENABLED
@@ -238,7 +231,7 @@ int main() {
             set_gpio_dir();
             set_gpio_dir_pending = false;
         }
-        if (tud_hid_n_ready(0) || tud_suspended()) {
+        if (our_hid_interfaces_ready() || tud_suspended()) {
             send_report(do_send_report);
         }
         if (monitor_enabled && tud_hid_n_ready(1)) {
