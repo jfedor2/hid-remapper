@@ -368,11 +368,12 @@ static void patch_broken_uuids(struct bt_gatt_dm* dm) {
 // The HOGP library guesses the type of each report from its characteristic
 // properties (write without response -> output, notify -> input, otherwise
 // feature) and then fails if the Report Reference descriptor disagrees.
-// Some devices (e.g. the Stadia controller) have output reports that don't
-// support write without response, so before handing the discovery data over
-// to the library, we read the Report Reference of every report that would be
-// classified as a feature report and adjust the properties if it's actually
-// an output report.
+// Some devices have reports whose properties don't match their type: the
+// Stadia controller has output reports that don't support write without
+// response, and ZMK keyboards with smooth scrolling enabled have a feature
+// report that does. So before handing the discovery data over to the library,
+// we read the Report Reference of every report and adjust the properties so
+// that the library's guess matches the declared type.
 //
 // There's only one discovery in progress at a time, so this state is global.
 static struct bt_gatt_dm* patch_dm;
@@ -385,9 +386,30 @@ static void patch_report_types_next();
 static uint8_t on_report_ref_read(struct bt_conn* conn, uint8_t err, struct bt_gatt_read_params* params, const void* data, uint16_t length) {
     if (err) {
         LOG_ERR("err=%d", err);
-    } else if (data && (length == 2) && (((const uint8_t*) data)[1] == BT_HIDS_REPORT_TYPE_OUTPUT)) {
-        LOG_INF("report ID %u is an output report without write without response", ((const uint8_t*) data)[0]);
-        bt_gatt_dm_attr_chrc_val(patch_chrc)->properties |= BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+    } else if (data && (length == 2)) {
+        struct bt_gatt_chrc* chrc = bt_gatt_dm_attr_chrc_val(patch_chrc);
+        uint8_t original_properties = chrc->properties;
+
+        switch (((const uint8_t*) data)[1]) {
+            case BT_HIDS_REPORT_TYPE_INPUT:
+                chrc->properties |= BT_GATT_CHRC_NOTIFY;
+                chrc->properties &= ~BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+                break;
+            case BT_HIDS_REPORT_TYPE_OUTPUT:
+                chrc->properties |= BT_GATT_CHRC_WRITE_WITHOUT_RESP;
+                chrc->properties &= ~BT_GATT_CHRC_NOTIFY;
+                break;
+            case BT_HIDS_REPORT_TYPE_FEATURE:
+                chrc->properties &= ~(BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_NOTIFY);
+                break;
+            default:
+                break;
+        }
+
+        if (chrc->properties != original_properties) {
+            LOG_INF("report ID %u type %u: properties 0x%02x -> 0x%02x",
+                ((const uint8_t*) data)[0], ((const uint8_t*) data)[1], original_properties, chrc->properties);
+        }
     }
 
     patch_report_types_next();
@@ -400,8 +422,7 @@ static void patch_report_types_next() {
 
     while (NULL != (patch_chrc = bt_gatt_dm_char_next(patch_dm, patch_chrc))) {
         const struct bt_gatt_chrc* chrc = bt_gatt_dm_attr_chrc_val(patch_chrc);
-        if (bt_uuid_cmp(chrc->uuid, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_) ||
-            (chrc->properties & (BT_GATT_CHRC_WRITE_WITHOUT_RESP | BT_GATT_CHRC_NOTIFY))) {
+        if (bt_uuid_cmp(chrc->uuid, (struct bt_uuid*) &BT_UUID_HIDS_REPORT_)) {
             continue;
         }
 
