@@ -1,12 +1,14 @@
+#include <stdio.h>
+
 #include <tusb.h>
 
 #include "pio_usb.h"
-#include "usb_midi_host.h"
 
 #include "pico/platform.h"
 #include "pico/time.h"
 
 #include "descriptor_parser.h"
+#include "interval_override.h"
 #include "out_report.h"
 #include "remapper.h"
 #include "tick.h"
@@ -25,6 +27,7 @@ void extra_init() {
     pio_cfg.skip_alarm_pool = true;
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
     add_repeating_timer_us(-1000, manual_sof, NULL, &sof_timer);
+    pio_usb_host_set_interval_override(interval_override);
 }
 
 uint32_t get_gpio_valid_pins_mask() {
@@ -34,6 +37,18 @@ uint32_t get_gpio_valid_pins_mask() {
 #endif
 #ifdef PICO_DEFAULT_UART_RX_PIN
                                       (1 << PICO_DEFAULT_UART_RX_PIN) |
+#endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN2
+                                      (1 << PICO_DEFAULT_PIO_USB_DP_PIN2) |
+                                      (1 << (PICO_DEFAULT_PIO_USB_DP_PIN2 + 1)) |
+#endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN3
+                                      (1 << PICO_DEFAULT_PIO_USB_DP_PIN3) |
+                                      (1 << (PICO_DEFAULT_PIO_USB_DP_PIN3 + 1)) |
+#endif
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN4
+                                      (1 << PICO_DEFAULT_PIO_USB_DP_PIN4) |
+                                      (1 << (PICO_DEFAULT_PIO_USB_DP_PIN4 + 1)) |
 #endif
                                       (1 << PICO_DEFAULT_PIO_USB_DP_PIN) |
                                       (1 << (PICO_DEFAULT_PIO_USB_DP_PIN + 1)));
@@ -50,9 +65,23 @@ void read_report(bool* new_report, bool* tick) {
 }
 
 void interval_override_updated() {
+    pio_usb_host_set_interval_override(interval_override);
 }
 
 void flash_b_side() {
+}
+
+uint8_t get_hub_port(uint8_t dev_addr) {
+    tuh_bus_info_t bus_info;
+    tuh_bus_info_get(dev_addr, &bus_info);
+#ifdef PICO_DEFAULT_PIO_USB_DP_PIN2
+    // Devices plugged directly into one of the PIO-USB ports (rhport 1, 2, ...)
+    // get hub_port 1, 2, ..., as if they were plugged into a hub.
+    if (bus_info.hub_addr == 0) {
+        return bus_info.rhport;
+    }
+#endif
+    return bus_info.hub_port;
 }
 
 void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port, uint8_t itf_num) {
@@ -64,9 +93,7 @@ void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
     printf("tuh_hid_mount_cb\n");
 
-    uint8_t hub_addr;
-    uint8_t hub_port;
-    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+    uint8_t hub_port = get_hub_port(dev_addr);
 
     uint16_t vid;
     uint16_t pid;
@@ -104,13 +131,13 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     tuh_hid_receive_report(dev_addr, instance);
 }
 
-void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
-    uint8_t hub_addr;
-    uint8_t hub_port;
-    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+void tuh_midi_rx_cb(uint8_t idx, uint32_t xferred_bytes) {
+    tuh_itf_info_t itf_info;
+    tuh_midi_itf_get_info(idx, &itf_info);
+    uint8_t hub_port = get_hub_port(itf_info.daddr);
 
     uint8_t buf[4];
-    while (tuh_midi_packet_read(dev_addr, buf)) {
+    while (tuh_midi_packet_read(idx, buf)) {
         handle_received_midi(hub_port, buf);
     }
     reports_received = true;

@@ -1,8 +1,6 @@
 #include <bsp/board_api.h>
 #include <tusb.h>
 
-#include "usb_midi_host.h"
-
 #include "hardware/watchdog.h"
 #include "pico/stdio.h"
 #include "pico/time.h"
@@ -91,6 +89,12 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
     tuh_hid_receive_report(dev_addr, instance);
 }
 
+uint8_t get_hub_port(uint8_t dev_addr) {
+    tuh_bus_info_t bus_info;
+    tuh_bus_info_get(dev_addr, &bus_info);
+    return bus_info.hub_port;
+}
+
 void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t hub_port, uint8_t itf_num) {
     device_connected_t* msg = (device_connected_t*) buffer;
     msg->command = DualCommand::DEVICE_CONNECTED;
@@ -107,9 +111,7 @@ void descriptor_received_callback(uint16_t vendor_id, uint16_t product_id, const
 void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_report, uint16_t desc_len) {
     printf("tuh_hid_mount_cb\n");
 
-    uint8_t hub_addr;
-    uint8_t hub_port;
-    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+    uint8_t hub_port = get_hub_port(dev_addr);
 
     uint16_t vid;
     uint16_t pid;
@@ -140,6 +142,10 @@ void tuh_sof_cb() {
     serial_write_nonblocking((uint8_t*) &msg, sizeof(msg));
 }
 
+uint8_t tuh_interval_override_cb(uint8_t dev_addr, uint8_t ep_addr, uint8_t bInterval) {
+    return interval_override;
+}
+
 void get_report_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_id, uint8_t report_type, uint8_t* report, uint16_t len) {
     get_feature_response_t* msg = (get_feature_response_t*) buffer;
     msg->command = DualCommand::GET_FEATURE_RESPONSE;
@@ -159,17 +165,17 @@ void set_report_complete_cb(uint8_t dev_addr, uint8_t interface, uint8_t report_
     serial_write((uint8_t*) msg, sizeof(set_feature_complete_t));
 }
 
-void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets) {
+void tuh_midi_rx_cb(uint8_t idx, uint32_t xferred_bytes) {
     activity_led_on();
 
-    uint8_t hub_addr;
-    uint8_t hub_port;
-    tuh_get_hub_addr_port(dev_addr, &hub_addr, &hub_port);
+    tuh_itf_info_t itf_info;
+    tuh_midi_itf_get_info(idx, &itf_info);
+    uint8_t hub_port = get_hub_port(itf_info.daddr);
 
     midi_received_t* msg = (midi_received_t*) buffer;
     msg->command = DualCommand::MIDI_RECEIVED;
     msg->hub_port = hub_port;
-    while (tuh_midi_packet_read(dev_addr, msg->msg)) {
+    while (tuh_midi_packet_read(idx, msg->msg)) {
         serial_write_nonblocking((uint8_t*) msg, sizeof(midi_received_t));
     }
 }

@@ -1,0 +1,61 @@
+SECTIONS
+{
+    .rodata : {
+        /* segments not marked as .flashdata are instead pulled into .data (in RAM) to avoid accidental flash accesses */
+        *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.flashdata*)))
+        . = ALIGN(4);
+        /* The CYW43 firmware is too big for RAM and only read at startup */
+        *(.rodata.wb43439A0*)
+        *(.rodata.cyw43_btfw_*)
+        . = ALIGN(4);
+        /* HID Remapper's own code and constant data stay in flash, only library and SDK code is copied to RAM */
+        CMakeFiles/remapper_bt.dir/src/*.o(.text* .rodata*)
+        . = ALIGN(4);
+        /*
+         * Library code and data that isn't on the per-report path also stays in
+         * flash, to leave more RAM for the heap (mapping tables, device descriptors).
+         * What has to be fast (CYW43 bus and BT transport, hci.c, l2cap.c, hid_host.c,
+         * the run loop, TinyUSB, malloc/memcpy/division/float) is still copied to RAM.
+         * Functions marked __not_in_flash are in .time_critical sections and aren't
+         * affected by these patterns.
+         */
+        *btstack/src/classic/sdp_*.o(.text* .rodata*)
+        *btstack/src/classic/btstack_link_key_db_tlv.c.o(.text* .rodata*)
+        *btstack/src/btstack_tlv_flash_bank.c.o(.text* .rodata*)
+        *btstack/src/hci_cmd.c.o(.text* .rodata*)
+        *btstack/src/l2cap_signaling.c.o(.text* .rodata*)
+        *btstack/src/btstack_memory.c.o(.text* .rodata*)
+        *btstack/src/btstack_crypto.c.o(.text* .rodata*)
+        *btstack/src/hci_dump.c.o(.text* .rodata*)
+        *pico_btstack/btstack_flash_bank.c.o(.text* .rodata*)
+        *pico_btstack/btstack_stdin_pico.c.o(.text* .rodata*)
+        *pico_cyw43_driver/cyw43_bus_pio_spi.c.o(.rodata*)
+        *cyw43-driver/src/cyw43_ctrl.c.o(.rodata*)
+        *cyw43-driver/src/cyw43_ll.c.o(.rodata*)
+        *pico_printf/printf.c.o(.text* .rodata*)
+        *pico_stdio/stdio.c.o(.text* .rodata*)
+        *pico_stdio_uart/stdio_uart.c.o(.text* .rodata*)
+        *hardware_uart/uart.c.o(.text* .rodata*)
+        *hardware_clocks/clocks.c.o(.text* .rodata*)
+        *pico_runtime_init/*.o(.text* .rodata*)
+        *pico_runtime/*.o(.text* .rodata*)
+        *pico_crt0/*.o(.rodata*)
+        *hardware_claim/claim.c.o(.text* .rodata*)
+        *hardware_pll/*.o(.text* .rodata*)
+        *hardware_xosc/*.o(.text* .rodata*)
+        *pico_unique_id/*.o(.text* .rodata*)
+        *libstdc++.a:*(.text* .rodata*)
+        *libsupc++.a:*(.text* .rodata*)
+        *libgcc.a:unwind-arm.o(.text* .rodata*)
+        *libgcc.a:libunwind.o(.text* .rodata*)
+        *libgcc.a:pr-support.o(.text* .rodata*)
+        *libg.a:libc_a-signal.o(.text* .rodata*)
+        *libg.a:libc_a-signalr.o(.text* .rodata*)
+        *libg.a:libc_a-strtoul.o(.text* .rodata*)
+        *libg.a:libc_a-getenv*.o(.text* .rodata*)
+        *libg.a:libc_a-abort.o(.text* .rodata*)
+        *libg.a:libc_a-sysconf.o(.text* .rodata*)
+        *libg.a:libc_a-ctype_.o(.text* .rodata*)
+        . = ALIGN(4);
+    } > TEXT_STORE
+}

@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 
-add_subdirectory(usb_midi_host)
-
 add_compile_definitions(PICO_DEFAULT_UART_BAUD_RATE=921600)
 add_compile_definitions(PERSISTED_CONFIG_SIZE=4096)
 add_compile_definitions(PICO_XOSC_STARTUP_DELAY_MULTIPLIER=64)
@@ -13,9 +11,32 @@ set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/boards")
 
 include(pico_sdk_import.cmake)
 
+# RP2040 runs at 192 MHz: a multiple of 48 MHz for Pico-PIO-USB, within the
+# chip's 200 MHz rating with the core at 1.15 V. The flash clock divider goes
+# up to 4 (48 MHz) so that flash chips on all sorts of boards keep up. Set
+# before pico_sdk_init() so that the SDK's boot2 gets the divider too.
+if(PICO_PLATFORM STREQUAL "rp2040")
+    add_compile_definitions(
+        SYS_CLK_HZ=192000000
+        PLL_SYS_VCO_FREQ_HZ=1536000000
+        PLL_SYS_POSTDIV1=4
+        PLL_SYS_POSTDIV2=2
+        SYS_CLK_VREG_VOLTAGE_AUTO_ADJUST=1
+        SYS_CLK_VREG_VOLTAGE_MIN=VREG_VOLTAGE_1_15
+        PICO_FLASH_SPI_CLKDIV=4
+    )
+endif()
+
 project(remapper)
 
 pico_sdk_init()
+
+# Panic and HardFault handlers that blink a pattern on PICO_DEFAULT_LED_PIN
+# (see src/fault_led.cc).
+function(add_fault_led TARGET)
+    target_sources(${TARGET} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/fault_led.cc)
+    target_compile_definitions(${TARGET} PRIVATE PICO_PANIC_FUNCTION=fault_led_panic)
+endfunction()
 
 check_and_add_pico_pio_usb_support()
 
@@ -30,6 +51,7 @@ endif()
 
 add_executable(remapper
     src/main.cc
+    src/our_gpio.cc
     src/remapper.cc
     src/remapper_single.cc
     src/crc.cc
@@ -52,6 +74,10 @@ if((PICO_BOARD STREQUAL "pico") OR (PICO_BOARD STREQUAL "pico2"))
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_TX_PIN=16)
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_UART_RX_PIN=17)
 target_compile_definitions(remapper PUBLIC PICO_DEFAULT_PIO_USB_DP_PIN=0)
+target_compile_definitions(remapper PUBLIC PICO_DEFAULT_PIO_USB_DP_PIN2=2)
+# target_compile_definitions(remapper PUBLIC PICO_DEFAULT_PIO_USB_DP_PIN3=4)
+# target_compile_definitions(remapper PUBLIC PICO_DEFAULT_PIO_USB_DP_PIN4=6)
+# target_compile_definitions(remapper PUBLIC PIO_USB_ROOT_PORT_CNT=4)
 endif()
 
 target_include_directories(remapper PRIVATE
@@ -62,7 +88,6 @@ target_include_directories(remapper PRIVATE
 
 target_link_libraries(remapper
     pico_stdlib
-    pico_multicore
     pico_unique_id
     hardware_pio
     hardware_dma
@@ -72,22 +97,17 @@ target_link_libraries(remapper
     tinyusb_host
     tinyusb_board
     tinyusb_pico_pio_usb
-    usb_midi_host
 )
 
 pico_set_binary_type(remapper copy_to_ram)
-if(PICO_PLATFORM STREQUAL "rp2040")
-    pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single.ld)
-elseif(PICO_PLATFORM STREQUAL "rp2350-arm-s")
-    pico_set_linker_script(remapper ${CMAKE_CURRENT_LIST_DIR}/remapper_single_rp2350.ld)
-else()
-    message(FATAL_ERROR "Unknown PICO_PLATFORM.")
-endif()
+pico_add_linker_script_override_path(remapper ${CMAKE_CURRENT_LIST_DIR}/linker_single FILES section_copy_to_ram_rodata.incl)
+add_fault_led(remapper)
 pico_add_extra_outputs(remapper)
 
 
 add_executable(remapper_dual_a
     src/main.cc
+    src/our_gpio.cc
     src/remapper.cc
     src/remapper_dual_a.cc
     src/crc.cc
@@ -124,6 +144,7 @@ target_link_libraries(remapper_dual_a
     pico_unique_id
 )
 pico_generate_pio_header(remapper_dual_a ${CMAKE_CURRENT_LIST_DIR}/src/pico_debug/swd.pio)
+add_fault_led(remapper_dual_a)
 pico_add_extra_outputs(remapper_dual_a)
 
 add_executable(remapper_dual_b
@@ -144,8 +165,8 @@ target_link_libraries(remapper_dual_b
     pico_stdlib
     tinyusb_host
     tinyusb_board
-    usb_midi_host
 )
+add_fault_led(remapper_dual_b)
 pico_add_extra_outputs(remapper_dual_b)
 pico_add_hex_output(remapper_dual_b)
 
@@ -158,6 +179,7 @@ add_custom_command(
 
 add_executable(remapper_serial
     src/main.cc
+    src/our_gpio.cc
     src/remapper.cc
     src/remapper_serial.cc
     src/crc.cc
@@ -183,6 +205,7 @@ target_link_libraries(remapper_serial
     tinyusb_device
     tinyusb_board
 )
+add_fault_led(remapper_serial)
 pico_add_extra_outputs(remapper_serial)
 
 add_executable(flash_b_side
@@ -214,3 +237,71 @@ add_custom_command(
 add_custom_target(remapper_dual_combined ALL
     DEPENDS remapper_dual_combined.uf2
 )
+
+if(PICO_CYW43_SUPPORTED)
+
+add_executable(remapper_bt
+    src/main_bt.cc
+    src/activity_led.cc
+    src/our_gpio.cc
+    src/main_bt_usb.cc
+    src/remapper.cc
+    src/crc.cc
+    src/descriptor_parser.cc
+    src/tinyusb_stuff.cc
+    src/our_descriptor.cc
+    src/globals.cc
+    src/config.cc
+    src/quirks.cc
+    src/interval_override.cc
+    src/tick.cc
+    src/ps_auth.cc
+)
+target_include_directories(remapper_bt PRIVATE
+    src
+    src/tusb_config_device
+)
+# Keep BTstack's link-key flash storage (2 sectors) clear of the remapper
+# config sector. On RP2350 the config is one sector further down (the last
+# sector gets wiped on every UF2 flash - see main_bt.cc / RP2350-E10), so the
+# BTstack storage moves down to match.
+if(PICO_PLATFORM STREQUAL "rp2040")
+    set(remapper_bt_flash_bank_offset "PICO_FLASH_SIZE_BYTES-4096-8192")
+else()
+    set(remapper_bt_flash_bank_offset "PICO_FLASH_SIZE_BYTES-8192-8192")
+endif()
+target_compile_definitions(remapper_bt PRIVATE
+    REMAPPER_BT
+    PICO_FLASH_BANK_STORAGE_OFFSET=${remapper_bt_flash_bank_offset}
+    # We use the CYW43 chip for Bluetooth only, no networking.
+    CYW43_LWIP=0
+    # The Pico W's own LED is on the CYW43 chip and too slow to drive (and
+    # unusable in a fault handler), so the LEDs go on regular GPIOs. The
+    # default LED is the activity LED, like in the USB versions, and also shows
+    # the fault patterns (fault_led.cc).
+    PICO_DEFAULT_LED_PIN=4
+    STATUS_LED_PIN=3
+    # Short press: pair a new device. Hold for more than 3 seconds: forget all
+    # paired devices (and start pairing).
+    PAIRING_BUTTON_PIN=2
+)
+target_link_libraries(remapper_bt
+    pico_stdlib
+    pico_unique_id
+    hardware_flash
+    hardware_watchdog
+    tinyusb_device
+    tinyusb_board
+    pico_btstack_classic
+    pico_btstack_cyw43
+    pico_btstack_flash_bank
+    pico_cyw43_arch_poll
+)
+# Running the CYW43 driver and BTstack from flash is too slow to keep up with a
+# device that sends reports every millisecond or so.
+pico_set_binary_type(remapper_bt copy_to_ram)
+pico_add_linker_script_override_path(remapper_bt ${CMAKE_CURRENT_LIST_DIR}/linker_bt FILES section_copy_to_ram_rodata.incl)
+add_fault_led(remapper_bt)
+pico_add_extra_outputs(remapper_bt)
+
+endif()

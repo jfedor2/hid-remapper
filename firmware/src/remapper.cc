@@ -379,7 +379,10 @@ inline uint8_t* get_sticky_state_ptr(uint32_t usage, uint8_t hub_port, bool assi
 }
 
 void set_mapping_from_config() {
-    std::unordered_map<uint64_t, std::vector<map_source_t>> reverse_mapping_map;  // hub_port+target -> sources list
+    // (hub_port+target, source) pairs, grouped by target further down. This used to be
+    // a map of vectors, but that takes two allocations per target and this function
+    // runs into the heap limit on platforms with less RAM to spare.
+    std::vector<std::pair<uint64_t, map_source_t>> sources_list;
     std::unordered_map<uint64_t, uint8_t> sticky_usage_map;
     std::unordered_map<uint64_t, uint8_t> tap_sticky_usage_map;
     std::unordered_map<uint64_t, uint8_t> hold_sticky_usage_map;
@@ -389,9 +392,10 @@ void set_mapping_from_config() {
     validate_expressions();
     invalidate_expr_state_ptr_cache();
 
-    reverse_mapping.clear();
-    reverse_mapping_macros.clear();
-    reverse_mapping_layers.clear();
+    // Free the old buffers (clear() would keep them) so they don't add to the peak.
+    std::vector<reverse_mapping_t>().swap(reverse_mapping);
+    std::vector<reverse_mapping_t>().swap(reverse_mapping_macros);
+    std::vector<reverse_mapping_t>().swap(reverse_mapping_layers);
     used_state_slots = 0;
     usage_state_ptr.clear();
     register_ptrs.clear();
@@ -401,6 +405,8 @@ void set_mapping_from_config() {
     active_ports_mask = 0;
     uint32_t gpio_in_mask_ = 0;
     uint32_t gpio_out_mask_ = 0;
+
+    sources_list.reserve(config_mappings.size());
 
     for (auto const& mapping : config_mappings) {
         uint8_t layer_mask = mapping.layer_mask;
@@ -436,7 +442,7 @@ void set_mapping_from_config() {
         }
 
         if (assign_state_slot(mapping.source_usage, source_port, false)) {
-            reverse_mapping_map[((uint64_t) target_port << 32) | mapping.target_usage].push_back((map_source_t){
+            sources_list.emplace_back(((uint64_t) target_port << 32) | mapping.target_usage, (map_source_t){
                 .usage = mapping.source_usage,
                 .scaling = mapping.scaling,
                 .sticky = (mapping.flags & MAPPING_FLAG_STICKY) != 0,
@@ -558,11 +564,26 @@ void set_mapping_from_config() {
     }
 
     if (unmapped_passthrough_layer_mask) {
+        // Look up without inserting (operator[] would add an entry for every usage).
+        auto mapped_layers = [&mapped_on_layers](uint32_t usage) -> uint8_t {
+            auto search = mapped_on_layers.find(usage);
+            return (search != mapped_on_layers.end()) ? search->second : 0;
+        };
+
+        size_t passthrough_count = our_usages_flat.size();
+        for (auto const& array_usage : our_array_range_usages) {
+            passthrough_count += array_usage.usage_def.usage_maximum - array_usage.usage + 1;
+        }
+        for (auto const& [report_id, usage_map] : their_usages[OUR_OUT_INTERFACE]) {
+            passthrough_count += usage_map.size();
+        }
+        sources_list.reserve(sources_list.size() + passthrough_count);
+
         for (auto const& [usage, usage_def] : our_usages_flat) {
-            uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
+            uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
             if (unmapped_layers) {
                 if (assign_state_slot(usage, 0, false)) {
-                    reverse_mapping_map[usage].push_back((map_source_t){
+                    sources_list.emplace_back(usage, (map_source_t){
                         .usage = usage,
                         .layer_mask = unmapped_layers,
                         .input_state = get_state_ptr(usage, 0),
@@ -573,10 +594,10 @@ void set_mapping_from_config() {
 
         for (auto const& array_usage : our_array_range_usages) {
             for (uint32_t usage = array_usage.usage; usage <= array_usage.usage_def.usage_maximum; usage++) {
-                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
+                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
                 if (unmapped_layers) {
                     if (assign_state_slot(usage, 0, false)) {
-                        reverse_mapping_map[usage].push_back((map_source_t){
+                        sources_list.emplace_back(usage, (map_source_t){
                             .usage = usage,
                             .layer_mask = unmapped_layers,
                             .input_state = get_state_ptr(usage, 0),
@@ -588,10 +609,10 @@ void set_mapping_from_config() {
 
         for (auto const& [report_id, usage_map] : their_usages[OUR_OUT_INTERFACE]) {
             for (auto const& [usage, usage_def] : usage_map) {
-                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_on_layers[usage];
+                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
                 if (unmapped_layers) {
                     if (assign_state_slot(usage, 0, false)) {
-                        reverse_mapping_map[usage].push_back((map_source_t){
+                        sources_list.emplace_back(usage, (map_source_t){
                             .usage = usage,
                             .layer_mask = unmapped_layers,
                             .input_state = get_state_ptr(usage, 0),
@@ -602,14 +623,57 @@ void set_mapping_from_config() {
         }
     }
 
-    for (auto const& [hub_port_target, sources] : reverse_mapping_map) {
+    mapped_on_layers.clear();
+    tap_hold_usage_set.clear();
+    sticky_usage_map.clear();
+    tap_sticky_usage_map.clear();
+    hold_sticky_usage_map.clear();
+
+    // Group the sources by target. The order of sources within a target doesn't
+    // matter (std::sort isn't stable, but it's deterministic).
+    std::sort(sources_list.begin(), sources_list.end(), [](auto const& a, auto const& b) {
+        return a.first < b.first;
+    });
+
+    // Reserve exactly, so the vectors don't grow by doubling.
+    size_t n_macros = 0;
+    size_t n_layers = 0;
+    size_t n_others = 0;
+    for (size_t i = 0; i < sources_list.size(); i++) {
+        if ((i > 0) && (sources_list[i].first == sources_list[i - 1].first)) {
+            continue;
+        }
+        uint32_t target = sources_list[i].first & 0xFFFFFFFF;
+        if ((target & 0xFFFF0000) == MACRO_USAGE_PAGE) {
+            n_macros++;
+        } else if ((target & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
+            n_layers++;
+        } else {
+            n_others++;
+        }
+    }
+    reverse_mapping_macros.reserve(n_macros);
+    reverse_mapping_layers.reserve(n_layers);
+    reverse_mapping.reserve(n_others);
+
+    for (auto group_start = sources_list.begin(); group_start != sources_list.end();) {
+        uint64_t hub_port_target = group_start->first;
+        auto group_end = group_start;
+        while ((group_end != sources_list.end()) && (group_end->first == hub_port_target)) {
+            group_end++;
+        }
         uint8_t hub_port = (hub_port_target >> 32) & 0xFF;
         uint32_t target = hub_port_target & 0xFFFFFFFF;
         reverse_mapping_t rev_map = {
             .target = target,
             .hub_port = hub_port,
-            .sources = sources,
         };
+        rev_map.sources.reserve(group_end - group_start);
+        for (auto it = group_start; it != group_end; it++) {
+            rev_map.sources.push_back(it->second);
+        }
+        group_start = group_end;
+        const std::vector<map_source_t>& sources = rev_map.sources;
         if (our_descriptor->default_value != nullptr) {
             rev_map.default_value = our_descriptor->default_value(target);
             // This helps in cases where nothing is plugged in to provide state for a source
@@ -691,11 +755,11 @@ void set_mapping_from_config() {
             }
         }
         if ((target & 0xFFFF0000) == MACRO_USAGE_PAGE) {
-            reverse_mapping_macros.push_back(rev_map);
+            reverse_mapping_macros.push_back(std::move(rev_map));
         } else if ((target & 0xFFFF0000) == LAYERS_USAGE_PAGE) {
-            reverse_mapping_layers.push_back(rev_map);
+            reverse_mapping_layers.push_back(std::move(rev_map));
         } else {
-            reverse_mapping.push_back(rev_map);
+            reverse_mapping.push_back(std::move(rev_map));
         }
     }
 
