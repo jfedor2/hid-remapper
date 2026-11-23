@@ -53,4 +53,6 @@ std::vector<quirk_t> quirks;
 bool boot_protocol_keyboard = false;
 bool boot_protocol_updated = false;
 
+uint8_t separate_keyboard_report[BOOT_KB_REPORT_SIZE] = { 0 };
+
 volatile PersistConfigReturnCode persist_config_return_code = PersistConfigReturnCode::UNKNOWN;

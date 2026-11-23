@@ -1081,7 +1081,7 @@ int main() {
             set_gpio_dir();
             set_gpio_dir_pending = false;
         }
-        if (bt_usb_hid_ready(0) || bt_usb_suspended()) {
+        if (our_hid_interfaces_ready() || bt_usb_suspended()) {
             send_report(bt_usb_do_send_report);
         }
         if (monitor_enabled && bt_usb_hid_ready(1)) {
