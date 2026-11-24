@@ -14,6 +14,10 @@ commands = {
 
 device = get_device()
 
+if not sys.argv or sys.argv[1].lower() not in commands:
+    print("Provide one command: ", ', '.join(commands))
+    sys.exit(1)
+
 config_command = commands[sys.argv[1].lower()]
 
 data = struct.pack(
