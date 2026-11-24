@@ -11,6 +11,7 @@ const uint8_t HID_INPUT = 0x80;
 const uint8_t HID_OUTPUT = 0x90;
 const uint8_t HID_FEATURE = 0xB0;
 const uint8_t HID_COLLECTION = 0xA0;
+const uint8_t HID_END_COLLECTION = 0xC0;
 const uint8_t HID_USAGE_PAGE = 0x04;
 const uint8_t HID_REPORT_SIZE = 0x74;
 const uint8_t HID_REPORT_ID = 0x84;
@@ -33,7 +34,8 @@ void mark_usage(
     bool is_array = false,
     uint32_t index = 0,
     uint32_t count = 0,
-    uint32_t usage_maximum = 0) {
+    uint32_t usage_maximum = 0,
+    TlcClass tlc_class = TlcClass::UNKNOWN) {
     if (bitpos >= (8 * ((report_id == 0) ? 64 : 63))) {
         // We don't currently handle reports longer than 64 bytes so let's save some memory.
         // It's probably a broken descriptor anyway.
@@ -47,12 +49,27 @@ void mark_usage(
             .bitpos = bitpos,
             .is_relative = is_relative,
             .is_array = is_array,
+            .tlc_class = tlc_class,
             .logical_minimum = logical_minimum,
             .logical_maximum = logical_maximum,
             .index = index,
             .count = count,
             .usage_maximum = usage_maximum,
         });
+}
+
+static TlcClass tlc_class_for_usage(uint32_t usage) {
+    switch (usage) {
+        case 0x00010001:  // Pointer
+        case 0x00010002:  // Mouse
+            return TlcClass::POINTER;
+        case 0x00010004:  // Joystick
+        case 0x00010005:  // Game Pad
+        case 0x00010008:  // Multi-axis Controller
+            return TlcClass::GAMEPAD;
+        default:
+            return TlcClass::UNKNOWN;
+    }
 }
 
 void assign_interface_index(uint16_t interface) {
@@ -165,6 +182,8 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
     int32_t logical_minimum = 0;
     int32_t logical_maximum = 0;
     int32_t unsigned_logical_maximum = 0;
+    uint32_t collection_depth = 0;
+    TlcClass tlc_class = TlcClass::UNKNOWN;
 
     std::unordered_map<ReportType, std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>*> usage_map;
     usage_map[ReportType::INPUT] = &input_usage_map;
@@ -205,7 +224,12 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 report_size,
                                 relative,
                                 logical_minimum,
-                                logical_maximum);
+                                logical_maximum,
+                                false,
+                                0,
+                                0,
+                                0,
+                                tlc_class);
 
                             if (usage < usage_maximum) {
                                 usage++;
@@ -229,7 +253,12 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 report_size,
                                 relative,
                                 logical_minimum,
-                                logical_maximum);
+                                logical_maximum,
+                                false,
+                                0,
+                                0,
+                                0,
+                                tlc_class);
 
                             bitpos[report_type][report_id] += report_size;
                         }
@@ -253,7 +282,8 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                             true,
                             logical_minimum,
                             report_count,
-                            effective_usage_maximum);
+                            effective_usage_maximum,
+                            tlc_class);
                     } else if (!usages.empty()) {
                         uint32_t usage = 0;
                         for (int index = logical_minimum; index <= unsigned_logical_maximum; index++) {
@@ -273,7 +303,9 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                                 unsigned_logical_maximum,
                                 true,
                                 index,
-                                report_count);
+                                report_count,
+                                0,
+                                tlc_class);
                         }
                     }
                     bitpos[report_type][report_id] += report_size * report_count;
@@ -287,9 +319,21 @@ std::unordered_map<ReportType, std::unordered_map<uint8_t, uint16_t>> parse_desc
                 break;
             }
             case HID_COLLECTION:
+                if (collection_depth == 0) {
+                    tlc_class = usages.empty() ? TlcClass::UNKNOWN : tlc_class_for_usage(usages.front());
+                }
+                collection_depth++;
                 usages.clear();
                 usage_minimum = 0;
                 usage_maximum = 0;
+                break;
+            case HID_END_COLLECTION:
+                if (collection_depth > 0) {
+                    collection_depth--;
+                    if (collection_depth == 0) {
+                        tlc_class = TlcClass::UNKNOWN;
+                    }
+                }
                 break;
             case HID_USAGE_PAGE:
                 usage_page = value;

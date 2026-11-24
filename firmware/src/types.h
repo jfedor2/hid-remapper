@@ -34,6 +34,15 @@ enum class ConfigCommand : int8_t {
     GET_QUIRK = 25,
 };
 
+// Coarse class of the top-level collection a usage is in. Only used to stop
+// unmapped passthrough from sending gamepad inputs to mouse outputs and vice versa,
+// as they share usages (X/Y, buttons). Anything else is UNKNOWN, compatible with all.
+enum class TlcClass : uint8_t {
+    UNKNOWN = 0,
+    POINTER = 1,
+    GAMEPAD = 2,
+};
+
 struct usage_def_t {
     uint8_t report_id;
     uint8_t size;
@@ -41,6 +50,7 @@ struct usage_def_t {
     bool is_relative;
     bool is_array = false;
     bool should_be_scaled = false;
+    TlcClass tlc_class = TlcClass::UNKNOWN;
     int32_t logical_minimum;
     int32_t logical_maximum;
     uint32_t index = 0;      // for arrays
@@ -49,6 +59,7 @@ struct usage_def_t {
     int32_t* input_state_0 = NULL;
     int32_t* input_state_n = NULL;
     uint16_t index_mask = 0;
+    bool range_passthrough = false;  // for array ranges: read into passthrough slots too
 };
 
 struct usage_usage_def_t {

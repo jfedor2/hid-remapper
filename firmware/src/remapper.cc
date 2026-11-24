@@ -330,8 +330,14 @@ void invalidate_expr_state_ptr_cache() {
     }
 }
 
-bool assign_state_slot(uint32_t usage, uint8_t hub_port, bool raw) {
-    uint64_t key = (raw ? ((uint64_t) 1 << 40) : 0) | ((uint64_t) hub_port << 32) | usage;
+// Unmapped passthrough has its own state slots (separate from user mappings for the same
+// usage) so that inputs can be bound to them selectively, see passthrough_compatible().
+static inline uint64_t state_slot_key(uint32_t usage, uint8_t hub_port, bool raw, bool passthrough) {
+    return (passthrough ? ((uint64_t) 1 << 41) : 0) | (raw ? ((uint64_t) 1 << 40) : 0) | ((uint64_t) hub_port << 32) | usage;
+}
+
+bool assign_state_slot(uint32_t usage, uint8_t hub_port, bool raw, bool passthrough = false) {
+    uint64_t key = state_slot_key(usage, hub_port, raw, passthrough);
     if (usage_state_ptr.count(key) == 0) {
         if (used_state_slots >= MAX_INPUT_STATES) {
             printf("out of input_state slots!");
@@ -343,15 +349,15 @@ bool assign_state_slot(uint32_t usage, uint8_t hub_port, bool raw) {
     return true;
 }
 
-inline int32_t* get_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false, bool raw = false) {
-    uint64_t key = (raw ? ((uint64_t) 1 << 40) : 0) | ((uint64_t) hub_port << 32) | usage;
+inline int32_t* get_state_ptr(uint32_t usage, uint8_t hub_port, bool assign_if_absent = false, bool raw = false, bool passthrough = false) {
+    uint64_t key = state_slot_key(usage, hub_port, raw, passthrough);
     auto search = usage_state_ptr.find(key);
     if (search != usage_state_ptr.end()) {
         return search->second;
     }
 
     if (assign_if_absent) {
-        if (assign_state_slot(usage, hub_port, raw)) {
+        if (assign_state_slot(usage, hub_port, raw, passthrough)) {
             their_descriptor_updated = true;
             return usage_state_ptr[key];  // it's zero, but maybe someone wants to write to it
         }
@@ -582,11 +588,11 @@ void set_mapping_from_config() {
         for (auto const& [usage, usage_def] : our_usages_flat) {
             uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
             if (unmapped_layers) {
-                if (assign_state_slot(usage, 0, false)) {
+                if (assign_state_slot(usage, 0, false, true)) {
                     sources_list.emplace_back(usage, (map_source_t){
                         .usage = usage,
                         .layer_mask = unmapped_layers,
-                        .input_state = get_state_ptr(usage, 0),
+                        .input_state = get_state_ptr(usage, 0, false, false, true),
                     });
                 }
             }
@@ -596,11 +602,11 @@ void set_mapping_from_config() {
             for (uint32_t usage = array_usage.usage; usage <= array_usage.usage_def.usage_maximum; usage++) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
                 if (unmapped_layers) {
-                    if (assign_state_slot(usage, 0, false)) {
+                    if (assign_state_slot(usage, 0, false, true)) {
                         sources_list.emplace_back(usage, (map_source_t){
                             .usage = usage,
                             .layer_mask = unmapped_layers,
-                            .input_state = get_state_ptr(usage, 0),
+                            .input_state = get_state_ptr(usage, 0, false, false, true),
                         });
                     }
                 }
@@ -611,11 +617,11 @@ void set_mapping_from_config() {
             for (auto const& [usage, usage_def] : usage_map) {
                 uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
                 if (unmapped_layers) {
-                    if (assign_state_slot(usage, 0, false)) {
+                    if (assign_state_slot(usage, 0, false, true)) {
                         sources_list.emplace_back(usage, (map_source_t){
                             .usage = usage,
                             .layer_mask = unmapped_layers,
-                            .input_state = get_state_ptr(usage, 0),
+                            .input_state = get_state_ptr(usage, 0, false, false, true),
                         });
                     }
                 }
@@ -1612,6 +1618,12 @@ inline void read_input_range(const uint8_t* report, int len, uint32_t source_usa
                     *state_ptr_n = 1 << interface_idx;  // set the bit because in do_handle_received_report we clear it not knowing if it's "0" or "n"
                 }
             }
+            if (their_usage.range_passthrough) {
+                int32_t* state_ptr_pt = get_state_ptr(actual_usage, 0, false, false, true);
+                if (state_ptr_pt != NULL) {
+                    *state_ptr_pt |= 1 << interface_idx;
+                }
+            }
         }
     }
 }
@@ -1852,6 +1864,28 @@ bool should_scale_input(const usage_def_t& their_usage) {
     return true;
 }
 
+static TlcClass our_tlc_class(uint32_t usage) {
+    auto search = our_usages_flat.find(usage);
+    if (search != our_usages_flat.end()) {
+        return search->second.tlc_class;
+    }
+    for (auto const& array_usage : our_array_range_usages) {
+        if ((usage >= array_usage.usage) && (usage <= array_usage.usage_def.usage_maximum)) {
+            return array_usage.usage_def.tlc_class;
+        }
+    }
+    return TlcClass::UNKNOWN;
+}
+
+// Mice and gamepads share usages (X/Y, buttons). Don't let unmapped passthrough
+// send an input from one kind of top-level collection to an output in the other.
+static bool passthrough_compatible(uint32_t usage, TlcClass their_class) {
+    TlcClass our_class = our_tlc_class(usage);
+    return (their_class == TlcClass::UNKNOWN) ||
+           (our_class == TlcClass::UNKNOWN) ||
+           (their_class == our_class);
+}
+
 void update_their_descriptor_derivates() {
     std::unordered_set<int32_t*> relative_usage_set;
     std::unordered_set<int32_t*> binary_usage_set;
@@ -1872,6 +1906,9 @@ void update_their_descriptor_derivates() {
                     int32_t* state_ptr_n = get_state_ptr(usage, hub_port);
                     int32_t* state_ptr_raw_0 = get_state_ptr(usage, 0, false, true);
                     int32_t* state_ptr_raw_n = get_state_ptr(usage, hub_port, false, true);
+                    int32_t* state_ptr_pt = passthrough_compatible(usage, usage_def.tlc_class)
+                                                ? get_state_ptr(usage, 0, false, false, true)
+                                                : NULL;
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage);
                     if (usage_def.is_relative) {
                         if (state_ptr_0 != NULL) {
@@ -1885,6 +1922,9 @@ void update_their_descriptor_derivates() {
                         }
                         if (state_ptr_raw_n != NULL) {
                             relative_usage_set.insert(state_ptr_raw_n);
+                        }
+                        if (state_ptr_pt != NULL) {
+                            relative_usage_set.insert(state_ptr_pt);
                         }
                     }
                     if ((usage_def.size == 1) || usage_def.is_array) {
@@ -1900,10 +1940,22 @@ void update_their_descriptor_derivates() {
                         if (state_ptr_raw_n != NULL) {
                             binary_usage_set.insert(state_ptr_raw_n);
                         }
+                        if (state_ptr_pt != NULL) {
+                            binary_usage_set.insert(state_ptr_pt);
+                        }
                     }
                     if ((state_ptr_0 != NULL) || (state_ptr_n != NULL)) {
                         usage_def.input_state_0 = state_ptr_0;
                         usage_def.input_state_n = state_ptr_n;
+                        their_used_usages[interface][report_id].push_back((usage_usage_def_t){
+                            .usage = usage,
+                            .usage_def = usage_def,
+                        });
+                    }
+                    if (state_ptr_pt != NULL) {
+                        // behaves like the port 0 slot
+                        usage_def.input_state_0 = state_ptr_pt;
+                        usage_def.input_state_n = NULL;
                         their_used_usages[interface][report_id].push_back((usage_usage_def_t){
                             .usage = usage,
                             .usage_def = usage_def,
@@ -1924,6 +1976,33 @@ void update_their_descriptor_derivates() {
                 } else {  // usage_maximum != 0, array range usage
                     their_usage_ranges_set.insert(((uint64_t) usage << 32) | usage_def.usage_maximum);
                     bool any_used = false;
+
+                    // Read into passthrough slots only if all of them in this range are compatible.
+                    // (A range with mixed compatibility would need our descriptor to have
+                    // these usages in both mouse and gamepad collections.)
+                    bool any_pt = false;
+                    bool all_pt_compatible = true;
+                    for (uint32_t actual_usage = usage; actual_usage <= usage_def.usage_maximum; actual_usage++) {
+                        if (get_state_ptr(actual_usage, 0, false, false, true) != NULL) {
+                            any_pt = true;
+                            if (!passthrough_compatible(actual_usage, usage_def.tlc_class)) {
+                                all_pt_compatible = false;
+                                break;
+                            }
+                        }
+                    }
+                    usage_def.range_passthrough = any_pt && all_pt_compatible;
+                    if (usage_def.range_passthrough) {
+                        any_used = true;
+                        for (uint32_t actual_usage = usage; actual_usage <= usage_def.usage_maximum; actual_usage++) {
+                            int32_t* state_ptr_pt = get_state_ptr(actual_usage, 0, false, false, true);
+                            if (state_ptr_pt != NULL) {
+                                array_range_usages[interface][report_id].push_back(state_ptr_pt);
+                                binary_usage_set.insert(state_ptr_pt);
+                            }
+                        }
+                    }
+
                     for (uint32_t actual_usage = usage; actual_usage <= usage_def.usage_maximum; actual_usage++) {
                         int32_t* state_ptr_0 = get_state_ptr(actual_usage, 0);
                         int32_t* state_ptr_n = get_state_ptr(actual_usage, hub_port);
@@ -2059,10 +2138,10 @@ void parse_our_descriptor() {
                 if (usage == DPAD_USAGE) {
                     our_dpad_usage = usage_def;
                     have_dpad = true;
-                    our_usages_flat[DPAD_USAGE_LEFT] = (usage_def_t){};
-                    our_usages_flat[DPAD_USAGE_RIGHT] = (usage_def_t){};
-                    our_usages_flat[DPAD_USAGE_UP] = (usage_def_t){};
-                    our_usages_flat[DPAD_USAGE_DOWN] = (usage_def_t){};
+                    our_usages_flat[DPAD_USAGE_LEFT] = (usage_def_t){ .tlc_class = usage_def.tlc_class };
+                    our_usages_flat[DPAD_USAGE_RIGHT] = (usage_def_t){ .tlc_class = usage_def.tlc_class };
+                    our_usages_flat[DPAD_USAGE_UP] = (usage_def_t){ .tlc_class = usage_def.tlc_class };
+                    our_usages_flat[DPAD_USAGE_DOWN] = (usage_def_t){ .tlc_class = usage_def.tlc_class };
                 }
                 our_usage_ranges_set.insert(((uint64_t) usage << 32) | (usage_def.usage_maximum ? usage_def.usage_maximum : usage));
 

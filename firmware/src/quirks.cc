@@ -1055,6 +1055,7 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
+        usage_map[1][0x00090006].tlc_class = TlcClass::POINTER;
     }
 
     // Buttons Fn1, Fn2, Fn3 are described as constants (padding) in the descriptor.
@@ -1094,6 +1095,9 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
+        usage_map[1][0x00090006].tlc_class = TlcClass::POINTER;
+        usage_map[1][0x00090007].tlc_class = TlcClass::POINTER;
+        usage_map[1][0x00090008].tlc_class = TlcClass::POINTER;
     }
 
     // Buttons Fn1, Fn2, Fn3 don't work because Usage Maximum=5 when it should be 8
@@ -1122,6 +1126,9 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
+        usage_map[1][0x00090006].tlc_class = TlcClass::POINTER;
+        usage_map[1][0x00090007].tlc_class = TlcClass::POINTER;
+        usage_map[1][0x00090008].tlc_class = TlcClass::POINTER;
     }
 
     // Top left and top right buttons use vendor-specific usages.
@@ -1144,6 +1151,8 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
+        usage_map[0][0x00090003].tlc_class = TlcClass::POINTER;
+        usage_map[0][0x00090004].tlc_class = TlcClass::POINTER;
     }
 
     // Buttons 2-4 don't work because Usage Maximum=1 when it should be 4
@@ -1172,6 +1181,9 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .is_relative = false,
             .logical_minimum = 0,
         };
+        usage_map[0][0x00090002].tlc_class = TlcClass::POINTER;
+        usage_map[0][0x00090003].tlc_class = TlcClass::POINTER;
+        usage_map[0][0x00090004].tlc_class = TlcClass::POINTER;
     }
 
     // SpaceMouse says its usages are relative, but they're not.
@@ -1939,6 +1951,13 @@ void apply_quirks(uint16_t vendor_id, uint16_t product_id, std::unordered_map<ui
             .logical_minimum = -32768,
             .logical_maximum = 32767,
         };
+        // Reports 66 and 69 are the controller's gamepad state (vendor-defined in the
+        // descriptor, hence the quirk), so everything in them belongs to a gamepad.
+        for (auto report_id : { 66, 69 }) {
+            for (auto& [usage, usage_def] : usage_map[report_id]) {
+                usage_def.tlc_class = TlcClass::GAMEPAD;
+            }
+        }
     }
 
     // apply user-defined quirks
