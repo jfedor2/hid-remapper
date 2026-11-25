@@ -330,6 +330,28 @@ void invalidate_expr_state_ptr_cache() {
     }
 }
 
+// Which input unmapped passthrough sends to our usage: with gamepad normalization
+// on, the normalized input at the same position on the gamepad (see
+// our_descriptor_def_t::passthrough_map). 0 means none.
+static uint32_t passthrough_source(uint32_t our_usage) {
+    if (!normalize_gamepad_inputs || (our_descriptor->passthrough_map == nullptr)) {
+        return our_usage;
+    }
+    const uint32_t (*map)[2] = our_descriptor->passthrough_map;
+    uint16_t length = our_descriptor->passthrough_map_length;
+    for (uint16_t i = 0; i < length; i++) {
+        if (map[i][1] == our_usage) {
+            return map[i][0];
+        }
+    }
+    for (uint16_t i = 0; i < length; i++) {
+        if (map[i][0] == our_usage) {
+            return 0;
+        }
+    }
+    return our_usage;
+}
+
 // Unmapped passthrough has its own state slots (separate from user mappings for the same
 // usage) so that inputs can be bound to them selectively, see passthrough_compatible().
 static inline uint64_t state_slot_key(uint32_t usage, uint8_t hub_port, bool raw, bool passthrough) {
@@ -585,31 +607,30 @@ void set_mapping_from_config() {
         }
         sources_list.reserve(sources_list.size() + passthrough_count);
 
-        for (auto const& [usage, usage_def] : our_usages_flat) {
-            uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
+        auto add_passthrough = [&](uint32_t target) {
+            uint32_t source = passthrough_source(target);
+            if (source == 0) {
+                return;
+            }
+            uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(source);
             if (unmapped_layers) {
-                if (assign_state_slot(usage, 0, false, true)) {
-                    sources_list.emplace_back(usage, (map_source_t){
-                        .usage = usage,
+                if (assign_state_slot(source, 0, false, true)) {
+                    sources_list.emplace_back(target, (map_source_t){
+                        .usage = source,
                         .layer_mask = unmapped_layers,
-                        .input_state = get_state_ptr(usage, 0, false, false, true),
+                        .input_state = get_state_ptr(source, 0, false, false, true),
                     });
                 }
             }
+        };
+
+        for (auto const& [usage, usage_def] : our_usages_flat) {
+            add_passthrough(usage);
         }
 
         for (auto const& array_usage : our_array_range_usages) {
             for (uint32_t usage = array_usage.usage; usage <= array_usage.usage_def.usage_maximum; usage++) {
-                uint8_t unmapped_layers = unmapped_passthrough_layer_mask & ~mapped_layers(usage);
-                if (unmapped_layers) {
-                    if (assign_state_slot(usage, 0, false, true)) {
-                        sources_list.emplace_back(usage, (map_source_t){
-                            .usage = usage,
-                            .layer_mask = unmapped_layers,
-                            .input_state = get_state_ptr(usage, 0, false, false, true),
-                        });
-                    }
-                }
+                add_passthrough(usage);
             }
         }
 

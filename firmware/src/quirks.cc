@@ -968,7 +968,7 @@ const uint8_t spacepilot_descriptor[] = {
     0xC0,              // End Collection
 };
 
-uint32_t stadia_mapping[][2] = {
+constexpr uint32_t stadia_mapping[][2] = {
     { 0x00090001, 0x00090004 },
     { 0x00090002, 0x00090001 },
     { 0x00090003, 0x00090002 },
@@ -986,8 +986,10 @@ uint32_t stadia_mapping[][2] = {
     { 0x00010033, 0x000200c5 },
     { 0x00010034, 0x000200c4 },
 };
+// A definition with fewer entries than the size in quirks.h would be padded with zeros.
+static_assert(stadia_mapping[sizeof(stadia_mapping) / sizeof(stadia_mapping[0]) - 1][0] != 0);
 
-uint32_t xbox_mapping32[][2] = {
+const uint32_t xbox_mapping32[][2] = {
     { 0x00090001, 0x00090007 },
     { 0x00090002, 0x00090005 },
     { 0x00090003, 0x00090006 },
@@ -1006,11 +1008,11 @@ uint32_t xbox_mapping32[][2] = {
     { 0xfff90004, 0x0009000a },
 };
 
-uint32_t xbox_mapping7[][2] = {
+const uint32_t xbox_mapping7[][2] = {
     { 0x0009000d, 0x00090011 },
 };
 
-uint32_t xbox_bluetooth_mapping[][2] = {
+const uint32_t xbox_bluetooth_mapping[][2] = {
     { 0x00090001, 0x00090004 },
     { 0x00090002, 0x00090001 },
     { 0x00090003, 0x00090002 },
@@ -1026,7 +1028,7 @@ uint32_t xbox_bluetooth_mapping[][2] = {
     { 0x00010034, 0x000200c4 },
 };
 
-void gamepad_normalize(std::unordered_map<uint32_t, usage_def_t>& current_map, uint32_t mapping[][2], uint16_t nentries) {
+void gamepad_normalize(std::unordered_map<uint32_t, usage_def_t>& current_map, const uint32_t mapping[][2], uint16_t nentries) {
     auto new_map = current_map;
 
     for (uint16_t i = 0; i < nentries; i++) {

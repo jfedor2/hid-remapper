@@ -48,6 +48,13 @@ struct our_descriptor_def_t {
     default_value_t default_value = nullptr;
     sanitize_report_t sanitize_report = nullptr;
     should_cause_wakeup_t should_cause_wakeup = nullptr;
+    // For unmapped passthrough with gamepad normalization on: pairs of
+    // { normalized input usage, our usage }. Our usages listed here get their
+    // input from the normalized usage; our usages not listed that appear as
+    // a normalized usage get none (that input goes elsewhere); the rest pass
+    // through 1:1. nullptr means everything passes through 1:1.
+    const uint32_t (*passthrough_map)[2] = nullptr;
+    uint16_t passthrough_map_length = 0;
 };
 
 extern const our_descriptor_def_t our_descriptors[];

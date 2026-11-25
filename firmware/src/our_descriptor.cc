@@ -3,6 +3,7 @@
 #include "globals.h"
 #include "our_descriptor.h"
 #include "ps_auth.h"
+#include "quirks.h"
 #include "remapper.h"
 
 const uint8_t REPORT_ID_MOUSE = 1;
@@ -521,6 +522,21 @@ uint8_t const our_report_descriptor_xac_compat[] = {
     0xC0,              // End Collection
 };
 
+// { normalized usage, XAC compatible usage }
+// X1 and X2 (buttons 1 and 2) get nothing.
+const uint32_t xac_compat_passthrough_map[][2] = {
+    { 0x00090001, 0x0009000b },  // West -> X
+    { 0x00090002, 0x00090005 },  // South -> A
+    { 0x00090003, 0x00090006 },  // East -> B
+    { 0x00090004, 0x0009000c },  // North -> Y
+    { 0x00090005, 0x00090004 },  // L1 -> LB
+    { 0x00090006, 0x0009000a },  // R1 -> RB
+    { 0x00090009, 0x00090007 },  // Select -> View
+    { 0x0009000a, 0x00090008 },  // Start -> Menu
+    { 0x0009000b, 0x00090003 },  // L3 -> LSB
+    { 0x0009000c, 0x00090009 },  // R3 -> RSB
+};
+
 void kb_mouse_handle_set_report(uint8_t report_id, const uint8_t* buffer, uint16_t reqlen) {
     if (report_id == REPORT_ID_MULTIPLIER && reqlen >= 1) {
         memcpy(&resolution_multiplier, buffer, 1);
@@ -687,6 +703,8 @@ const our_descriptor_def_t our_descriptors[] = {
         .clear_report = stadia_clear_report,
         .default_value = ps4_stadia_default_value,
         .sanitize_report = stadia_sanitize_report,
+        .passthrough_map = stadia_mapping,
+        .passthrough_map_length = sizeof(stadia_mapping) / sizeof(stadia_mapping[0]),
     },
     {
         .idx = 5,
@@ -695,6 +713,8 @@ const our_descriptor_def_t our_descriptors[] = {
         .handle_received_report = do_handle_received_report,
         .clear_report = xac_compat_clear_report,
         .default_value = ps4_stadia_default_value,  // sic
+        .passthrough_map = xac_compat_passthrough_map,
+        .passthrough_map_length = sizeof(xac_compat_passthrough_map) / sizeof(xac_compat_passthrough_map[0]),
     },
 };
 
