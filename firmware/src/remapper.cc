@@ -108,6 +108,7 @@ bool expression_valid[NEXPRESSIONS] = { false };
 
 std::unordered_map<uint32_t, int32_t> monitor_input_state;
 uint8_t monitor_usages_queued = 0;
+uint16_t monitor_rotation = 0;
 monitor_report_t monitor_report[2] = { { .report_id = REPORT_ID_MONITOR }, { .report_id = REPORT_ID_MONITOR } };
 uint8_t monitor_report_idx = 0;
 
@@ -1061,8 +1062,9 @@ int32_t eval_expr(uint8_t expr, uint64_t now, bool auto_repeat) {
                 // want to lose the fractional part.
                 if (monitor_enabled) {
                     if (stack[ptr - 1] != monitor_input_state[stack[ptr]]) {
-                        monitor_usage(stack[ptr], stack[ptr - 1], 0);
-                        monitor_input_state[stack[ptr]] = stack[ptr - 1];
+                        if (monitor_usage(stack[ptr], stack[ptr - 1], 0)) {
+                            monitor_input_state[stack[ptr]] = stack[ptr - 1];
+                        }
                     }
                 }
                 ptr -= 2;
@@ -1559,15 +1561,18 @@ bool send_monitor_report(send_report_t do_send_report) {
     return sent;
 }
 
-void monitor_usage(uint32_t usage, int32_t value, uint8_t hub_port) {
+// Returns false if the monitor report is full. Callers only record a value as
+// reported if it was queued, so that a change that didn't fit gets sent later.
+bool monitor_usage(uint32_t usage, int32_t value, uint8_t hub_port) {
     if (monitor_usages_queued == sizeof(monitor_report[0].items) / sizeof(monitor_report[0].items[0])) {
-        return;
+        return false;
     }
     monitor_report[monitor_report_idx].items[monitor_usages_queued++] = {
         .usage = usage,
         .value = value,
         .hub_port = hub_port,
     };
+    return true;
 }
 
 inline void read_input(const uint8_t* report, int len, uint32_t source_usage, const usage_def_t& their_usage, uint8_t interface_idx) {
@@ -1669,6 +1674,10 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
         }
     }
 
+    // monitor_input_state holds the last value we reported. It's only updated
+    // when the value was actually queued, so changes that didn't fit get
+    // retried. Relative values are sent as they came in the report or not at
+    // all (adding them up would misrepresent what the device sends).
     if (their_usage.is_relative) {
         if (value != 0) {
             monitor_usage(source_usage, value, hub_port);
@@ -1676,18 +1685,20 @@ inline void monitor_read_input(const uint8_t* report, int len, uint32_t source_u
     } else {
         if ((their_usage.size == 1) || their_usage.is_array) {
             if (value != (1 & (monitor_input_state[source_usage] >> interface_idx))) {
-                monitor_usage(source_usage, value, hub_port);
-            }
-            if (value) {
-                monitor_input_state[source_usage] |= 1 << interface_idx;
-            } else {
-                monitor_input_state[source_usage] &= ~(1 << interface_idx);
+                if (monitor_usage(source_usage, value, hub_port)) {
+                    if (value) {
+                        monitor_input_state[source_usage] |= 1 << interface_idx;
+                    } else {
+                        monitor_input_state[source_usage] &= ~(1 << interface_idx);
+                    }
+                }
             }
         } else {
             if (value != monitor_input_state[source_usage]) {
-                monitor_usage(source_usage, value, hub_port);
+                if (monitor_usage(source_usage, value, hub_port)) {
+                    monitor_input_state[source_usage] = value;
+                }
             }
-            monitor_input_state[source_usage] = value;
         }
     }
 }
@@ -1773,11 +1784,42 @@ void do_handle_received_report(const uint8_t* report, int len, uint16_t interfac
     }
 
     if (monitor_enabled) {
-        for (auto const& [their_usage, their_usage_def] : their_usages[interface][report_id]) {
+        // The monitor report only has room for a few inputs. Buttons go first so
+        // that inputs that change all the time (noisy sticks, gyros) can't crowd
+        // them out. The rest take turns: we start at a different place each time.
+        auto const& usage_map = their_usages[interface][report_id];
+        auto is_button = [](usage_def_t const& usage_def) {
+            return !usage_def.is_relative && ((usage_def.size == 1) || usage_def.is_array);
+        };
+        auto monitor_one = [&](uint32_t their_usage, usage_def_t const& their_usage_def) {
             if (their_usage_def.usage_maximum == 0) {
                 monitor_read_input(report, len, their_usage, their_usage_def, interface_idx, hub_port);
             } else {
                 monitor_read_input_range(report, len, their_usage, their_usage_def, interface_idx, hub_port);
+            }
+        };
+
+        for (auto const& [their_usage, their_usage_def] : usage_map) {
+            if (is_button(their_usage_def)) {
+                monitor_one(their_usage, their_usage_def);
+            }
+        }
+
+        uint16_t n = usage_map.size();
+        uint16_t start = (n > 0) ? (monitor_rotation++ % n) : 0;
+        uint16_t i = 0;
+        for (auto const& [their_usage, their_usage_def] : usage_map) {
+            if ((i++ >= start) && !is_button(their_usage_def)) {
+                monitor_one(their_usage, their_usage_def);
+            }
+        }
+        i = 0;
+        for (auto const& [their_usage, their_usage_def] : usage_map) {
+            if (i++ >= start) {
+                break;
+            }
+            if (!is_button(their_usage_def)) {
+                monitor_one(their_usage, their_usage_def);
             }
         }
     }

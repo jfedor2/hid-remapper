@@ -40,7 +40,7 @@ void print_stats();
 void reset_state();
 
 void set_monitor_enabled(bool enabled);
-void monitor_usage(uint32_t usage, int32_t value, uint8_t hub_port);
+bool monitor_usage(uint32_t usage, int32_t value, uint8_t hub_port);
 
 void sof_callback();
 
