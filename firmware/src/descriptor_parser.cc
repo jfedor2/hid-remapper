@@ -120,6 +120,18 @@ static void add_synthetic_dpad_usages(std::unordered_map<uint8_t, std::unordered
     }
 }
 
+static void extend_keyboard_arrays(std::unordered_map<uint8_t, std::unordered_map<uint32_t, usage_def_t>>& usage_maps) {
+    for (auto& [report_id, usage_map] : usage_maps) {
+        for (auto& [usage, usage_def] : usage_map) {
+            if (!usage_def.is_array || (usage_def.usage_maximum == 0) || ((usage >> 16) != 0x0007) || (usage_def.size > 8)) {
+                continue;
+            }
+            uint32_t field_maximum = usage + ((1 << usage_def.size) - 1) - usage_def.logical_minimum;
+            usage_def.usage_maximum = std::max(usage_def.usage_maximum, std::min((uint32_t) 0x000700FF, field_maximum));
+        }
+    }
+}
+
 void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* report_descriptor, int len, uint16_t interface, uint8_t itf_num) {
     my_mutex_enter(MutexId::THEIR_USAGES);
     auto their_report_sizes_map = parse_descriptor(
@@ -129,6 +141,7 @@ void parse_descriptor(uint16_t vendor_id, uint16_t product_id, const uint8_t* re
         has_report_id_theirs[interface],
         report_descriptor,
         len);
+    extend_keyboard_arrays(their_usages[interface]);
     apply_quirks(vendor_id, product_id, their_usages[interface], report_descriptor, len, itf_num);
     assign_interface_index(interface);
     add_synthetic_dpad_usages(their_usages[interface]);

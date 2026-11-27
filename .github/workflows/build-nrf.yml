@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'firmware-bluetooth/**'
+      - 'firmware/src/**'
+      - '.github/workflows/build-nrf.yml'
   workflow_call:
 defaults:
   run:
